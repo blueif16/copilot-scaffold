@@ -1,0 +1,10 @@
+{
+  "python_version": "3.12",
+  "dependencies": ["."],
+  "package_manager": "uv",
+  "graphs": {
+    "observation-changing-states": "./main.py:observation_graph",
+    "chat-changing-states": "./main.py:chat_graph"
+  },
+  "env": ".env"
+}
