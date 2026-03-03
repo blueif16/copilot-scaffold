@@ -69,11 +69,11 @@ if lsof -Pi :$FRONTEND_PORT -sTCP:LISTEN -t >/dev/null 2>&1; then
     fi
 fi
 
-# Start backend (LangGraph)
-echo "🔧 Starting LangGraph backend..."
+# Start backend (FastAPI with uvicorn)
+echo "🔧 Starting FastAPI backend..."
 cd "$PROJECT_ROOT/agent"
 source .venv/bin/activate
-langgraph dev --port $BACKEND_PORT > "$BACKEND_LOG" 2>&1 &
+uvicorn main:app --host 0.0.0.0 --port $BACKEND_PORT --reload > "$BACKEND_LOG" 2>&1 &
 BACKEND_PID=$!
 echo "   Backend PID: $BACKEND_PID"
 
