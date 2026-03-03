@@ -17,6 +17,7 @@ from langchain_core.messages import SystemMessage
 from langchain_core.runnables import RunnableConfig
 from langgraph.graph import END, START, StateGraph
 from langgraph.types import Command
+from langgraph.checkpoint.memory import MemorySaver
 
 from models import TopicConfig
 
@@ -86,4 +87,4 @@ TOPIC KNOWLEDGE:
     graph.add_node("respond", conversational_response)
     graph.add_edge(START, "respond")
 
-    return graph.compile()
+    return graph.compile(checkpointer=MemorySaver())

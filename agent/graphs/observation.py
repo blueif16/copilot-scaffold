@@ -19,6 +19,7 @@ from langchain_core.messages import SystemMessage
 from langchain_core.runnables import RunnableConfig
 from langgraph.graph import END, START, StateGraph
 from langgraph.types import Command
+from langgraph.checkpoint.memory import MemorySaver
 
 from models import (
     BaseAnimation,
@@ -238,4 +239,4 @@ If the moment doesn't warrant a reaction, do nothing."""
     graph.add_edge("ai_reasoning", "deliver_reaction")
     graph.add_edge("deliver_reaction", END)
 
-    return graph.compile()
+    return graph.compile(checkpointer=MemorySaver())
