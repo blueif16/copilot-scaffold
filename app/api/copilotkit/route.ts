@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import {
   CopilotRuntime,
+  ExperimentalEmptyAdapter,
   copilotRuntimeNextJSAppRouterEndpoint,
 } from "@copilotkit/runtime";
 import { LangGraphHttpAgent } from "@copilotkit/runtime/langgraph";
@@ -9,6 +10,8 @@ import { LangGraphHttpAgent } from "@copilotkit/runtime/langgraph";
 // Connect to add_langgraph_fastapi_endpoint agents
 
 const backendUrl = process.env.BACKEND_URL || "http://localhost:8123";
+
+const serviceAdapter = new ExperimentalEmptyAdapter();
 
 const runtime = new CopilotRuntime({
   agents: {
@@ -26,6 +29,7 @@ const runtime = new CopilotRuntime({
 export const POST = async (req: NextRequest) => {
   const { handleRequest } = copilotRuntimeNextJSAppRouterEndpoint({
     runtime,
+    serviceAdapter,
     endpoint: "/api/copilotkit",
   });
   return handleRequest(req);
