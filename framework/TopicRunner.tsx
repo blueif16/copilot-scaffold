@@ -159,6 +159,9 @@ function TopicRunnerInner<
 
   const handleEvent = useCallback(
     (event: Omit<SimulationEvent, "timestamp">) => {
+      // Don't process events if state isn't initialized yet
+      if (!state) return;
+
       const fullEvent: SimulationEvent = {
         ...event,
         timestamp: Date.now(),
@@ -182,29 +185,30 @@ function TopicRunnerInner<
             ...prev,
             events: {
               latest: fullEvent,
-              history: [...prev.events.history.slice(-49), fullEvent], // Cap history at 50
+              history: [...(prev.events?.history ?? []).slice(-49), fullEvent], // Cap history at 50
             },
           };
         });
 
         // 2. Trigger the observation agent to process the event.
         //    run() executes the observation graph with current state.
-        if (run) {
-          run();
+        if (run && state) {
+          try {
+            run();
+          } catch (error) {
+            console.warn("Failed to run observation agent:", error);
+          }
         }
 
         // 3. Play sound if the event type has a mapped sound
-        // Use queueMicrotask to defer sound playing outside the render cycle
-        queueMicrotask(() => {
-          if (event.type === "phase_change") {
-            soundManager.play("transition_chime");
-          } else if (event.type === "milestone") {
-            soundManager.play("achievement");
-          }
-        });
+        if (event.type === "phase_change") {
+          soundManager.play("transition_chime");
+        } else if (event.type === "milestone") {
+          soundManager.play("achievement");
+        }
       }, config.eventDebounceMs ?? 150);
     },
-    [setState, run, config.eventDebounceMs, soundManager],
+    [setState, run, config.eventDebounceMs, soundManager, state],
   );
 
   // ── Reaction display management ───────────────────────
@@ -238,12 +242,10 @@ function TopicRunnerInner<
     ) {
       setDisplayedReaction(reaction);
 
-      // Play reaction sound - defer to avoid setState during render
-      queueMicrotask(() => {
-        if (reaction.sound) {
-          soundManager.play(reaction.sound);
-        }
-      });
+      // Play reaction sound
+      if (reaction.sound) {
+        soundManager.play(reaction.sound);
+      }
 
       // Clear previous timer
       if (reactionTimerRef.current) {
@@ -293,7 +295,7 @@ function TopicRunnerInner<
 
   const chatMessages: ChatMessage[] = useMemo(
     () =>
-      visibleMessages
+      (visibleMessages ?? [])
         .filter(
           (msg) =>
             "content" in msg &&

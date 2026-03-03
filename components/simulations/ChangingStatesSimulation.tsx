@@ -114,9 +114,12 @@ export function ChangingStatesSimulation({
   useEffect(() => {
     if (!initializedRef.current) {
       initializedRef.current = true;
-      handlePhaseChange(phase);
+      // Defer to next tick to avoid setState during render
+      setTimeout(() => {
+        handlePhaseChange(phase);
+      }, 0);
     }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [phase, handlePhaseChange]);
 
   // ── Temperature → phase + state sync ──────────────────
   const handleTemperatureChange = useCallback(
@@ -149,7 +152,7 @@ export function ChangingStatesSimulation({
   // ── Derived visuals ───────────────────────────────────
   const bgColor = useMemo(() => bgColorFromTemp(temperature), [temperature]);
   const pColor = useMemo(() => particleColorFromTemp(temperature), [temperature]);
-  const phaseInfo = PHASE_LABELS[phase];
+  const phaseInfo = PHASE_LABELS[phase] ?? PHASE_LABELS.solid;
 
   // Compute particle opacity: solid = more opaque, gas = more transparent
   const particleOpacity = phase === "solid" ? 0.85 : phase === "liquid" ? 0.7 : 0.55;
@@ -364,7 +367,7 @@ export function ChangingStatesSimulation({
             min={0}
             max={100}
             step={0.5}
-            value={temperature}
+            value={temperature ?? 0}
             onChange={(e) => handleTemperatureChange(parseFloat(e.target.value))}
             onPointerDown={handleSliderDown}
             onPointerUp={handleSliderUp}
