@@ -141,10 +141,13 @@ function TopicRunnerInner<
 
   const handleSimStateChange = useCallback(
     (partial: Partial<SimState>) => {
-      setState((prev: CoAgentState<SimState>) => ({
-        ...prev,
-        simulation: { ...prev.simulation, ...partial },
-      }));
+      setState((prev: CoAgentState<SimState> | undefined) => {
+        if (!prev) return prev as unknown as CoAgentState<SimState>;
+        return {
+          ...prev,
+          simulation: { ...prev.simulation, ...partial },
+        };
+      });
     },
     [setState],
   );
@@ -173,13 +176,16 @@ function TopicRunnerInner<
 
       eventDebounceRef.current = setTimeout(() => {
         // 1. Write event to state (Zone 1 — history tracking)
-        setState((prev: CoAgentState<SimState>) => ({
-          ...prev,
-          events: {
-            latest: fullEvent,
-            history: [...prev.events.history.slice(-49), fullEvent], // Cap history at 50
-          },
-        }));
+        setState((prev: CoAgentState<SimState> | undefined) => {
+          if (!prev) return prev as unknown as CoAgentState<SimState>;
+          return {
+            ...prev,
+            events: {
+              latest: fullEvent,
+              history: [...prev.events.history.slice(-49), fullEvent], // Cap history at 50
+            },
+          };
+        });
 
         // 2. Trigger the observation agent to process the event.
         //    run() executes the observation graph with current state.
@@ -292,10 +298,10 @@ function TopicRunnerInner<
         .map((msg) => ({
           id: msg.id,
           role:
-            (msg as Record<string, unknown>).role === Role.User
+            (msg as unknown as Record<string, unknown>).role === Role.User
               ? ("user" as const)
               : ("assistant" as const),
-          content: String((msg as Record<string, unknown>).content || ""),
+          content: String((msg as unknown as Record<string, unknown>).content || ""),
         })),
     [visibleMessages],
   );
@@ -373,36 +379,42 @@ function TopicRunnerInner<
 
   useEffect(() => {
     if (process.env.NODE_ENV === "development") {
-      (window as Record<string, unknown>).__injectReaction = (
+      (window as unknown as Record<string, unknown>).__injectReaction = (
         reaction: ReactionPayload,
       ) => {
-        setState((prev: CoAgentState<SimState>) => ({
-          ...prev,
-          companion: {
-            ...prev.companion,
-            currentReaction: {
-              ...reaction,
-              timestamp: reaction.timestamp || Date.now(),
+        setState((prev: CoAgentState<SimState> | undefined) => {
+          if (!prev) return prev as unknown as CoAgentState<SimState>;
+          return {
+            ...prev,
+            companion: {
+              ...prev.companion,
+              currentReaction: {
+                ...reaction,
+                timestamp: reaction.timestamp || Date.now(),
+              },
+              reactionHistory: [
+                ...prev.companion.reactionHistory,
+                reaction.reactionId,
+              ],
             },
-            reactionHistory: [
-              ...prev.companion.reactionHistory,
-              reaction.reactionId,
-            ],
-          },
-        }));
+          };
+        });
       };
 
-      (window as Record<string, unknown>).__unlockSpotlight = () => {
-        setState((prev: CoAgentState<SimState>) => ({
-          ...prev,
-          companion: {
-            ...prev.companion,
-            spotlightUnlocked: true,
-          },
-        }));
+      (window as unknown as Record<string, unknown>).__unlockSpotlight = () => {
+        setState((prev: CoAgentState<SimState> | undefined) => {
+          if (!prev) return prev as unknown as CoAgentState<SimState>;
+          return {
+            ...prev,
+            companion: {
+              ...prev.companion,
+              spotlightUnlocked: true,
+            },
+          };
+        });
       };
 
-      (window as Record<string, unknown>).__getState = () => state;
+      (window as unknown as Record<string, unknown>).__getState = () => state;
     }
   }, [state]); // eslint-disable-line react-hooks/exhaustive-deps
 
