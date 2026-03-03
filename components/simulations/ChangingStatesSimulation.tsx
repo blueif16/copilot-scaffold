@@ -140,7 +140,7 @@ export function ChangingStatesSimulation({
       //   prevPhase: phase,
       //   phaseChanged: newPhase !== phase,
       //   sliderActive: state.sliderActive,
-      });
+      // });
 
       onStateChange({
         temperature: newTemp,
@@ -169,10 +169,10 @@ export function ChangingStatesSimulation({
   const handleSliderUp = useCallback(() => {
     // console.log('[wt-fix/slider-particle-disappear] Slider UP/CANCEL:', {
     //   currentPhase: phase,
-      currentTemp: temperature,
-      particleCount: particles.length,
-      sliderWasActive: state.sliderActive,
-    });
+    //   currentTemp: temperature,
+    //   particleCount: particles.length,
+    //   sliderWasActive: state.sliderActive,
+    // });
     onStateChange({ sliderActive: false });
     handleSliderRelease(phase);
   }, [onStateChange, handleSliderRelease, phase, temperature, particles.length, state.sliderActive]);
@@ -255,9 +255,9 @@ export function ChangingStatesSimulation({
               //   vx: p.vx,
               //   vy: p.vy,
               //   radius: p.radius,
-                left,
-                top,
-              });
+              //   left,
+              //   top,
+              // });
               return null;
             }
 
