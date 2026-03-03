@@ -2,25 +2,23 @@ import { NextRequest } from "next/server";
 import {
   CopilotRuntime,
   copilotRuntimeNextJSAppRouterEndpoint,
-  RemoteChain,
 } from "@copilotkit/runtime";
+import { LangGraphHttpAgent } from "@copilotkit/runtime/langgraph";
 
 // ── Agent Configuration ─────────────────────────────────
-// Connect to ag_ui_langgraph endpoints
+// Connect to add_langgraph_fastapi_endpoint agents
 
 const backendUrl = process.env.BACKEND_URL || "http://localhost:8123";
 
 const runtime = new CopilotRuntime({
-  remoteChains: [
-    new RemoteChain({
-      name: "observation-changing-states",
-      url: `${backendUrl}/copilotkit/agent/observation-changing-states`,
+  agents: {
+    "observation-changing-states": new LangGraphHttpAgent({
+      url: `${backendUrl}/agents/observation-changing-states`,
     }),
-    new RemoteChain({
-      name: "chat-changing-states",
-      url: `${backendUrl}/copilotkit/agent/chat-changing-states`,
+    "chat-changing-states": new LangGraphHttpAgent({
+      url: `${backendUrl}/agents/chat-changing-states`,
     }),
-  ],
+  },
 });
 
 // ── Route Handler ───────────────────────────────────────
