@@ -1,0 +1,14 @@
+node_modules
+.next
+.logs
+*.log
+.env.local
+.env.*.local
+.git
+.gitignore
+README.md
+agent/.venv
+agent/__pycache__
+agent/**/__pycache__
+agent/**/*.pyc
+*.pid
