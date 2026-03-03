@@ -4,7 +4,7 @@
 
 export type Phase = "solid" | "liquid" | "gas";
 
-export interface ChangingStatesSimState {
+export interface ChangingStatesSimState extends Record<string, unknown> {
   temperature: number; // 0–100, maps to slider position
   phase: Phase;
   particleSpeed: number; // Derived from temperature

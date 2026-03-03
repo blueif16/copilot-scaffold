@@ -21,7 +21,7 @@ const EMOTION_FACES: Record<BaseEmotion, { face: string; bg: string }> = {
 
 // ── Animation keyframes per animation key ───────────────
 
-const ANIMATION_VARIANTS: Record<string, object> = {
+const ANIMATION_VARIANTS: Record<string, Record<string, unknown>> = {
   bounce: {
     y: [0, -12, 0],
     transition: { duration: 0.4, ease: "easeOut" },
@@ -76,7 +76,7 @@ export function Companion({
   const emotion = (reaction?.emotion ?? "idle") as BaseEmotion;
   const faceData = EMOTION_FACES[emotion] ?? EMOTION_FACES.idle;
   const animKey = reaction?.animation ?? "none";
-  const animVariant = ANIMATION_VARIANTS[animKey] ?? ANIMATION_VARIANTS.none;
+  const animVariant = (ANIMATION_VARIANTS[animKey] ?? ANIMATION_VARIANTS.none) as Record<string, unknown> | undefined;
 
   const hasMessage = !!reaction?.message;
   const hasSuggestions =
@@ -127,9 +127,9 @@ export function Companion({
         {/* Main avatar circle */}
         <motion.div
           key={`avatar-${emotion}`}
-          animate={animVariant}
-          className={`relative w-16 h-16 sm:w-20 sm:h-20 rounded-full border-4 border-ink 
-            ${faceData.bg} shadow-chunky flex items-center justify-center 
+          animate={animVariant as any}
+          className={`relative w-16 h-16 sm:w-20 sm:h-20 rounded-full border-4 border-ink
+            ${faceData.bg} shadow-chunky flex items-center justify-center
             transition-colors duration-300`}
         >
           {/* Face */}
