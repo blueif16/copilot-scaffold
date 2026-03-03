@@ -36,7 +36,7 @@ function ChangingStatesContent() {
       {...(sessionId ? { threadId: sessionId } : {})}
     >
       <ConnectionStatus runtimeUrl="/api/copilotkit" />
-      <main className="min-h-screen flex flex-col">
+      <main className="h-screen flex flex-col">
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: -10 }}
