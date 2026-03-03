@@ -38,3 +38,10 @@ export const POST = async (req: NextRequest) => {
   });
   return handleRequest(req);
 };
+
+export const GET = async () => {
+  return new Response(JSON.stringify({ status: "ok" }), {
+    status: 200,
+    headers: { "Content-Type": "application/json" },
+  });
+};
