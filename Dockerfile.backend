@@ -12,8 +12,9 @@ RUN apt-get update && apt-get install -y \
 COPY agent/ ./agent/
 WORKDIR /app/agent
 
-# Install Python dependencies
-RUN pip install --no-cache-dir -e .
+# Install Python dependencies including uvicorn
+RUN pip install --no-cache-dir -e . && \
+    pip install --no-cache-dir uvicorn[standard] fastapi
 
 # Expose backend port
 EXPOSE 8123
