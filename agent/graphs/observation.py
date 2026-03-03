@@ -145,10 +145,11 @@ def build_observation_graph(
         """
         from langchain_google_genai import ChatGoogleGenerativeAI
 
-        hint = state.get("_ai_hint") or ""
+        try:
+            hint = state.get("_ai_hint") or ""
 
-        # topic_config accessed via closure
-        prompt = f"""{topic_config.pedagogical_prompt}
+            # topic_config accessed via closure
+            prompt = f"""{topic_config.pedagogical_prompt}
 
 CURRENT SIMULATION STATE:
 {state.get("simulation", {})}
@@ -165,51 +166,62 @@ ADDITIONAL CONTEXT:
 Decide if the companion should react. If yes, call the emit_reaction tool.
 If the moment doesn't warrant a reaction, do nothing."""
 
-        tool = make_emit_reaction_tool(all_emotions, all_animations)
-        model = ChatGoogleGenerativeAI(model="gemini-2.5-flash", temperature=0.7)
-        model_with_tool = model.bind_tools([tool])
+            tool = make_emit_reaction_tool(all_emotions, all_animations)
+            model = ChatGoogleGenerativeAI(model="gemini-2.5-flash", temperature=0.7)
+            model_with_tool = model.bind_tools([tool])
 
-        response = await model_with_tool.ainvoke(
-            [SystemMessage(content=prompt)], config
-        )
+            response = await model_with_tool.ainvoke(
+                [SystemMessage(content=prompt)], config
+            )
 
-        # Extract tool call result if present
-        if hasattr(response, "tool_calls") and response.tool_calls:
-            tool_call = response.tool_calls[0]
-            payload = tool_call.get("args", {})
-            payload["source"] = "ai"
-            payload["reaction_id"] = f"ai-{int(time.time())}"
-            payload["timestamp"] = time.time()
-            return {"_pending_reaction": payload}
+            # Extract tool call result if present
+            if hasattr(response, "tool_calls") and response.tool_calls:
+                tool_call = response.tool_calls[0]
+                payload = tool_call.get("args", {})
+                payload["source"] = "ai"
+                payload["reaction_id"] = f"ai-{int(time.time())}"
+                payload["timestamp"] = time.time()
+                return {"_pending_reaction": payload}
 
-        return {"_pending_reaction": None}
+            return {"_pending_reaction": None}
+
+        except Exception as e:
+            # Log error but don't propagate - prevents RUN_ERROR terminal state
+            print(f"AI reasoning failed: {e}")
+            return {"_pending_reaction": None}
 
     async def deliver_reaction(
         state: ObservationAgentState, config: RunnableConfig
     ) -> dict:
         """Write the reaction to companion state and emit immediately."""
-        pending = state.get("_pending_reaction")
-        if not pending:
+        try:
+            pending = state.get("_pending_reaction")
+            if not pending:
+                return {}
+
+            companion = dict(state.get("companion") or {})
+            companion["currentReaction"] = pending
+            companion["reactionHistory"] = companion.get("reactionHistory", []) + [
+                pending.get("reaction_id", "")
+            ]
+
+            if pending.get("progress_update"):
+                progress = dict(companion.get("progress", {}))
+                progress.update(pending["progress_update"])
+                companion["progress"] = progress
+
+            if pending.get("unlock_spotlight"):
+                companion["spotlightUnlocked"] = True
+
+            # Push to frontend IMMEDIATELY — don't wait for node completion
+            await copilotkit_emit_state(config, {"companion": companion})
+
+            return {"companion": companion}
+
+        except Exception as e:
+            # Log error but don't propagate - prevents RUN_ERROR terminal state
+            print(f"Deliver reaction failed: {e}")
             return {}
-
-        companion = dict(state.get("companion") or {})
-        companion["currentReaction"] = pending
-        companion["reactionHistory"] = companion.get("reactionHistory", []) + [
-            pending.get("reaction_id", "")
-        ]
-
-        if pending.get("progress_update"):
-            progress = dict(companion.get("progress", {}))
-            progress.update(pending["progress_update"])
-            companion["progress"] = progress
-
-        if pending.get("unlock_spotlight"):
-            companion["spotlightUnlocked"] = True
-
-        # Push to frontend IMMEDIATELY — don't wait for node completion
-        await copilotkit_emit_state(config, {"companion": companion})
-
-        return {"companion": companion}
 
     # ── Assemble the graph ───────────────────────────────
 
