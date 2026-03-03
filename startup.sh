@@ -9,6 +9,8 @@ PROJECT_ROOT="$(cd "$(dirname "$0")" && pwd)"
 LOG_DIR="$PROJECT_ROOT/.logs"
 FRONTEND_LOG="$LOG_DIR/frontend.log"
 BACKEND_LOG="$LOG_DIR/backend.log"
+BACKEND_PORT=8123
+FRONTEND_PORT=3000
 
 # Create logs directory
 mkdir -p "$LOG_DIR"
@@ -39,17 +41,56 @@ if ! grep -q "^GOOGLE_API_KEY=..*" "$PROJECT_ROOT/.env"; then
     exit 1
 fi
 
+# Check if backend port is already in use
+if lsof -Pi :$BACKEND_PORT -sTCP:LISTEN -t >/dev/null 2>&1; then
+    EXISTING_PID=$(lsof -Pi :$BACKEND_PORT -sTCP:LISTEN -t)
+    echo "⚠️  Port $BACKEND_PORT is already in use by PID $EXISTING_PID"
+    echo "   Killing existing process..."
+    kill $EXISTING_PID 2>/dev/null || true
+    sleep 2
+    # Force kill if still running
+    if lsof -Pi :$BACKEND_PORT -sTCP:LISTEN -t >/dev/null 2>&1; then
+        kill -9 $EXISTING_PID 2>/dev/null || true
+        sleep 1
+    fi
+fi
+
+# Check if frontend port is already in use
+if lsof -Pi :$FRONTEND_PORT -sTCP:LISTEN -t >/dev/null 2>&1; then
+    EXISTING_PID=$(lsof -Pi :$FRONTEND_PORT -sTCP:LISTEN -t)
+    echo "⚠️  Port $FRONTEND_PORT is already in use by PID $EXISTING_PID"
+    echo "   Killing existing process..."
+    kill $EXISTING_PID 2>/dev/null || true
+    sleep 2
+    # Force kill if still running
+    if lsof -Pi :$FRONTEND_PORT -sTCP:LISTEN -t >/dev/null 2>&1; then
+        kill -9 $EXISTING_PID 2>/dev/null || true
+        sleep 1
+    fi
+fi
+
 # Start backend (LangGraph)
 echo "🔧 Starting LangGraph backend..."
 cd "$PROJECT_ROOT/agent"
 source .venv/bin/activate
-langgraph dev > "$BACKEND_LOG" 2>&1 &
+langgraph dev --port $BACKEND_PORT > "$BACKEND_LOG" 2>&1 &
 BACKEND_PID=$!
 echo "   Backend PID: $BACKEND_PID"
 
-# Wait for backend to start
+# Wait for backend to start and verify
 echo "   Waiting for backend to be ready..."
-sleep 3
+for i in {1..10}; do
+    sleep 1
+    if lsof -Pi :$BACKEND_PORT -sTCP:LISTEN -t >/dev/null 2>&1; then
+        echo "   ✅ Backend is ready!"
+        break
+    fi
+    if [ $i -eq 10 ]; then
+        echo "   ❌ Backend failed to start. Check logs: tail -f $BACKEND_LOG"
+        kill $BACKEND_PID 2>/dev/null || true
+        exit 1
+    fi
+done
 
 # Start frontend (Next.js)
 echo "🎨 Starting Next.js frontend..."
@@ -58,15 +99,27 @@ npm run dev > "$FRONTEND_LOG" 2>&1 &
 FRONTEND_PID=$!
 echo "   Frontend PID: $FRONTEND_PID"
 
-# Wait for frontend to start
+# Wait for frontend to start and verify
 echo "   Waiting for frontend to be ready..."
-sleep 5
+for i in {1..15}; do
+    sleep 1
+    if lsof -Pi :$FRONTEND_PORT -sTCP:LISTEN -t >/dev/null 2>&1; then
+        echo "   ✅ Frontend is ready!"
+        break
+    fi
+    if [ $i -eq 15 ]; then
+        echo "   ❌ Frontend failed to start. Check logs: tail -f $FRONTEND_LOG"
+        kill $FRONTEND_PID 2>/dev/null || true
+        kill $BACKEND_PID 2>/dev/null || true
+        exit 1
+    fi
+done
 
 echo ""
 echo "✅ Both servers started!"
 echo ""
-echo "🌐 Frontend: http://localhost:3000"
-echo "🔌 Backend:  http://localhost:8123"
+echo "🌐 Frontend: http://localhost:$FRONTEND_PORT"
+echo "🔌 Backend:  http://localhost:$BACKEND_PORT"
 echo ""
 echo "📊 To view logs in real-time:"
 echo "   Frontend: tail -f $FRONTEND_LOG"
@@ -81,6 +134,9 @@ echo ""
 # Save PIDs to file for easy cleanup
 echo "$FRONTEND_PID" > "$LOG_DIR/frontend.pid"
 echo "$BACKEND_PID" > "$LOG_DIR/backend.pid"
+
+# Trap Ctrl+C to clean up processes
+trap "echo ''; echo '🛑 Shutting down...'; kill $FRONTEND_PID $BACKEND_PID 2>/dev/null; exit 0" INT TERM
 
 # Keep script running and tail both logs
 echo "📡 Streaming logs (Ctrl+C to stop)..."
