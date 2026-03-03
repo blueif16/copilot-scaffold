@@ -215,23 +215,30 @@ export function ChangingStatesSimulation({
           </div>
 
           {/* ── Particles ────────────────────────────── */}
-          {particles.map((p) => (
-            <div
-              key={p.id}
-              className="absolute rounded-full"
-              style={{
-                width: p.radius * 2,
-                height: p.radius * 2,
-                left: p.x - p.radius,
-                top: p.y - p.radius,
-                backgroundColor: pColor,
-                opacity: particleOpacity,
-                mixBlendMode: "multiply",
-                willChange: "left, top",
-                transition: "background-color 0.6s ease",
-              }}
-            />
-          ))}
+          {particles.map((p) => {
+            const left = p.x - p.radius;
+            const top = p.y - p.radius;
+            // Guard against NaN values
+            if (!isFinite(left) || !isFinite(top)) return null;
+
+            return (
+              <div
+                key={p.id}
+                className="absolute rounded-full"
+                style={{
+                  width: p.radius * 2,
+                  height: p.radius * 2,
+                  left,
+                  top,
+                  backgroundColor: pColor,
+                  opacity: particleOpacity,
+                  mixBlendMode: "multiply",
+                  willChange: "left, top",
+                  transition: "background-color 0.6s ease",
+                }}
+              />
+            );
+          })}
 
           {/* Phase transition flash effect */}
           <AnimatePresence>
