@@ -83,6 +83,9 @@ export function useEventEmitter({ onEvent }: EventEmitterOptions) {
     resetIdleTimer();
   }, [onEvent, resetIdleTimer]);
 
+  // ── Track slider state to prevent dwell timer during interaction ──
+  const sliderActiveRef = useRef(false);
+
   // ── Handle phase change ─────────────────────────────────
   const handlePhaseChange = useCallback(
     (newPhase: Phase) => {
@@ -90,7 +93,10 @@ export function useEventEmitter({ onEvent }: EventEmitterOptions) {
       if (prevPhase === newPhase || prevPhase === null) {
         lastPhase.current = newPhase;
         phasesVisited.current.add(newPhase);
-        startDwellTimer(newPhase);
+        // Only start dwell timer if slider is not active
+        if (!sliderActiveRef.current) {
+          startDwellTimer(newPhase);
+        }
         return;
       }
 
@@ -136,7 +142,10 @@ export function useEventEmitter({ onEvent }: EventEmitterOptions) {
       }
 
       lastPhase.current = newPhase;
-      startDwellTimer(newPhase);
+      // Only start dwell timer if slider is not active
+      if (!sliderActiveRef.current) {
+        startDwellTimer(newPhase);
+      }
       resetIdleTimer();
     },
     [onEvent, startDwellTimer, resetIdleTimer, checkRapidCycling],
@@ -145,12 +154,17 @@ export function useEventEmitter({ onEvent }: EventEmitterOptions) {
   // ── Handle slider activity (resets timers) ──────────────
   const handleSliderActivity = useCallback(() => {
     handleFirstInteraction();
-    if (dwellTimer.current) clearTimeout(dwellTimer.current);
+    sliderActiveRef.current = true;
+    if (dwellTimer.current) {
+      clearTimeout(dwellTimer.current);
+      dwellTimer.current = null;
+    }
   }, [handleFirstInteraction]);
 
   // ── Handle slider release (restart dwell timer) ─────────
   const handleSliderRelease = useCallback(
     (currentPhase: Phase) => {
+      sliderActiveRef.current = false;
       startDwellTimer(currentPhase);
     },
     [startDwellTimer],
