@@ -12,7 +12,10 @@ from config import load_env
 # Load .env before any other imports that might need API keys
 load_env()
 
-from copilotkit import CopilotKitRemoteEndpoint, LangGraphAgent
+from fastapi import FastAPI
+from copilotkit import LangGraphAGUIAgent
+from ag_ui_langgraph import add_langgraph_fastapi_endpoint
+import uvicorn
 
 from graphs.chat import build_chat_graph
 from graphs.observation import build_observation_graph
@@ -28,19 +31,34 @@ observation_graph = build_observation_graph(
 
 chat_graph = build_chat_graph(changing_states_config)
 
-# ── Register with CopilotKit ────────────────────────────
+# ── Create FastAPI app and register agents ────────────────
 
-sdk = CopilotKitRemoteEndpoint(
-    agents=[
-        LangGraphAgent(
-            name="observation-changing-states",
-            description="Observes simulation events and delivers companion reactions",
-            graph=observation_graph,
-        ),
-        LangGraphAgent(
-            name="chat-changing-states",
-            description="Answers questions about states of matter for ages 6-8",
-            graph=chat_graph,
-        ),
-    ]
+app = FastAPI()
+
+# Register observation agent
+add_langgraph_fastapi_endpoint(
+    app=app,
+    agent=LangGraphAGUIAgent(
+        name="observation-changing-states",
+        description="Observes simulation events and delivers companion reactions",
+        graph=observation_graph,
+    ),
+    path="/agent/observation-changing-states",
 )
+
+# Register chat agent
+add_langgraph_fastapi_endpoint(
+    app=app,
+    agent=LangGraphAGUIAgent(
+        name="chat-changing-states",
+        description="Answers questions about states of matter for ages 6-8",
+        graph=chat_graph,
+    ),
+    path="/agent/chat-changing-states",
+)
+
+@app.get("/health")
+def health():
+    """Health check."""
+    return {"status": "ok"}
+
