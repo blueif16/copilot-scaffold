@@ -85,12 +85,6 @@ export function ChangingStatesSimulation({
 
     const measure = () => {
       const rect = el.getBoundingClientRect();
-      // console.log('[wt-fix/slider-particle-disappear] Container measured:', {
-      //   width: rect.width,
-      //   height: rect.height,
-      //   prevWidth: containerSize.w,
-      //   prevHeight: containerSize.h,
-      // });
       setContainerSize({ w: rect.width, h: rect.height });
     };
     measure();
@@ -133,14 +127,6 @@ export function ChangingStatesSimulation({
       const newPhase = phaseFromTemp(newTemp);
       const newSpeed = newTemp / 100;
 
-      // console.log('[wt-fix/slider-particle-disappear] Temperature change:', {
-      //   newTemp,
-      //   newPhase,
-      //   newSpeed,
-      //   prevPhase: phase,
-      //   phaseChanged: newPhase !== phase,
-      //   sliderActive: state.sliderActive,
-      // });
 
       onStateChange({
         temperature: newTemp,
@@ -157,22 +143,11 @@ export function ChangingStatesSimulation({
   );
 
   const handleSliderDown = useCallback(() => {
-    // console.log('[wt-fix/slider-particle-disappear] Slider DOWN:', {
-    //   currentPhase: phase,
-    //   currentTemp: temperature,
-    //   particleCount: particles.length,
-    // });
     onStateChange({ sliderActive: true });
     handleSliderActivity();
   }, [onStateChange, handleSliderActivity, phase, temperature, particles.length]);
 
   const handleSliderUp = useCallback(() => {
-    // console.log('[wt-fix/slider-particle-disappear] Slider UP/CANCEL:', {
-    //   currentPhase: phase,
-    //   currentTemp: temperature,
-    //   particleCount: particles.length,
-    //   sliderWasActive: state.sliderActive,
-    // });
     onStateChange({ sliderActive: false });
     handleSliderRelease(phase);
   }, [onStateChange, handleSliderRelease, phase, temperature, particles.length, state.sliderActive]);
@@ -248,16 +223,6 @@ export function ChangingStatesSimulation({
             const top = p.y - p.radius;
             // Guard against NaN values
             if (!isFinite(left) || !isFinite(top)) {
-              // console.error('[wt-fix/slider-particle-disappear] NaN particle position in render:', {
-              //   particleId: p.id,
-              //   x: p.x,
-              //   y: p.y,
-              //   vx: p.vx,
-              //   vy: p.vy,
-              //   radius: p.radius,
-              //   left,
-              //   top,
-              // });
               return null;
             }
 
