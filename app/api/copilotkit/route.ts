@@ -1,57 +1,26 @@
 import { NextRequest } from "next/server";
 import {
   CopilotRuntime,
-  ExperimentalEmptyAdapter,
   copilotRuntimeNextJSAppRouterEndpoint,
+  RemoteChain,
 } from "@copilotkit/runtime";
-import { LangGraphAgent } from "@copilotkit/runtime/langgraph";
 
 // ── Agent Configuration ─────────────────────────────────
-// Graph IDs MUST exactly match langgraph.json + useCoAgent names
+// Connect to ag_ui_langgraph endpoints
 
-const deploymentUrl =
-  process.env.LANGGRAPH_DEPLOYMENT_URL || "http://localhost:8123";
-const langsmithApiKey = process.env.LANGSMITH_API_KEY || "";
-
-// Wrap LangGraphAgent to handle "Message not found" errors gracefully
-class SafeLangGraphAgent extends LangGraphAgent {
-  run(input: any) {
-    const observable = super.run(input);
-    return new (require("rxjs").Observable)((subscriber: any) => {
-      const subscription = observable.subscribe({
-        next: (value: any) => subscriber.next(value),
-        error: (error: any) => {
-          // Handle "Message not found" errors gracefully
-          if (error?.message?.includes("Message not found")) {
-            console.warn(
-              "[LangGraph] Message checkpoint not found - ignoring regenerate attempt:",
-              error.message
-            );
-            subscriber.complete();
-          } else {
-            subscriber.error(error);
-          }
-        },
-        complete: () => subscriber.complete(),
-      });
-      return () => subscription.unsubscribe();
-    });
-  }
-}
+const backendUrl = process.env.BACKEND_URL || "http://localhost:8123";
 
 const runtime = new CopilotRuntime({
-  agents: {
-    "observation-changing-states": new SafeLangGraphAgent({
-      deploymentUrl,
-      graphId: "observation-changing-states",
-      langsmithApiKey,
+  remoteChains: [
+    new RemoteChain({
+      name: "observation-changing-states",
+      url: `${backendUrl}/copilotkit/agent/observation-changing-states`,
     }),
-    "chat-changing-states": new SafeLangGraphAgent({
-      deploymentUrl,
-      graphId: "chat-changing-states",
-      langsmithApiKey,
+    new RemoteChain({
+      name: "chat-changing-states",
+      url: `${backendUrl}/copilotkit/agent/chat-changing-states`,
     }),
-  },
+  ],
 });
 
 // ── Route Handler ───────────────────────────────────────
@@ -59,7 +28,6 @@ const runtime = new CopilotRuntime({
 export const POST = async (req: NextRequest) => {
   const { handleRequest } = copilotRuntimeNextJSAppRouterEndpoint({
     runtime,
-    serviceAdapter: new ExperimentalEmptyAdapter(),
     endpoint: "/api/copilotkit",
   });
   return handleRequest(req);

@@ -7,7 +7,7 @@ services:
       dockerfile: Dockerfile.backend
     container_name: omniscience-backend
     ports:
-      - "8123:8123"
+      - "8124:8123"
     environment:
       - GOOGLE_API_KEY=${GOOGLE_API_KEY}
       - LANGSMITH_API_KEY=${LANGSMITH_API_KEY:-}
@@ -27,7 +27,7 @@ services:
       dockerfile: Dockerfile.frontend
     container_name: omniscience-frontend
     ports:
-      - "3000:3000"
+      - "3082:3000"
     environment:
       - LANGGRAPH_DEPLOYMENT_URL=http://backend:8123
     depends_on:
