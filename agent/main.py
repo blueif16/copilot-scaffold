@@ -11,6 +11,7 @@ from config import load_env
 load_env()
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from copilotkit import LangGraphAGUIAgent
 from ag_ui_langgraph import add_langgraph_fastapi_endpoint
 import uvicorn
@@ -32,6 +33,15 @@ chat_graph = build_chat_graph(changing_states_config)
 # ── Create FastAPI app and register agents ────────────────
 
 app = FastAPI()
+
+# Add CORS middleware to allow frontend connections
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # In production, specify exact origins
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Register observation agent at /agents/observation-changing-states
 add_langgraph_fastapi_endpoint(
