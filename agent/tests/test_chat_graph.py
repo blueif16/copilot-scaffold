@@ -22,7 +22,8 @@ def test_chat_graph_has_respond_node():
     """Chat graph contains the expected respond node."""
     graph = build_chat_graph(changing_states_config)
     graph_data = graph.get_graph()
-    node_ids = [n.id for n in graph_data.nodes]
+    # nodes is a list of node IDs (strings), not objects
+    node_ids = list(graph_data.nodes)
     assert "respond" in node_ids
 
 
