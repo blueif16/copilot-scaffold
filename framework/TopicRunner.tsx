@@ -294,22 +294,47 @@ function TopicRunnerInner<
   const [chatOpen, setChatOpen] = useState(false);
 
   const chatMessages: ChatMessage[] = useMemo(
-    () =>
-      (visibleMessages ?? [])
+    () => {
+      console.log("[TopicRunner] visibleMessages:", visibleMessages);
+      return (visibleMessages ?? [])
         .filter(
-          (msg) =>
-            "content" in msg &&
-            typeof (msg as Record<string, unknown>).content === "string" &&
-            String((msg as Record<string, unknown>).content || "").trim() !== "",
+          (msg) => {
+            const hasContent = "content" in msg;
+            const content = (msg as Record<string, unknown>).content;
+            const isString = typeof content === "string";
+            const isArray = Array.isArray(content);
+
+            console.log("[TopicRunner] Message filter:", {
+              id: msg.id,
+              hasContent,
+              contentType: typeof content,
+              isString,
+              isArray,
+              content: isArray ? content : String(content).substring(0, 100),
+            });
+
+            return hasContent && (isString || isArray) &&
+              (isString ? String(content).trim() !== "" : content.length > 0);
+          }
         )
-        .map((msg) => ({
-          id: msg.id,
-          role:
-            (msg as unknown as Record<string, unknown>).role === Role.User
-              ? ("user" as const)
-              : ("assistant" as const),
-          content: String((msg as unknown as Record<string, unknown>).content || ""),
-        })),
+        .map((msg) => {
+          const content = (msg as Record<string, unknown>).content;
+          const contentStr = typeof content === "string"
+            ? content
+            : Array.isArray(content) && content[0]?.text
+              ? content[0].text
+              : String(content);
+
+          return {
+            id: msg.id,
+            role:
+              (msg as unknown as Record<string, unknown>).role === Role.User
+                ? ("user" as const)
+                : ("assistant" as const),
+            content: contentStr,
+          };
+        });
+    },
     [visibleMessages],
   );
 
