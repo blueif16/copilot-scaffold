@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Fraunces, Space_Grotesk } from "next/font/google";
 import { GrainOverlay } from "@/components/ui/GrainOverlay";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import "./globals.css";
 
 const fraunces = Fraunces({
@@ -33,7 +34,7 @@ export default function RootLayout({
     >
       <body className="min-h-screen bg-paper text-ink font-body antialiased">
         <GrainOverlay />
-        {children}
+        <ErrorBoundary>{children}</ErrorBoundary>
       </body>
     </html>
   );

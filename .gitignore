@@ -48,3 +48,7 @@ yarn-error.log*
 # Misc
 *.tsbuildinfo
 next-env.d.ts
+
+# Claude Code
+.claude/
+.tasks/
