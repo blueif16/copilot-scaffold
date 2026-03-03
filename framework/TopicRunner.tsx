@@ -90,7 +90,7 @@ function TopicRunnerInner<
     value: {
       topic: config.id,
       ageRange: config.ageRange,
-      simulationState: state.simulation,
+      simulationState: state?.simulation ?? config.initialSimulationState,
     },
     categories: ["observation", "chat"],
   });
@@ -98,10 +98,10 @@ function TopicRunnerInner<
   useCopilotReadable({
     description: "Learning progress, reaction history, and companion context",
     value: {
-      progress: state.companion.progress,
-      reactionHistory: state.companion.reactionHistory,
-      lastReaction: state.companion.currentReaction,
-      spotlightUnlocked: state.companion.spotlightUnlocked,
+      progress: state?.companion?.progress ?? config.initialProgress,
+      reactionHistory: state?.companion?.reactionHistory ?? [],
+      lastReaction: state?.companion?.currentReaction ?? null,
+      spotlightUnlocked: state?.companion?.spotlightUnlocked ?? false,
     },
     categories: ["chat"],
   });
@@ -132,7 +132,7 @@ function TopicRunnerInner<
       },
     ],
     handler: async ({ eventType, eventData }) => {
-      return { eventType, eventData, simulationState: state.simulation };
+      return { eventType, eventData, simulationState: state?.simulation ?? config.initialSimulationState };
     },
   });
 
@@ -193,12 +193,15 @@ function TopicRunnerInner<
           run();
         }
 
-        // Play sound if the event type has a mapped sound
-        if (event.type === "phase_change") {
-          soundManager.play("transition_chime");
-        } else if (event.type === "milestone") {
-          soundManager.play("achievement");
-        }
+        // 3. Play sound if the event type has a mapped sound
+        // Use queueMicrotask to defer sound playing outside the render cycle
+        queueMicrotask(() => {
+          if (event.type === "phase_change") {
+            soundManager.play("transition_chime");
+          } else if (event.type === "milestone") {
+            soundManager.play("achievement");
+          }
+        });
       }, config.eventDebounceMs ?? 150);
     },
     [setState, run, config.eventDebounceMs, soundManager],
@@ -213,14 +216,14 @@ function TopicRunnerInner<
   const reactionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    const reaction = state.companion.currentReaction;
+    const reaction = state?.companion?.currentReaction;
     if (!reaction) {
       setDisplayedReaction(null);
       return;
     }
 
     // Dedup: skip if this exact reaction ID was already shown (one-shot guard)
-    const history = state.companion.reactionHistory;
+    const history = state?.companion?.reactionHistory ?? [];
     const occurrences = history.filter((id) => id === reaction.reactionId).length;
     if (occurrences > 1 && reaction.source === "programmed") {
       // Already shown before and it was one-shot — skip display
@@ -235,10 +238,12 @@ function TopicRunnerInner<
     ) {
       setDisplayedReaction(reaction);
 
-      // Play reaction sound
-      if (reaction.sound) {
-        soundManager.play(reaction.sound);
-      }
+      // Play reaction sound - defer to avoid setState during render
+      queueMicrotask(() => {
+        if (reaction.sound) {
+          soundManager.play(reaction.sound);
+        }
+      });
 
       // Clear previous timer
       if (reactionTimerRef.current) {
@@ -258,16 +263,16 @@ function TopicRunnerInner<
         clearTimeout(reactionTimerRef.current);
       }
     };
-  }, [state.companion.currentReaction, state.companion.reactionHistory, soundManager]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [state?.companion?.currentReaction, state?.companion?.reactionHistory, soundManager]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Suggested questions cycling ───────────────────────
   // Show context-appropriate suggested questions from the
   // topic config, cycling based on current simulation state.
 
   const contextualSuggestions = useMemo(() => {
-    const simState = state.simulation as Record<string, unknown>;
+    const simState = (state?.simulation ?? config.initialSimulationState) as Record<string, unknown>;
     const phase = (simState.phase as string) ?? "";
-    const progress = state.companion.progress as Record<string, unknown>;
+    const progress = (state?.companion?.progress ?? config.initialProgress) as Record<string, unknown>;
 
     // Priority: milestone suggestions > phase-specific > generic
     if (progress.all_phases_discovered && config.suggestedQuestions.all_phases_discovered) {
@@ -279,7 +284,7 @@ function TopicRunnerInner<
     // Fallback: first available set
     const firstKey = Object.keys(config.suggestedQuestions)[0];
     return firstKey ? config.suggestedQuestions[firstKey] : [];
-  }, [state.simulation, state.companion.progress, config.suggestedQuestions]);
+  }, [state?.simulation, state?.companion?.progress, config.suggestedQuestions, config.initialSimulationState, config.initialProgress]);
 
   // ── Chat panel state ──────────────────────────────────
   // Map CopilotKit messages to ChatMessage format for ChatOverlay
@@ -420,12 +425,17 @@ function TopicRunnerInner<
 
   // ── Render ────────────────────────────────────────────
 
+  // Safety: wait for state to initialize before rendering
+  if (!state) {
+    return null;
+  }
+
   return (
     <div className="relative w-full h-full min-h-screen flex flex-col">
       {/* Simulation — takes up most of the screen */}
       <div className="flex-1 flex flex-col p-4 sm:p-6 pb-24">
         <SimulationComponent
-          state={state.simulation}
+          state={state?.simulation ?? config.initialSimulationState}
           onStateChange={handleSimStateChange}
           onEvent={handleEvent}
         />
@@ -442,7 +452,7 @@ function TopicRunnerInner<
       {config.spotlightContent && (
         <SpotlightCard
           config={config.spotlightContent}
-          visible={state.companion.spotlightUnlocked}
+          visible={state?.companion?.spotlightUnlocked ?? false}
           onTap={handleSpotlightTap}
         />
       )}
