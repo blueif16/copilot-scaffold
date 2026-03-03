@@ -159,14 +159,17 @@ function stepParticles(
 // ═══════════════════════════════════════════════════════════
 
 export function useParticlePhysics(config: PhysicsConfig) {
+  const validWidth = config.containerWidth > 0 ? config.containerWidth : 300;
+  const validHeight = config.containerHeight > 0 ? config.containerHeight : 400;
+
   const [particles, setParticles] = useState<Particle[]>(() =>
-    initParticles(config.containerWidth || 300, config.containerHeight || 400),
+    initParticles(validWidth, validHeight),
   );
   const particlesRef = useRef(particles);
   const configRef = useRef(config);
   const rafRef = useRef<number>(0);
   const lastTimeRef = useRef<number>(0);
-  const initializedForSize = useRef({ w: 0, h: 0 });
+  const initializedForSize = useRef({ w: validWidth, h: validHeight });
 
   // Keep config ref up to date
   configRef.current = config;
@@ -174,12 +177,13 @@ export function useParticlePhysics(config: PhysicsConfig) {
   // Re-initialize when container size first becomes valid or changes significantly
   useEffect(() => {
     const { containerWidth: w, containerHeight: h } = config;
-    if (w <= 0 || h <= 0) return;
+    const validW = w > 0 ? w : 300;
+    const validH = h > 0 ? h : 400;
 
     const prev = initializedForSize.current;
-    if (Math.abs(prev.w - w) > 50 || Math.abs(prev.h - h) > 50) {
-      initializedForSize.current = { w, h };
-      const fresh = initParticles(w, h);
+    if (Math.abs(prev.w - validW) > 50 || Math.abs(prev.h - validH) > 50) {
+      initializedForSize.current = { w: validW, h: validH };
+      const fresh = initParticles(validW, validH);
       particlesRef.current = fresh;
       setParticles(fresh);
     }
