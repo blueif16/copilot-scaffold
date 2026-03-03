@@ -1,8 +1,8 @@
 # ═══════════════════════════════════════════════════════════
 # Agent Entry Point — builds and registers both LangGraph agents
 #
-# Uses ag_ui_langgraph to create HTTP endpoints that the frontend
-# can connect to directly via RemoteChain.
+# Uses add_langgraph_fastapi_endpoint to expose agents directly.
+# Frontend connects via agent-specific URLs.
 # ═══════════════════════════════════════════════════════════
 
 from config import load_env
@@ -11,7 +11,8 @@ from config import load_env
 load_env()
 
 from fastapi import FastAPI
-from ag_ui_langgraph import LangGraphAgent, add_langgraph_fastapi_endpoint
+from copilotkit import LangGraphAGUIAgent
+from ag_ui_langgraph import add_langgraph_fastapi_endpoint
 import uvicorn
 
 from graphs.chat import build_chat_graph
@@ -35,23 +36,23 @@ app = FastAPI()
 # Register observation agent
 add_langgraph_fastapi_endpoint(
     app=app,
-    agent=LangGraphAgent(
+    agent=LangGraphAGUIAgent(
         name="observation-changing-states",
         description="Observes simulation events and delivers companion reactions",
         graph=observation_graph,
     ),
-    path="/copilotkit/agent/observation-changing-states",
+    path="/agents/observation-changing-states",
 )
 
 # Register chat agent
 add_langgraph_fastapi_endpoint(
     app=app,
-    agent=LangGraphAgent(
+    agent=LangGraphAGUIAgent(
         name="chat-changing-states",
         description="Answers questions about states of matter for ages 6-8",
         graph=chat_graph,
     ),
-    path="/copilotkit/agent/chat-changing-states",
+    path="/agents/chat-changing-states",
 )
 
 @app.get("/health")
