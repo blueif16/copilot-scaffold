@@ -42,9 +42,11 @@ def build_chat_graph(topic_config: TopicConfig):
     ) -> Command:
         """Generate chat response using LLM with full simulation context."""
         from langchain_google_genai import ChatGoogleGenerativeAI
+        from langchain_core.messages import AIMessage
 
-        # topic_config accessed via closure
-        system_msg = f"""{topic_config.chat_system_prompt}
+        try:
+            # topic_config accessed via closure
+            system_msg = f"""{topic_config.chat_system_prompt}
 
 CURRENT SIMULATION STATE:
 {state.get("simulation", {})}
@@ -58,17 +60,25 @@ REACTIONS ALREADY SHOWN (don't repeat these):
 TOPIC KNOWLEDGE:
 {topic_config.knowledge_context}"""
 
-        model = ChatGoogleGenerativeAI(
-            model="gemini-2.5-flash-lite-preview-06-17",
-            temperature=0.7,
-        )
+            model = ChatGoogleGenerativeAI(
+                model="gemini-2.5-flash-lite",
+                temperature=0.7,
+            )
 
-        response = await model.ainvoke(
-            [SystemMessage(content=system_msg), *state["messages"]],
-            config,
-        )
+            response = await model.ainvoke(
+                [SystemMessage(content=system_msg), *state["messages"]],
+                config,
+            )
 
-        return Command(goto=END, update={"messages": [response]})
+            return Command(goto=END, update={"messages": [response]})
+
+        except Exception as e:
+            # Log error but return fallback response - prevents RUN_ERROR terminal state
+            print(f"Chat response failed: {e}")
+            fallback = AIMessage(
+                content="I'm having trouble right now. Could you try asking again?"
+            )
+            return Command(goto=END, update={"messages": [fallback]})
 
     # ── Assemble the graph ───────────────────────────────
 
