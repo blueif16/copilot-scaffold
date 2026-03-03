@@ -1,8 +1,8 @@
 # ═══════════════════════════════════════════════════════════
 # Agent Entry Point — builds and registers both LangGraph agents
 #
-# Uses add_langgraph_fastapi_endpoint to expose agents directly.
-# Frontend connects via agent-specific URLs.
+# Uses add_langgraph_fastapi_endpoint to expose agents via AG-UI protocol.
+# Frontend connects via LangGraphHttpAgent to agent-specific paths.
 # ═══════════════════════════════════════════════════════════
 
 from config import load_env
@@ -33,7 +33,7 @@ chat_graph = build_chat_graph(changing_states_config)
 
 app = FastAPI()
 
-# Register observation agent
+# Register observation agent at /agents/observation-changing-states
 add_langgraph_fastapi_endpoint(
     app=app,
     agent=LangGraphAGUIAgent(
@@ -44,7 +44,7 @@ add_langgraph_fastapi_endpoint(
     path="/agents/observation-changing-states",
 )
 
-# Register chat agent
+# Register chat agent at /agents/chat-changing-states
 add_langgraph_fastapi_endpoint(
     app=app,
     agent=LangGraphAGUIAgent(
@@ -55,6 +55,7 @@ add_langgraph_fastapi_endpoint(
     path="/agents/chat-changing-states",
 )
 
+# Health check endpoint
 @app.get("/health")
 def health():
     """Health check."""
