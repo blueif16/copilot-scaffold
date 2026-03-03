@@ -139,6 +139,7 @@ export function ChangingStatesSimulation({
         newSpeed,
         prevPhase: phase,
         phaseChanged: newPhase !== phase,
+        sliderActive: state.sliderActive,
       });
 
       onStateChange({
@@ -147,10 +148,12 @@ export function ChangingStatesSimulation({
         particleSpeed: newSpeed,
       });
 
-      handlePhaseChange(newPhase);
+      // Clear dwell timer BEFORE phase change to prevent race condition
+      // where phase change starts a timer that should be cleared
       handleSliderActivity();
+      handlePhaseChange(newPhase);
     },
-    [onStateChange, handlePhaseChange, handleSliderActivity, phase],
+    [onStateChange, handlePhaseChange, handleSliderActivity, phase, state.sliderActive],
   );
 
   const handleSliderDown = useCallback(() => {
