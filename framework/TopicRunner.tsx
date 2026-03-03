@@ -10,7 +10,7 @@ import {
 } from "react";
 import { AnimatePresence } from "framer-motion";
 import { useCoAgent } from "@copilotkit/react-core";
-import { useCopilotChat } from "@copilotkit/react-core";
+import { useCopilotChatInternal } from "@copilotkit/react-core";
 import { useCopilotReadable } from "@copilotkit/react-core";
 import { useCopilotAction } from "@copilotkit/react-core";
 import { Role, TextMessage } from "@copilotkit/runtime-client-gql";
@@ -76,10 +76,17 @@ function TopicRunnerInner<
   // <CopilotKit agent="...">. The page sets this to "chat-changing-states".
 
   const {
-    visibleMessages,
+    messages: visibleMessages,
     appendMessage,
     isLoading: chatIsLoading,
-  } = useCopilotChat();
+    isAvailable: chatIsAvailable,
+  } = useCopilotChatInternal();
+
+  // Debug: log chat availability
+  useEffect(() => {
+    console.log("[TopicRunner] Chat available:", chatIsAvailable);
+    console.log("[TopicRunner] Chat loading:", chatIsLoading);
+  }, [chatIsAvailable, chatIsLoading]);
 
   // ── Bridge: Readable context for agents ───────────────
   // Categories scope visibility: observation agent sees simulation,
@@ -295,8 +302,10 @@ function TopicRunnerInner<
 
   const chatMessages: ChatMessage[] = useMemo(
     () => {
-      console.log("[TopicRunner] visibleMessages:", visibleMessages);
-      return (visibleMessages ?? [])
+      console.log("[TopicRunner] visibleMessages raw:", visibleMessages);
+      console.log("[TopicRunner] visibleMessages count:", visibleMessages?.length ?? 0);
+
+      const filtered = (visibleMessages ?? [])
         .filter(
           (msg) => {
             const hasContent = "content" in msg;
@@ -306,6 +315,7 @@ function TopicRunnerInner<
 
             console.log("[TopicRunner] Message filter:", {
               id: msg.id,
+              role: (msg as Record<string, unknown>).role,
               hasContent,
               contentType: typeof content,
               isString,
@@ -316,8 +326,11 @@ function TopicRunnerInner<
             return hasContent && (isString || isArray) &&
               (isString ? String(content).trim() !== "" : content.length > 0);
           }
-        )
-        .map((msg) => {
+        );
+
+      console.log("[TopicRunner] Filtered messages count:", filtered.length);
+
+      const mapped = filtered.map((msg) => {
           const content = (msg as Record<string, unknown>).content;
           const contentStr = typeof content === "string"
             ? content
@@ -325,7 +338,7 @@ function TopicRunnerInner<
               ? content[0].text
               : String(content);
 
-          return {
+          const chatMsg = {
             id: msg.id,
             role:
               (msg as unknown as Record<string, unknown>).role === Role.User
@@ -333,16 +346,33 @@ function TopicRunnerInner<
                 : ("assistant" as const),
             content: contentStr,
           };
+
+          console.log("[TopicRunner] Mapped message:", chatMsg);
+          return chatMsg;
         });
+
+      console.log("[TopicRunner] Final chatMessages:", mapped);
+      return mapped;
     },
     [visibleMessages],
   );
 
   const handleChatSend = useCallback(
-    (text: string) => {
-      appendMessage(new TextMessage({ content: text, role: Role.User }));
+    async (text: string) => {
+      console.log("[TopicRunner] Sending message:", text);
+      console.log("[TopicRunner] Chat available before send:", chatIsAvailable);
+      console.log("[TopicRunner] appendMessage function:", typeof appendMessage);
+
+      try {
+        await appendMessage(new TextMessage({ content: text, role: Role.User }));
+        console.log("[TopicRunner] Message sent successfully");
+      } catch (error) {
+        console.error("[TopicRunner] Error sending message:", error);
+      }
+
+      console.log("[TopicRunner] visibleMessages after send:", visibleMessages);
     },
-    [appendMessage],
+    [appendMessage, visibleMessages, chatIsAvailable],
   );
 
   const handleSuggestionTap = useCallback(

@@ -45,6 +45,9 @@ def build_chat_graph(topic_config: TopicConfig):
         from langchain_google_genai import ChatGoogleGenerativeAI
         from langchain_core.messages import AIMessage
 
+        print(f"[Chat Agent] Received state with {len(state.get('messages', []))} messages")
+        print(f"[Chat Agent] Messages: {state.get('messages', [])}")
+
         try:
             # topic_config accessed via closure
             system_msg = f"""{topic_config.chat_system_prompt}
@@ -70,6 +73,8 @@ TOPIC KNOWLEDGE:
                 [SystemMessage(content=system_msg), *state["messages"]],
                 config,
             )
+
+            print(f"[Chat Agent] Generated response: {response.content[:100]}")
 
             return Command(goto=END, update={"messages": [response]})
 

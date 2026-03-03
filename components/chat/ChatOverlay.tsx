@@ -28,6 +28,12 @@ export function ChatOverlay({
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // Debug logging
+  useEffect(() => {
+    console.log("[ChatOverlay] Received messages:", messages);
+    console.log("[ChatOverlay] Message count:", messages.length);
+  }, [messages]);
+
   // Auto-scroll to bottom on new messages
   useEffect(() => {
     const el = scrollRef.current;

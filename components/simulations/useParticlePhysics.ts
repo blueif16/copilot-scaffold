@@ -49,10 +49,6 @@ function solidGridPosition(
 function initParticles(cw: number, ch: number): Particle[] {
   // Guard: validate container dimensions before initialization
   if (!isFinite(cw) || !isFinite(ch) || cw <= 0 || ch <= 0) {
-    console.error('[wt-fix/slider-particle-disappear] Cannot initialize particles with invalid dimensions:', {
-      cw,
-      ch,
-    });
     // Return empty array rather than particles with NaN positions
     return [];
   }
@@ -63,12 +59,6 @@ function initParticles(cw: number, ch: number): Particle[] {
 
     // Guard: validate grid position
     if (!isFinite(grid.x) || !isFinite(grid.y)) {
-      console.error('[wt-fix/slider-particle-disappear] Invalid grid position for particle:', {
-        index: i,
-        grid,
-        cw,
-        ch,
-      });
       // Fallback to center position
       return {
         id: i,
@@ -104,40 +94,21 @@ function stepParticles(
 
   // Guard: validate container dimensions
   if (!isFinite(cw) || !isFinite(ch) || cw <= 0 || ch <= 0) {
-    console.error('[wt-fix/slider-particle-disappear] Invalid container dimensions in stepParticles:', {
-      cw,
-      ch,
-      phase,
-      temperature,
-    });
     return particles; // Return unchanged particles
   }
 
   // Guard: validate particles array
   if (!particles || particles.length === 0) {
-    console.error('[wt-fix/slider-particle-disappear] Empty particles array in stepParticles, reinitializing:', {
-      particlesLength: particles?.length ?? 0,
-      phase,
-      temperature,
-    });
     return initParticles(cw, ch);
   }
 
   // Guard: validate particle count
   if (particles.length !== PARTICLE_COUNT) {
-    console.warn('[wt-fix/slider-particle-disappear] Incorrect particle count, reinitializing:', {
-      expected: PARTICLE_COUNT,
-      actual: particles.length,
-      phase,
-    });
     return initParticles(cw, ch);
   }
 
   // Guard: validate dt
   if (!isFinite(dt) || dt <= 0) {
-    console.error('[wt-fix/slider-particle-disappear] Invalid dt in stepParticles:', {
-      dt,
-    });
     return particles; // Return unchanged particles
   }
 
@@ -146,13 +117,6 @@ function stepParticles(
 
     // Guard: validate particle values before processing
     if (!isFinite(x) || !isFinite(y) || !isFinite(vx) || !isFinite(vy)) {
-      console.error('[wt-fix/slider-particle-disappear] NaN particle detected, resetting to grid position:', {
-        particleId: p.id,
-        x,
-        y,
-        vx,
-        vy,
-      });
       // Reset to grid position for solid, or center for other phases
       const grid = solidGridPosition(i, cols, cw, ch);
       x = grid.x;
@@ -238,14 +202,6 @@ function stepParticles(
 
     // Guard: final validation before returning
     if (!isFinite(x) || !isFinite(y) || !isFinite(vx) || !isFinite(vy)) {
-      console.error('[wt-fix/slider-particle-disappear] NaN after physics step, resetting particle:', {
-        particleId: p.id,
-        x,
-        y,
-        vx,
-        vy,
-        phase,
-      });
       // Emergency fallback: reset to center
       const grid = solidGridPosition(i, cols, cw, ch);
       return { ...p, x: grid.x, y: grid.y, vx: 0, vy: 0 };
@@ -279,16 +235,6 @@ export function useParticlePhysics(config: PhysicsConfig) {
   // Keep config ref up to date
   configRef.current = config;
 
-  console.log('[wt-fix/slider-particle-disappear] useParticlePhysics render:', {
-    particleCount: particles.length,
-    phase: config.phase,
-    temperature: config.temperature,
-    containerWidth: config.containerWidth,
-    containerHeight: config.containerHeight,
-    validWidth,
-    validHeight,
-  });
-
   // Re-initialize when container size first becomes valid or changes significantly
   useEffect(() => {
     const { containerWidth: w, containerHeight: h } = config;
@@ -299,25 +245,9 @@ export function useParticlePhysics(config: PhysicsConfig) {
     const deltaW = Math.abs(prev.w - validW);
     const deltaH = Math.abs(prev.h - validH);
 
-    console.log('[wt-fix/slider-particle-disappear] Container size check:', {
-      prevW: prev.w,
-      prevH: prev.h,
-      validW,
-      validH,
-      deltaW,
-      deltaH,
-      willReinitialize: deltaW > 50 || deltaH > 50,
-    });
-
     if (deltaW > 50 || deltaH > 50) {
-      console.log('[wt-fix/slider-particle-disappear] RE-INITIALIZING PARTICLES due to size change');
-
       // Guard: validate dimensions before reinitializing
       if (!isFinite(validW) || !isFinite(validH) || validW <= 0 || validH <= 0) {
-        console.error('[wt-fix/slider-particle-disappear] Cannot reinitialize with invalid dimensions:', {
-          validW,
-          validH,
-        });
         return;
       }
 
@@ -326,10 +256,6 @@ export function useParticlePhysics(config: PhysicsConfig) {
 
       // Guard: ensure initialization succeeded
       if (fresh.length !== PARTICLE_COUNT) {
-        console.error('[wt-fix/slider-particle-disappear] Initialization failed, particle count mismatch:', {
-          expected: PARTICLE_COUNT,
-          actual: fresh.length,
-        });
         return;
       }
 
@@ -347,9 +273,6 @@ export function useParticlePhysics(config: PhysicsConfig) {
 
     // Guard: validate particles before stepping
     if (!particlesRef.current || particlesRef.current.length === 0) {
-      console.error('[wt-fix/slider-particle-disappear] Empty particles in tick, recovering:', {
-        particlesLength: particlesRef.current?.length ?? 0,
-      });
       const { containerWidth: w, containerHeight: h } = configRef.current;
       const validW = w > 0 ? w : 300;
       const validH = h > 0 ? h : 400;
@@ -357,7 +280,6 @@ export function useParticlePhysics(config: PhysicsConfig) {
       if (recovered.length === PARTICLE_COUNT) {
         particlesRef.current = recovered;
         setParticles(recovered);
-        console.log('[wt-fix/slider-particle-disappear] Particles recovered successfully');
       }
       rafRef.current = requestAnimationFrame(tick);
       return;
@@ -365,10 +287,6 @@ export function useParticlePhysics(config: PhysicsConfig) {
 
     // Guard: validate particle count
     if (particlesRef.current.length !== PARTICLE_COUNT) {
-      console.error('[wt-fix/slider-particle-disappear] Incorrect particle count in tick, recovering:', {
-        expected: PARTICLE_COUNT,
-        actual: particlesRef.current.length,
-      });
       const { containerWidth: w, containerHeight: h } = configRef.current;
       const validW = w > 0 ? w : 300;
       const validH = h > 0 ? h : 400;
@@ -376,7 +294,6 @@ export function useParticlePhysics(config: PhysicsConfig) {
       if (recovered.length === PARTICLE_COUNT) {
         particlesRef.current = recovered;
         setParticles(recovered);
-        console.log('[wt-fix/slider-particle-disappear] Particle count recovered');
       }
       rafRef.current = requestAnimationFrame(tick);
       return;
@@ -388,50 +305,11 @@ export function useParticlePhysics(config: PhysicsConfig) {
       dt,
     );
 
-    // Check for NaN values in updated particles
-    const nanParticles = updated.filter(p =>
-      !isFinite(p.x) || !isFinite(p.y) || !isFinite(p.vx) || !isFinite(p.vy)
-    );
-
-    if (nanParticles.length > 0) {
-      console.error('[wt-fix/slider-particle-disappear] NaN DETECTED in particles:', {
-        nanCount: nanParticles.length,
-        nanParticles: nanParticles.map(p => ({
-          id: p.id,
-          x: p.x,
-          y: p.y,
-          vx: p.vx,
-          vy: p.vy,
-        })),
-        config: configRef.current,
-        dt,
-      });
-    }
-
     // Guard: validate updated particles array
     if (!updated || updated.length !== PARTICLE_COUNT) {
-      console.error('[wt-fix/slider-particle-disappear] Invalid particles after step, keeping previous:', {
-        updatedLength: updated?.length ?? 0,
-        expected: PARTICLE_COUNT,
-      });
       rafRef.current = requestAnimationFrame(tick);
       return;
     }
-
-    console.log('[wt-fix/slider-particle-disappear] Physics tick:', {
-      particleCount: updated.length,
-      phase: configRef.current.phase,
-      temperature: configRef.current.temperature,
-      dt,
-      rawDt,
-      sampleParticle: updated[0] ? {
-        id: updated[0].id,
-        x: updated[0].x.toFixed(2),
-        y: updated[0].y.toFixed(2),
-        vx: updated[0].vx.toFixed(2),
-        vy: updated[0].vy.toFixed(2),
-      } : null,
-    });
 
     particlesRef.current = updated;
     setParticles(updated);
