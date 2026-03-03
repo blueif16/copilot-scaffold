@@ -72,6 +72,17 @@ function stepParticles(
   const cols = 7;
   const pad = 12; // wall padding
 
+  // Check for invalid container dimensions
+  if (!isFinite(cw) || !isFinite(ch) || cw <= 0 || ch <= 0) {
+    console.error('[wt-fix/slider-particle-disappear] Invalid container dimensions in stepParticles:', {
+      cw,
+      ch,
+      phase,
+      temperature,
+    });
+    return particles; // Return unchanged particles
+  }
+
   return particles.map((p, i) => {
     let { x, y, vx, vy } = p;
 
@@ -174,6 +185,16 @@ export function useParticlePhysics(config: PhysicsConfig) {
   // Keep config ref up to date
   configRef.current = config;
 
+  console.log('[wt-fix/slider-particle-disappear] useParticlePhysics render:', {
+    particleCount: particles.length,
+    phase: config.phase,
+    temperature: config.temperature,
+    containerWidth: config.containerWidth,
+    containerHeight: config.containerHeight,
+    validWidth,
+    validHeight,
+  });
+
   // Re-initialize when container size first becomes valid or changes significantly
   useEffect(() => {
     const { containerWidth: w, containerHeight: h } = config;
@@ -181,7 +202,21 @@ export function useParticlePhysics(config: PhysicsConfig) {
     const validH = h > 0 ? h : 400;
 
     const prev = initializedForSize.current;
-    if (Math.abs(prev.w - validW) > 50 || Math.abs(prev.h - validH) > 50) {
+    const deltaW = Math.abs(prev.w - validW);
+    const deltaH = Math.abs(prev.h - validH);
+
+    console.log('[wt-fix/slider-particle-disappear] Container size check:', {
+      prevW: prev.w,
+      prevH: prev.h,
+      validW,
+      validH,
+      deltaW,
+      deltaH,
+      willReinitialize: deltaW > 50 || deltaH > 50,
+    });
+
+    if (deltaW > 50 || deltaH > 50) {
+      console.log('[wt-fix/slider-particle-disappear] RE-INITIALIZING PARTICLES due to size change');
       initializedForSize.current = { w: validW, h: validH };
       const fresh = initParticles(validW, validH);
       particlesRef.current = fresh;
@@ -201,6 +236,42 @@ export function useParticlePhysics(config: PhysicsConfig) {
       configRef.current,
       dt,
     );
+
+    // Check for NaN values in updated particles
+    const nanParticles = updated.filter(p =>
+      !isFinite(p.x) || !isFinite(p.y) || !isFinite(p.vx) || !isFinite(p.vy)
+    );
+
+    if (nanParticles.length > 0) {
+      console.error('[wt-fix/slider-particle-disappear] NaN DETECTED in particles:', {
+        nanCount: nanParticles.length,
+        nanParticles: nanParticles.map(p => ({
+          id: p.id,
+          x: p.x,
+          y: p.y,
+          vx: p.vx,
+          vy: p.vy,
+        })),
+        config: configRef.current,
+        dt,
+      });
+    }
+
+    console.log('[wt-fix/slider-particle-disappear] Physics tick:', {
+      particleCount: updated.length,
+      phase: configRef.current.phase,
+      temperature: configRef.current.temperature,
+      dt,
+      rawDt,
+      sampleParticle: updated[0] ? {
+        id: updated[0].id,
+        x: updated[0].x.toFixed(2),
+        y: updated[0].y.toFixed(2),
+        vx: updated[0].vx.toFixed(2),
+        vy: updated[0].vy.toFixed(2),
+      } : null,
+    });
+
     particlesRef.current = updated;
     setParticles(updated);
 
