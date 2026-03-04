@@ -29,7 +29,7 @@ services:
     ports:
       - "3082:3000"
     environment:
-      - LANGGRAPH_DEPLOYMENT_URL=http://backend:8123
+      - BACKEND_URL=http://backend:8123
     depends_on:
       backend:
         condition: service_healthy
