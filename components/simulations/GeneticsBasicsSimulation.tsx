@@ -222,6 +222,7 @@ export function GeneticsBasicsSimulation({
     (parentId: "parent1" | "parent2", trait: "eyeColor" | "earShape" | "pattern" | "size") => {
       const parentIndex = parentId === "parent1" ? 0 : 1;
       const parent = parents[parentIndex];
+      if (!parent) return;
       const currentGenotype = parent.creature.genotype[trait];
 
       // Cycle through genotype combinations: DD -> Dd -> dd -> DD
