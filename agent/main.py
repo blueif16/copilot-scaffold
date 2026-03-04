@@ -22,6 +22,8 @@ from topics.changing_states.config import changing_states_config
 from topics.changing_states.reactions import changing_states_reactions
 from topics.electric_circuits.config import electric_circuits_config
 from topics.electric_circuits.reactions import electric_circuits_reactions
+from topics.genetics_basics.config import genetics_basics_config
+from topics.genetics_basics.reactions import genetics_basics_reactions
 
 # ── Build graphs with config injected via closure ───
 
@@ -41,6 +43,14 @@ observation_graph_electric_circuits = build_observation_graph(
 
 chat_graph_electric_circuits = build_chat_graph(electric_circuits_config)
 
+# Genetics Basics (Level 3, Ages 11-12)
+observation_graph_genetics = build_observation_graph(
+    genetics_basics_config,
+    genetics_basics_reactions,
+)
+
+chat_graph_genetics = build_chat_graph(genetics_basics_config)
+
 # ── Create FastAPI app and register agents ────────────────
 
 app = FastAPI()
@@ -54,7 +64,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Register Changing States agents
+# ── Register all agents ────────────────────────────────────
+
+# Changing States (Level 1, Ages 6-8)
 add_langgraph_fastapi_endpoint(
     app=app,
     agent=LangGraphAGUIAgent(
@@ -75,7 +87,7 @@ add_langgraph_fastapi_endpoint(
     path="/agents/chat-changing-states",
 )
 
-# Register Electric Circuits agents
+# Electric Circuits (Level 2, Ages 9-10)
 add_langgraph_fastapi_endpoint(
     app=app,
     agent=LangGraphAGUIAgent(
@@ -94,6 +106,27 @@ add_langgraph_fastapi_endpoint(
         graph=chat_graph_electric_circuits,
     ),
     path="/agents/chat-electric-circuits",
+)
+
+# Genetics Basics (Level 3, Ages 11-12)
+add_langgraph_fastapi_endpoint(
+    app=app,
+    agent=LangGraphAGUIAgent(
+        name="observation-genetics-basics",
+        description="Observes genetics experiments and delivers lab partner reactions",
+        graph=observation_graph_genetics,
+    ),
+    path="/agents/observation-genetics-basics",
+)
+
+add_langgraph_fastapi_endpoint(
+    app=app,
+    agent=LangGraphAGUIAgent(
+        name="chat-genetics-basics",
+        description="Answers questions about genetics for ages 11-12",
+        graph=chat_graph_genetics,
+    ),
+    path="/agents/chat-genetics-basics",
 )
 
 # Health check endpoint
