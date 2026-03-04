@@ -25,11 +25,44 @@ from models import TopicConfig
 # ── Agent State ──────────────────────────────────────────
 
 
+def format_recent_events(history: list[dict], max_events: int = 5) -> str:
+    """Format last N events. Events are pre-filtered by frontend."""
+    if not history:
+        return "No recent activity"
+
+    recent = history[-max_events:]
+    lines = []
+
+    for event in recent:
+        event_type = event.get("type", "")
+        data = event.get("data", {})
+
+        if event_type == "phase_change":
+            lines.append(f"• Transitioned from {data.get('from')} to {data.get('to')}")
+        elif event_type == "dwell_timeout":
+            lines.append(f"• Observed {data.get('phase')} phase for {data.get('seconds')}s")
+        elif event_type == "reversal":
+            lines.append(f"• Changed direction (was {data.get('previousDirection')})")
+        elif event_type == "rapid_cycling":
+            lines.append(f"• Rapidly exploring ({data.get('transitionsInWindow')} transitions)")
+        elif event_type == "milestone":
+            lines.append(f"• Discovered all three phases!")
+        elif event_type == "first_interaction":
+            lines.append(f"• Started exploring")
+        elif event_type == "idle_timeout":
+            lines.append(f"• Paused for {data.get('seconds')}s")
+        elif event_type == "spotlight_tap":
+            lines.append(f"• Engaged with spotlight content")
+
+    return "\n".join(lines) if lines else "No recent activity"
+
+
 class ChatAgentState(CopilotKitState):
     """Chat agent state. CopilotKitState provides messages + copilotkit."""
 
     simulation: dict[str, Any]
     companion: dict[str, Any]
+    events: dict[str, Any]
 
 
 # ── Graph Builder ────────────────────────────────────────
@@ -46,14 +79,20 @@ def build_chat_graph(topic_config: TopicConfig):
         from langchain_core.messages import AIMessage
 
         print(f"[Chat Agent] Received state with {len(state.get('messages', []))} messages")
-        print(f"[Chat Agent] Messages: {state.get('messages', [])}")
+        print(f"[Chat Agent] Simulation state: {state.get('simulation', {})}")
+        print(f"[Chat Agent] Companion progress: {state.get('companion', {}).get('progress', {})}")
 
         try:
             # topic_config accessed via closure
+            sim = state.get("simulation", {})
             system_msg = f"""{topic_config.chat_system_prompt}
 
-CURRENT SIMULATION STATE:
-{state.get("simulation", {})}
+CURRENT STATE:
+Phase: {sim.get("phase")}
+Temperature: {sim.get("temperature")}
+
+RECENT ACTIVITY:
+{format_recent_events(state.get("events", {}).get("history", []))}
 
 STUDENT PROGRESS:
 {state.get("companion", {}).get("progress", {})}
@@ -63,6 +102,9 @@ REACTIONS ALREADY SHOWN (don't repeat these):
 
 TOPIC KNOWLEDGE:
 {topic_config.knowledge_context}"""
+
+            print(f"[Chat Agent] System prompt:\n{system_msg}\n")
+            print(f"[Chat Agent] User message: {state['messages'][-1].content if state.get('messages') else 'None'}\n")
 
             model = ChatGoogleGenerativeAI(
                 model="gemini-2.5-flash-lite",
