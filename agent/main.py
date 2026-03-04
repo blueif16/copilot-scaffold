@@ -20,15 +20,26 @@ from graphs.chat import build_chat_graph
 from graphs.observation import build_observation_graph
 from topics.changing_states.config import changing_states_config
 from topics.changing_states.reactions import changing_states_reactions
+from topics.electric_circuits.config import electric_circuits_config
+from topics.electric_circuits.reactions import electric_circuits_reactions
 
-# ── Build both graphs with config injected via closure ───
+# ── Build graphs with config injected via closure ───
 
-observation_graph = build_observation_graph(
+# Changing States (Level 1, Ages 6-8)
+observation_graph_changing_states = build_observation_graph(
     changing_states_config,
     changing_states_reactions,
 )
 
-chat_graph = build_chat_graph(changing_states_config)
+chat_graph_changing_states = build_chat_graph(changing_states_config)
+
+# Electric Circuits (Level 2, Ages 9-10)
+observation_graph_electric_circuits = build_observation_graph(
+    electric_circuits_config,
+    electric_circuits_reactions,
+)
+
+chat_graph_electric_circuits = build_chat_graph(electric_circuits_config)
 
 # ── Create FastAPI app and register agents ────────────────
 
@@ -43,26 +54,46 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Register observation agent at /agents/observation-changing-states
+# Register Changing States agents
 add_langgraph_fastapi_endpoint(
     app=app,
     agent=LangGraphAGUIAgent(
         name="observation-changing-states",
         description="Observes simulation events and delivers companion reactions",
-        graph=observation_graph,
+        graph=observation_graph_changing_states,
     ),
     path="/agents/observation-changing-states",
 )
 
-# Register chat agent at /agents/chat-changing-states
 add_langgraph_fastapi_endpoint(
     app=app,
     agent=LangGraphAGUIAgent(
         name="chat-changing-states",
         description="Answers questions about states of matter for ages 6-8",
-        graph=chat_graph,
+        graph=chat_graph_changing_states,
     ),
     path="/agents/chat-changing-states",
+)
+
+# Register Electric Circuits agents
+add_langgraph_fastapi_endpoint(
+    app=app,
+    agent=LangGraphAGUIAgent(
+        name="observation-electric-circuits",
+        description="Observes circuit building events and delivers companion reactions",
+        graph=observation_graph_electric_circuits,
+    ),
+    path="/agents/observation-electric-circuits",
+)
+
+add_langgraph_fastapi_endpoint(
+    app=app,
+    agent=LangGraphAGUIAgent(
+        name="chat-electric-circuits",
+        description="Answers questions about electric circuits for ages 9-10",
+        graph=chat_graph_electric_circuits,
+    ),
+    path="/agents/chat-electric-circuits",
 )
 
 # Health check endpoint
