@@ -7,8 +7,11 @@ node_modules
 .git
 .gitignore
 README.md
+.claude
+.tasks
 agent/.venv
 agent/__pycache__
 agent/**/__pycache__
 agent/**/*.pyc
 *.pid
+tsconfig.tsbuildinfo
