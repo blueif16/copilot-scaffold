@@ -71,9 +71,9 @@ export function ChatOverlay({
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: 40 }}
       transition={{ type: "spring", stiffness: 350, damping: 30 }}
-      className="fixed inset-x-3 bottom-3 top-auto z-50 sm:inset-x-auto sm:right-4 sm:bottom-4 sm:w-[380px]"
+      className="fixed inset-x-3 bottom-3 top-auto z-50 sm:inset-x-auto sm:right-4 sm:bottom-4 sm:w-[480px]"
     >
-      <div className="flex flex-col border-4 border-ink rounded-2xl bg-white shadow-chunky-lg overflow-hidden max-h-[70vh]">
+      <div className="flex flex-col border-4 border-ink rounded-2xl bg-white shadow-chunky-lg overflow-hidden max-h-[85vh]">
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b-[3px] border-ink bg-playful-mustard/30">
           <span className="font-display text-base font-bold">
@@ -94,7 +94,7 @@ export function ChatOverlay({
         {/* Messages */}
         <div
           ref={scrollRef}
-          className="flex-1 overflow-y-auto px-4 py-3 space-y-3 min-h-[200px] max-h-[45vh]"
+          className="flex-1 overflow-y-auto px-4 py-3 space-y-3 min-h-[200px] max-h-[70vh]"
         >
           {messages.length === 0 && (
             <p className="text-center text-sm text-ink/40 font-body mt-8">
