@@ -111,15 +111,15 @@ export function ChatOverlay({
                 transition={{ duration: 0.25 }}
                 className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
               >
-                <div
-                  className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 font-body text-sm leading-relaxed ${
-                    msg.role === "user"
-                      ? "bg-playful-sky/40 border-2 border-ink/30 text-ink"
-                      : "bg-playful-sage/30 border-2 border-ink/20 text-ink/90"
-                  }`}
-                >
-                  {msg.content}
-                </div>
+              <div
+                className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 font-body text-sm leading-relaxed ${
+                  msg.role === "user"
+                    ? "bg-playful-sky/40 border-2 border-ink/30 text-ink"
+                    : "bg-playful-sage/30 border-2 border-ink/20 text-ink/90"
+                }`}
+              >
+                {msg.content}
+              </div>
               </motion.div>
             ))}
           </AnimatePresence>

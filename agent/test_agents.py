@@ -273,8 +273,8 @@ def check_agent(name: str, path: str, payload: dict, verbose: bool = False) -> l
 
 def check_flow(verbose: bool = False):
     """Test the observation→chat state flow.
-    
-    Simulates: user changes temperature → observation agent reacts → 
+
+    Simulates: user changes temperature → observation agent reacts →
     chat agent receives companion state as context.
     """
     print(f"\n{BOLD}{'═' * 60}{RESET}")
@@ -282,14 +282,14 @@ def check_flow(verbose: bool = False):
     print(f"{BOLD}{'═' * 60}{RESET}")
 
     # Step 1: Observation agent processes a phase change
-    print(f"\n{BOLD}Step 1:{RESET} Observation agent processes temperature change")
+    print(f"\n{BOLD}Step 1:{RESET} Observation agent processes phase change")
     sim_state = {"phase": "liquid", "temperature": 50}
     obs_events = check_agent(
         "Observation Agent",
         OBSERVATION_PATH,
         make_observation_input(
-            event_type="temperature_change",
-            event_data={"from": 0, "to": 50, "phase": "liquid", "times_seen": 1},
+            event_type="phase_change",
+            event_data={"from": "solid", "to": "liquid", "times_seen": 1},
             simulation=sim_state,
         ),
         verbose=verbose,

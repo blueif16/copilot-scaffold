@@ -126,6 +126,18 @@ function CreatureIllustration({ phenotype, size = "medium", onClick, isSelected 
   const sizeClass = size === "small" ? "w-16 h-16" : size === "large" ? "w-32 h-32" : "w-24 h-24";
   const scale = phenotype.size === "large" ? 1 : 0.75;
 
+  const bodyImage = phenotype.pattern === "spotted"
+    ? "/assets/creature_body_spotted.png"
+    : "/assets/creature_body_plain.png";
+
+  const earImage = phenotype.earShape === "round"
+    ? "/assets/ears_floppy.png"
+    : "/assets/ears_pointed.png";
+
+  const eyeImage = phenotype.eyeColor === "brown"
+    ? "/assets/eye_brown.png"
+    : "/assets/eye_blue.png";
+
   return (
     <motion.div
       className={`${sizeClass} relative cursor-pointer`}
@@ -135,55 +147,42 @@ function CreatureIllustration({ phenotype, size = "medium", onClick, isSelected 
       animate={isSelected ? { scale: scale * 1.1 } : { scale }}
     >
       {/* Body */}
-      <div
-        className={`absolute inset-0 rounded-full border-4 border-ink ${
-          phenotype.pattern === "spotted" ? "bg-gradient-to-br from-amber-200 to-amber-300" : "bg-amber-300"
-        }`}
-      >
-        {/* Spots pattern */}
-        {phenotype.pattern === "spotted" && (
-          <>
-            <div className="absolute top-2 left-2 w-3 h-3 rounded-full bg-amber-600/40" />
-            <div className="absolute top-4 right-3 w-2 h-2 rounded-full bg-amber-600/40" />
-            <div className="absolute bottom-3 left-4 w-2.5 h-2.5 rounded-full bg-amber-600/40" />
-          </>
-        )}
-      </div>
+      <img
+        src={bodyImage}
+        alt=""
+        className="absolute inset-0 w-full h-full object-contain"
+      />
 
       {/* Ears */}
-      <div className="absolute -top-2 left-1/4 -translate-x-1/2">
-        <div
-          className={`w-4 h-6 border-3 border-ink bg-amber-200 ${
-            phenotype.earShape === "round" ? "rounded-full" : "rounded-t-full"
-          }`}
-        />
-      </div>
-      <div className="absolute -top-2 right-1/4 translate-x-1/2">
-        <div
-          className={`w-4 h-6 border-3 border-ink bg-amber-200 ${
-            phenotype.earShape === "round" ? "rounded-full" : "rounded-t-full"
-          }`}
-        />
-      </div>
+      <img
+        src={earImage}
+        alt=""
+        className="absolute -top-2 left-1/4 -translate-x-1/2 w-8 h-10 object-contain"
+      />
+      <img
+        src={earImage}
+        alt=""
+        className="absolute -top-2 right-1/4 translate-x-1/2 w-8 h-10 object-contain"
+      />
 
       {/* Eyes */}
-      <div className="absolute top-1/3 left-1/4 -translate-x-1/2 w-3 h-3 rounded-full bg-white border-2 border-ink">
-        <div
-          className={`w-2 h-2 rounded-full ${
-            phenotype.eyeColor === "brown" ? "bg-amber-800" : "bg-blue-500"
-          }`}
-        />
-      </div>
-      <div className="absolute top-1/3 right-1/4 translate-x-1/2 w-3 h-3 rounded-full bg-white border-2 border-ink">
-        <div
-          className={`w-2 h-2 rounded-full ${
-            phenotype.eyeColor === "brown" ? "bg-amber-800" : "bg-blue-500"
-          }`}
-        />
-      </div>
+      <img
+        src={eyeImage}
+        alt=""
+        className="absolute top-1/3 left-1/4 -translate-x-1/2 w-5 h-5 object-contain"
+      />
+      <img
+        src={eyeImage}
+        alt=""
+        className="absolute top-1/3 right-1/4 translate-x-1/2 w-5 h-5 object-contain"
+      />
 
       {/* Nose */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 w-2 h-2 rounded-full bg-pink-400 border-2 border-ink" />
+      <img
+        src="/assets/nose_pink.png"
+        alt=""
+        className="absolute top-1/2 left-1/2 -translate-x-1/2 w-3 h-3 object-contain"
+      />
 
       {isSelected && (
         <motion.div

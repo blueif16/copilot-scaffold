@@ -27,25 +27,12 @@ export function SpeechBubble({ message, visible }: SpeechBubbleProps) {
           </div>
 
           {/* Tail pointing down toward companion */}
-          <div className="absolute -bottom-2 left-1/2 -translate-x-1/2">
-            <svg
-              width="16"
-              height="10"
-              viewBox="0 0 16 10"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-              className="block"
-            >
-              <path
-                d="M0 0L8 10L16 0"
-                fill="white"
-                stroke="#1A1A1A"
-                strokeWidth="3"
-                strokeLinejoin="round"
-              />
-              {/* White cover to hide top border overlap */}
-              <rect x="0" y="0" width="16" height="3" fill="white" />
-            </svg>
+          <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-4 h-3">
+            <img
+              src="/assets/speech_tail.png"
+              alt=""
+              className="w-full h-full object-contain"
+            />
           </div>
         </motion.div>
       )}

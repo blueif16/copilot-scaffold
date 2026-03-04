@@ -59,10 +59,10 @@ function particleColorFromTemp(temp: number): string {
 
 // ── Phase labels ────────────────────────────────────────
 
-const PHASE_LABELS: Record<Phase, { label: string; emoji: string }> = {
-  solid: { label: "SOLID", emoji: "🧊" },
-  liquid: { label: "LIQUID", emoji: "💧" },
-  gas: { label: "GAS", emoji: "♨️" },
+const PHASE_LABELS: Record<Phase, { label: string; icon: string }> = {
+  solid: { label: "SOLID", icon: "/assets/ice_cube.png" },
+  liquid: { label: "LIQUID", icon: "/assets/water_drop.png" },
+  gas: { label: "GAS", icon: "/assets/steam_wisp.png" },
 };
 
 // ═══════════════════════════════════════════════════════════
@@ -174,9 +174,9 @@ export function ChangingStatesSimulation({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 10, scale: 0.9 }}
             transition={{ duration: 0.35, ease: "easeOut" }}
-            className="flex items-center gap-2"
+            className="flex items-center gap-3"
           >
-            <span className="text-2xl">{phaseInfo.emoji}</span>
+            <img src={phaseInfo.icon} alt="" className="w-8 h-8 object-contain" />
             <span className="font-display text-2xl sm:text-3xl font-bold tracking-wide text-ink/80">
               {phaseInfo.label}
             </span>
@@ -226,20 +226,26 @@ export function ChangingStatesSimulation({
               return null;
             }
 
+            // Select particle image based on phase
+            const particleImage =
+              phase === "solid" ? "/assets/solid_particle.png" :
+              phase === "liquid" ? "/assets/liquid_particle.png" :
+              "/assets/gas_particle.png";
+
             return (
-              <div
+              <img
                 key={p.id}
-                className="absolute rounded-full"
+                src={particleImage}
+                alt=""
+                className="absolute"
                 style={{
                   width: p.radius * 2,
                   height: p.radius * 2,
                   left,
                   top,
-                  backgroundColor: pColor,
                   opacity: particleOpacity,
-                  mixBlendMode: "multiply",
                   willChange: "left, top",
-                  transition: "background-color 0.6s ease",
+                  transition: "opacity 0.6s ease",
                 }}
               />
             );
@@ -399,7 +405,8 @@ export function ChangingStatesSimulation({
             }}
           >
             <motion.div
-              className="w-12 h-12 rounded-full border-4 border-ink bg-white shadow-chunky-sm flex items-center justify-center"
+              className="w-12 h-12 border-4 border-ink bg-white shadow-chunky-sm flex items-center justify-center overflow-hidden"
+              style={{ borderRadius: "50%" }}
               whileTap={{ scale: 0.9 }}
               animate={{
                 boxShadow: state.sliderActive
@@ -407,9 +414,11 @@ export function ChangingStatesSimulation({
                   : "3px 3px 0px 0px #1A1A1A",
               }}
             >
-              <span className="text-lg">
-                {temperature < 33 ? "❄️" : temperature < 67 ? "💧" : "🔥"}
-              </span>
+              <img
+                src="/assets/slider_thumb.png"
+                alt=""
+                className="w-10 h-10 object-contain"
+              />
             </motion.div>
           </div>
         </div>

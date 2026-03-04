@@ -14,27 +14,27 @@ const COLOR_MAP: Record<string, { bg: string; accent: string; icon: string }> = 
   "playful-sky": {
     bg: "bg-playful-sky/20",
     accent: "bg-playful-sky",
-    icon: "🧊",
+    icon: "/assets/ice_cube_face.png",
   },
   "playful-peach": {
     bg: "bg-playful-peach/20",
     accent: "bg-playful-peach",
-    icon: "🔥",
+    icon: "/assets/flame_face.png",
   },
   "playful-sage": {
     bg: "bg-playful-sage/20",
     accent: "bg-playful-sage",
-    icon: "🌿",
+    icon: "/assets/plant_leaf.png",
   },
   "playful-lavender": {
     bg: "bg-playful-lavender/20",
     accent: "bg-playful-lavender",
-    icon: "✨",
+    icon: "/assets/sparkle_star.png",
   },
   "playful-mustard": {
     bg: "bg-playful-mustard/20",
     accent: "bg-playful-mustard",
-    icon: "⚡",
+    icon: "/assets/lightning_bolt.png",
   },
 };
 
@@ -65,9 +65,11 @@ export function TopicCard({ topic, index }: TopicCardProps) {
             <div
               className={`absolute -bottom-4 -left-4 w-16 h-16 ${palette.accent} rounded-full opacity-30`}
             />
-            <span className="text-7xl select-none relative z-10">
-              {palette.icon}
-            </span>
+            <img
+              src={palette.icon}
+              alt=""
+              className="w-20 h-20 object-contain select-none relative z-10"
+            />
           </div>
 
           {/* Content */}

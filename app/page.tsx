@@ -42,7 +42,11 @@ export default function HomePage() {
             }}
           >
             <div className="border-4 border-dashed border-ink/20 rounded-2xl h-full min-h-[320px] flex flex-col items-center justify-center p-6 text-center">
-              <span className="text-4xl mb-3 opacity-40">🔬</span>
+              <img
+                src="/assets/microscope.png"
+                alt=""
+                className="w-16 h-16 object-contain mb-3 opacity-40"
+              />
               <p className="font-display text-lg font-bold text-ink/30">
                 More topics coming soon
               </p>
