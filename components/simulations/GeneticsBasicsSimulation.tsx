@@ -5,7 +5,7 @@
 
 "use client";
 
-import { useCallback, useState, useMemo } from "react";
+import React, { useCallback, useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { SimulationProps } from "@/lib/types";
 import {
@@ -47,6 +47,11 @@ function generatePunnettSquare(
 ): PunnettSquare {
   const parent1Alleles = parent1Genotype[trait];
   const parent2Alleles = parent2Genotype[trait];
+
+  // Safety check
+  if (!parent1Alleles || !parent2Alleles) {
+    throw new Error(`Missing alleles for trait ${trait}`);
+  }
 
   const cells: PunnettCell[] = [];
 
@@ -200,7 +205,13 @@ export function GeneticsBasicsSimulation({
   onStateChange,
   onEvent,
 }: SimulationProps<GeneticsBasicsSimState>) {
-  const { parents, selectedTrait, punnettSquare, offspring, labJournal } = state;
+  const {
+    parents = [],
+    selectedTrait = "eyeColor",
+    punnettSquare = null,
+    offspring = [],
+    labJournal = []
+  } = state || {};
 
   const [expandedOffspringId, setExpandedOffspringId] = useState<string | null>(null);
   const [journalOpen, setJournalOpen] = useState(false);
@@ -261,6 +272,12 @@ export function GeneticsBasicsSimulation({
 
   // ── Handle breed button ─────────────────────────────────
   const handleBreed = useCallback(() => {
+    // Safety check: ensure parents data is complete
+    if (!parents[0]?.creature?.genotype || !parents[1]?.creature?.genotype) {
+      console.error("Cannot breed: parent genotype data is incomplete");
+      return;
+    }
+
     const square = generatePunnettSquare(selectedTrait, parents[0].creature.genotype, parents[1].creature.genotype);
     const newOffspring = generateOffspring(square, [parents[0].creature.genotype, parents[1].creature.genotype]);
 
@@ -421,8 +438,8 @@ export function GeneticsBasicsSimulation({
                 ))}
 
                 {[0, 1].map((row) => (
-                  <>
-                    <div key={`label-${row}`} className="flex items-center justify-center font-mono font-bold text-sm">
+                  <React.Fragment key={`row-${row}`}>
+                    <div className="flex items-center justify-center font-mono font-bold text-sm">
                       {punnettSquare.parent1Alleles[row].symbol}
                     </div>
                     {[0, 1].map((col) => {
@@ -436,7 +453,7 @@ export function GeneticsBasicsSimulation({
                         </div>
                       );
                     })}
-                  </>
+                  </React.Fragment>
                 ))}
               </div>
             </div>

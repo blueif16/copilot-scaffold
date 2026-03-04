@@ -492,7 +492,7 @@ function TopicRunnerInner<
       {/* Simulation — takes up most of the screen */}
       <div className="flex-1 flex flex-col p-4 sm:p-6 pb-24">
         <SimulationComponent
-          state={state?.simulation ?? config.initialSimulationState}
+          state={{ ...config.initialSimulationState, ...state?.simulation }}
           onStateChange={handleSimStateChange}
           onEvent={handleEvent}
         />
