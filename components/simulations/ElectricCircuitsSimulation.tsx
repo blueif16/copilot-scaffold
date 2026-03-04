@@ -22,12 +22,12 @@ import { useEventEmitter } from "./useEventEmitter";
 // ── Component Icons ─────────────────────────────────────────
 
 const COMPONENT_ICONS: Record<ComponentType, string> = {
-  battery: "🔋",
-  wire: "➖",
-  lightbulb: "💡",
-  switch: "🔘",
-  motor: "⚙️",
-  resistor: "🔌",
+  battery: "/assets/battery.png",
+  wire: "/assets/wire.png",
+  lightbulb: "/assets/light_bulb.png",
+  switch: "/assets/switch.png",
+  motor: "/assets/motor.png",
+  resistor: "/assets/resistor.png",
 };
 
 const COMPONENT_LABELS: Record<ComponentType, string> = {
@@ -55,13 +55,50 @@ function checkCircuitComplete(components: CircuitComponent[]): boolean {
   const battery = components.find((c) => c.type === "battery");
   if (!battery) return false;
 
-  // Simple circuit check: battery must connect to at least one component
-  // and form a closed loop (simplified for now)
-  const connectedComponents = components.filter((c) =>
-    battery.connections.includes(c.id)
-  );
+  // Check if there's at least one lightbulb or motor (load component)
+  const hasLoad = components.some((c) => c.type === "lightbulb" || c.type === "motor");
+  if (!hasLoad) return false;
 
-  return connectedComponents.length >= 2;
+  // Build adjacency map for path finding
+  const adjacencyMap = new Map<string, Set<string>>();
+  components.forEach((comp) => {
+    if (!adjacencyMap.has(comp.id)) {
+      adjacencyMap.set(comp.id, new Set());
+    }
+    comp.connections.forEach((connId) => {
+      adjacencyMap.get(comp.id)!.add(connId);
+    });
+  });
+
+  // BFS to find if there's a path from battery back to itself (closed loop)
+  // that includes at least one load component
+  const visited = new Set<string>();
+  const queue: Array<{ id: string; path: string[] }> = [{ id: battery.id, path: [battery.id] }];
+
+  while (queue.length > 0) {
+    const { id, path } = queue.shift()!;
+
+    const neighbors = Array.from(adjacencyMap.get(id) || new Set<string>());
+    for (const neighborId of neighbors) {
+      // Found a path back to battery
+      if (neighborId === battery.id && path.length > 2) {
+        // Check if path includes a load component
+        const pathHasLoad = path.some((compId) => {
+          const comp = components.find((c) => c.id === compId);
+          return comp && (comp.type === "lightbulb" || comp.type === "motor");
+        });
+        if (pathHasLoad) return true;
+      }
+
+      // Continue exploring
+      if (!visited.has(neighborId)) {
+        visited.add(neighborId);
+        queue.push({ id: neighborId, path: [...path, neighborId] });
+      }
+    }
+  }
+
+  return false;
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -237,17 +274,19 @@ export function ElectricCircuitsSimulation({
       const endY = target.position.y * GRID_SIZE;
 
       return (
-        <motion.div
+        <motion.img
           key={`particle-${idx}`}
-          className="absolute w-2 h-2 rounded-full bg-yellow-400"
+          src="/assets/spark.png"
+          alt=""
+          className="absolute w-4 h-4 object-contain"
           style={{
-            left: startX,
-            top: startY,
-            boxShadow: "0 0 8px rgba(250, 204, 21, 0.8)",
+            left: startX - 8,
+            top: startY - 8,
+            filter: "drop-shadow(0 0 8px rgba(250, 204, 21, 0.8))",
           }}
           animate={{
-            left: [startX, endX, startX],
-            top: [startY, endY, startY],
+            left: [startX - 8, endX - 8, startX - 8],
+            top: [startY - 8, endY - 8, startY - 8],
           }}
           transition={{
             duration: 2,
@@ -278,7 +317,7 @@ export function ElectricCircuitsSimulation({
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
             >
-              <span className="text-3xl">{COMPONENT_ICONS[type]}</span>
+              <img src={COMPONENT_ICONS[type]} alt="" className="w-10 h-10 object-contain" />
               <span className="font-body text-sm font-medium text-ink">
                 {COMPONENT_LABELS[type]}
               </span>
@@ -331,14 +370,18 @@ export function ElectricCircuitsSimulation({
               >
                 {/* Component icon */}
                 <div
-                  className="relative text-3xl"
+                  className="relative"
                   style={{
                     filter: isPowered
                       ? "drop-shadow(0 0 12px rgba(250, 204, 21, 0.9))"
                       : "none",
                   }}
                 >
-                  {COMPONENT_ICONS[comp.type]}
+                  <img
+                    src={COMPONENT_ICONS[comp.type]}
+                    alt=""
+                    className="w-10 h-10 object-contain"
+                  />
                   {isPowered && (
                     <motion.div
                       className="absolute inset-0 rounded-full bg-yellow-300/30"
@@ -401,13 +444,17 @@ export function ElectricCircuitsSimulation({
                 height: 40,
               }}
             >
-              <span className="text-3xl">{COMPONENT_ICONS[draggedComponent]}</span>
+              <img
+                src={COMPONENT_ICONS[draggedComponent]}
+                alt=""
+                className="w-10 h-10 object-contain"
+              />
             </div>
           )}
         </div>
 
         {/* Circuit status indicator */}
-        <div className="absolute top-8 right-8">
+        <div className="absolute bottom-8 left-8">
           <AnimatePresence mode="wait">
             {isComplete ? (
               <motion.div

@@ -9,14 +9,14 @@ import { SuggestionBubbles } from "./SuggestionBubbles";
 // ── Emotion → face mapping ──────────────────────────────
 
 const EMOTION_FACES: Record<BaseEmotion, { face: string; bg: string }> = {
-  idle: { face: "◡‿◡", bg: "bg-playful-mustard" },
-  excited: { face: "✧◡✧", bg: "bg-playful-peach" },
-  curious: { face: "◔.◔", bg: "bg-playful-sky" },
-  impressed: { face: "⊙▽⊙", bg: "bg-playful-sage" },
-  celebrating: { face: "★▽★", bg: "bg-playful-peach" },
-  thinking: { face: "⊙﹏⊙", bg: "bg-playful-lavender" },
-  encouraging: { face: "◠‿◠", bg: "bg-playful-mustard" },
-  watching: { face: "◉_◉", bg: "bg-playful-sky/70" },
+  idle: { face: "/assets/face_happy.png", bg: "bg-playful-mustard" },
+  excited: { face: "/assets/face_excited.png", bg: "bg-playful-peach" },
+  curious: { face: "/assets/face_curious.png", bg: "bg-playful-sky" },
+  impressed: { face: "/assets/face_impressed.png", bg: "bg-playful-sage" },
+  celebrating: { face: "/assets/face_celebrating.png", bg: "bg-playful-peach" },
+  thinking: { face: "/assets/face_thinking.png", bg: "bg-playful-lavender" },
+  encouraging: { face: "/assets/face_encouraging.png", bg: "bg-playful-mustard" },
+  watching: { face: "/assets/face_watching.png", bg: "bg-playful-sky/70" },
 };
 
 // ── Animation keyframes per animation key ───────────────
@@ -134,26 +134,27 @@ export function Companion({
         >
           {/* Face */}
           <AnimatePresence mode="wait">
-            <motion.span
+            <motion.img
               key={emotion}
+              src={faceData.face}
+              alt=""
               initial={{ opacity: 0, scale: 0.8 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.8 }}
               transition={{ duration: 0.2 }}
-              className="font-mono text-base sm:text-lg text-ink select-none leading-none"
-              aria-hidden
-            >
-              {faceData.face}
-            </motion.span>
+              className="w-12 h-12 sm:w-14 sm:h-14 object-contain select-none"
+            />
           </AnimatePresence>
 
           {/* Celebration confetti particles */}
           <AnimatePresence>
             {emotion === "celebrating" && (
               <>
-                {[0, 1, 2, 3, 4, 5].map((i) => (
-                  <motion.div
+                {[0, 1, 2].map((i) => (
+                  <motion.img
                     key={`confetti-${i}`}
+                    src={["/assets/confetti_yellow.png", "/assets/confetti_blue.png", "/assets/confetti_peach.png"][i]}
+                    alt=""
                     initial={{ opacity: 1, scale: 1 }}
                     animate={{
                       opacity: 0,
@@ -168,16 +169,8 @@ export function Companion({
                       delay: i * 0.08,
                       ease: "easeOut",
                     }}
-                    className="absolute w-2 h-2 rounded-sm"
+                    className="absolute w-4 h-4 object-contain"
                     style={{
-                      backgroundColor: [
-                        "#F4D35E",
-                        "#7EC8E3",
-                        "#FFB088",
-                        "#B5D99C",
-                        "#C3AED6",
-                        "#FF8C5A",
-                      ][i],
                       top: "30%",
                       left: "50%",
                     }}

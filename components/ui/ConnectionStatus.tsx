@@ -47,11 +47,12 @@ export function ConnectionStatus({ runtimeUrl }: ConnectionStatusProps) {
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -20 }}
-          className="fixed top-2 left-1/2 -translate-x-1/2 z-50 px-4 py-2 
+          className="fixed top-2 left-1/2 -translate-x-1/2 z-50 px-4 py-2
             bg-playful-peach border-2 border-ink rounded-xl shadow-chunky-sm
-            font-body text-xs text-ink/80"
+            font-body text-xs text-ink/80 flex items-center gap-2"
         >
-          ⚠ AI companion offline — simulation works, but companion reactions need the backend.
+          <span>⚠</span>
+          <span>AI companion offline — simulation works, but companion reactions need the backend.</span>
           <span className="ml-2 text-ink/40">Run: cd agent && langgraph dev</span>
         </motion.div>
       )}
