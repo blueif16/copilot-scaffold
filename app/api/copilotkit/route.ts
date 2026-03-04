@@ -21,6 +21,18 @@ const runtime = new CopilotRuntime({
     "chat-changing-states": new LangGraphHttpAgent({
       url: `${backendUrl}/agents/chat-changing-states`,
     }),
+    "observation-electric-circuits": new LangGraphHttpAgent({
+      url: `${backendUrl}/agents/observation-electric-circuits`,
+    }),
+    "chat-electric-circuits": new LangGraphHttpAgent({
+      url: `${backendUrl}/agents/chat-electric-circuits`,
+    }),
+    "observation-genetics-basics": new LangGraphHttpAgent({
+      url: `${backendUrl}/agents/observation-genetics-basics`,
+    }),
+    "chat-genetics-basics": new LangGraphHttpAgent({
+      url: `${backendUrl}/agents/chat-genetics-basics`,
+    }),
   },
 });
 
