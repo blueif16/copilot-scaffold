@@ -99,12 +99,36 @@ export interface CoAgentState<
   companion: CompanionState<E, A>;
 }
 
+// ── Lab Notebook ─────────────────────────────────────────
+
+export interface LabNotebookPage {
+  /** Tab/header title, e.g. "What Is Matter?" */
+  title: string;
+  /** Body text — supports simple line breaks via \n */
+  body: string;
+  /** Style variant controls the page layout */
+  variant: "visual" | "text" | "fun-fact";
+  /** Main illustration asset path, e.g. "/assets/ice_cube.png" */
+  illustration?: string;
+  /** Small decorative corner asset */
+  decorator?: string;
+  /** Background tint color key from playful palette */
+  bgTint?: "sky" | "peach" | "sage" | "lavender" | "mustard";
+  /** Optional caption under the illustration */
+  caption?: string;
+}
+
 // ── Topic Config ────────────────────────────────────────
 
 export interface SpotlightConfig {
   id: string;
   triggerCondition: string;
   component: ComponentType;
+}
+
+export interface ProgressMilestone {
+  icon: string;
+  text: string;
 }
 
 export interface TopicConfig<
@@ -129,6 +153,15 @@ export interface TopicConfig<
   extraEmotions?: E[];
   extraAnimations?: A[];
   eventDebounceMs?: number;
+
+  /** Lab notebook pages shown on the left panel */
+  labNotebook?: LabNotebookPage[];
+
+  /** Progress calculation function */
+  progressCalculator?: (progress: Record<string, unknown>) => number;
+
+  /** Progress milestones with icons and text */
+  progressMilestones?: Record<number, ProgressMilestone>;
 }
 
 // ── Simulation Component Contract ───────────────────────
