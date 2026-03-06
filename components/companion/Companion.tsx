@@ -124,37 +124,35 @@ export function Companion({
         whileTap={{ scale: 0.94 }}
         aria-label="Talk to companion"
       >
-        {/* Circular progress ring */}
-        {progress > 0 && (
-          <svg
-            className="absolute inset-0 w-full h-full -rotate-90"
-            style={{ width: "120px", height: "120px" }}
-          >
-            {/* Background circle */}
-            <circle
-              cx="60"
-              cy="60"
-              r={radius}
-              fill="none"
-              stroke="rgba(0,0,0,0.05)"
-              strokeWidth="6"
-            />
-            {/* Progress circle */}
-            <motion.circle
-              cx="60"
-              cy="60"
-              r={radius}
-              fill="none"
-              stroke={ringColor}
-              strokeWidth="6"
-              strokeLinecap="round"
-              strokeDasharray={circumference}
-              initial={{ strokeDashoffset: circumference }}
-              animate={{ strokeDashoffset }}
-              transition={{ type: "spring", stiffness: 100, damping: 20 }}
-            />
-          </svg>
-        )}
+        {/* Circular progress ring - always visible */}
+        <svg
+          className="absolute inset-0 w-full h-full -rotate-90"
+          style={{ width: "120px", height: "120px" }}
+        >
+          {/* Background circle */}
+          <circle
+            cx="60"
+            cy="60"
+            r={radius}
+            fill="none"
+            stroke="rgba(0,0,0,0.1)"
+            strokeWidth="6"
+          />
+          {/* Progress circle */}
+          <motion.circle
+            cx="60"
+            cy="60"
+            r={radius}
+            fill="none"
+            stroke={ringColor}
+            strokeWidth="6"
+            strokeLinecap="round"
+            strokeDasharray={circumference}
+            initial={{ strokeDashoffset: circumference }}
+            animate={{ strokeDashoffset }}
+            transition={{ type: "spring", stiffness: 100, damping: 20 }}
+          />
+        </svg>
 
         {/* Glow ring on active reaction */}
         <AnimatePresence>

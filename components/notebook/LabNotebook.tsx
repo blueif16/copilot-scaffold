@@ -56,25 +56,25 @@ function VisualPage({ page }: { page: LabNotebookPage }) {
   const tint = page.bgTint ? TINT[page.bgTint] : "bg-playful-sky/10";
 
   return (
-    <div className={`flex flex-col h-full ${tint} rounded-xl p-4`}>
-      {/* Illustration — large and centered */}
+    <div className={`flex flex-col h-full ${tint} rounded-xl p-5`}>
+      {/* Illustration — centered in the middle */}
       {page.illustration && (
-        <div className="flex-1 flex items-center justify-center py-3 min-h-0">
+        <div className="flex-1 flex items-center justify-center min-h-0">
           <img
             src={page.illustration}
             alt=""
-            className="max-h-full max-w-[80%] object-contain select-none drop-shadow-md"
+            className="max-h-full max-w-[75%] object-contain select-none drop-shadow-md"
           />
         </div>
       )}
       {page.caption && (
-        <p className="text-center font-body text-xs text-ink/50 italic -mt-1 mb-2">
+        <p className="text-center font-body text-xs text-ink/50 italic mb-2">
           {page.caption}
         </p>
       )}
-      {/* Short text block under the illustration */}
-      <div className="shrink-0">
-        <p className="font-body text-sm leading-relaxed text-ink/80">
+      {/* Text at the bottom */}
+      <div className="shrink-0 mt-auto">
+        <p className="font-body text-base leading-relaxed text-ink/80">
           {page.body}
         </p>
       </div>
@@ -88,26 +88,27 @@ function TextPage({ page }: { page: LabNotebookPage }) {
   const tint = page.bgTint ? TINT[page.bgTint] : "bg-white";
 
   return (
-    <div className={`flex flex-col h-full ${tint} rounded-xl p-4`}>
-      {/* Optional small illustration floated in corner */}
-      <div className="flex gap-3 items-start">
-        <div className="flex-1">
-          {page.body.split("\n").map((paragraph, i) => (
-            <p
-              key={i}
-              className="font-body text-sm leading-relaxed text-ink/80 mb-2 last:mb-0"
-            >
-              {paragraph}
-            </p>
-          ))}
-        </div>
-        {page.illustration && (
+    <div className={`flex flex-col h-full ${tint} rounded-xl p-5`}>
+      {/* Illustration — centered in the middle */}
+      {page.illustration && (
+        <div className="flex-1 flex items-center justify-center min-h-0">
           <img
             src={page.illustration}
             alt=""
-            className="w-16 h-16 object-contain shrink-0 select-none opacity-70 mt-1"
+            className="max-h-[50%] max-w-[50%] object-contain select-none opacity-80 drop-shadow-sm"
           />
-        )}
+        </div>
+      )}
+      {/* Text at the bottom */}
+      <div className="shrink-0 mt-auto">
+        {page.body.split("\n").map((paragraph, i) => (
+          <p
+            key={i}
+            className="font-body text-base leading-relaxed text-ink/80 mb-2 last:mb-0"
+          >
+            {paragraph}
+          </p>
+        ))}
       </div>
     </div>
   );
@@ -122,9 +123,9 @@ function FunFactPage({ page }: { page: LabNotebookPage }) {
     : "border-playful-mustard/40";
 
   return (
-    <div className={`flex flex-col h-full ${tint} rounded-xl p-4`}>
+    <div className={`flex flex-col h-full ${tint} rounded-xl p-5`}>
       {/* Fun fact badge */}
-      <div className="flex items-center gap-2 mb-3">
+      <div className="flex items-center gap-2 shrink-0">
         <img
           src="/assets/light_bulb.png"
           alt=""
@@ -135,27 +136,29 @@ function FunFactPage({ page }: { page: LabNotebookPage }) {
         </span>
       </div>
 
-      {/* Inset card with the fact */}
+      {/* Illustration — centered in the middle */}
+      {page.illustration && (
+        <div className="flex-1 flex items-center justify-center min-h-0">
+          <img
+            src={page.illustration}
+            alt=""
+            className="max-h-[50%] max-w-[50%] object-contain select-none drop-shadow-sm"
+          />
+        </div>
+      )}
+      {page.caption && (
+        <p className="text-center font-body text-xs text-ink/50 italic mb-2">
+          {page.caption}
+        </p>
+      )}
+
+      {/* Text at the bottom */}
       <div
-        className={`flex-1 border-2 ${accentBorder} bg-white/60 rounded-xl p-3`}
+        className={`shrink-0 mt-auto border-2 ${accentBorder} bg-white/60 rounded-xl p-3`}
       >
-        <p className="font-body text-sm leading-relaxed text-ink/80">
+        <p className="font-body text-base leading-relaxed text-ink/80">
           {page.body}
         </p>
-        {page.illustration && (
-          <div className="flex justify-center mt-3">
-            <img
-              src={page.illustration}
-              alt=""
-              className="max-h-24 object-contain select-none drop-shadow-sm"
-            />
-          </div>
-        )}
-        {page.caption && (
-          <p className="text-center font-body text-[11px] text-ink/40 italic mt-2">
-            {page.caption}
-          </p>
-        )}
       </div>
     </div>
   );

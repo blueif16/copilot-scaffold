@@ -510,7 +510,7 @@ function TopicRunnerInner<
   return (
     <div className="relative w-full h-full flex flex-row gap-3 py-3 pr-3">
       {/* Center: Notebook + Simulation side by side */}
-      <div className="flex-1 min-w-0 h-full flex flex-row gap-3 pl-3">
+      <div className="flex-1 min-w-0 h-full flex flex-row gap-5 pl-3">
         {/* Lab Notebook */}
         {hasNotebook && (
           <div className="w-[520px] shrink-0 h-full">
