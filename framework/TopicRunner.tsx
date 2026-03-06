@@ -24,6 +24,8 @@ import type {
 import { Companion } from "@/components/companion/Companion";
 import { ChatOverlay, type ChatMessage } from "@/components/chat/ChatOverlay";
 import { SpotlightCard } from "@/components/spotlight/SpotlightCard";
+import { LabNotebook } from "@/components/notebook/LabNotebook";
+import { ProgressBar } from "@/components/ui/ProgressBar";
 import { SoundManagerProvider, useSoundManager } from "./SoundManager";
 
 // ── TopicRunner Props ───────────────────────────────────
@@ -35,6 +37,8 @@ interface TopicRunnerProps<
 > {
   config: TopicConfig<SimState, E, A>;
   SimulationComponent: ComponentType<SimulationProps<SimState>>;
+  /** When the left nav strip drawer is open, chat auto-closes */
+  stripOpen?: boolean;
 }
 
 // ── Inner component (needs SoundManager context) ────────
@@ -46,6 +50,7 @@ function TopicRunnerInner<
 >({
   config,
   SimulationComponent,
+  stripOpen = false,
 }: TopicRunnerProps<SimState, E, A>) {
   const soundManager = useSoundManager();
 
@@ -300,6 +305,11 @@ function TopicRunnerInner<
 
   const [chatOpen, setChatOpen] = useState(false);
 
+  // Auto-close chat when the left nav strip drawer opens
+  useEffect(() => {
+    if (stripOpen) setChatOpen(false);
+  }, [stripOpen]);
+
   const chatMessages: ChatMessage[] = useMemo(
     () => {
       console.log("[TopicRunner] visibleMessages raw:", visibleMessages);
@@ -487,35 +497,59 @@ function TopicRunnerInner<
     return null;
   }
 
+  const hasNotebook = config.labNotebook && config.labNotebook.length > 0;
+
   return (
     <div className="relative w-full h-full flex flex-row gap-3 py-3 pr-3">
-      {/* Left: Simulation card */}
-      <div className="flex-1 flex flex-col relative min-w-0 bg-paper rounded-2xl overflow-hidden">
-        <div className="flex-1 flex flex-col p-4 sm:p-6 pb-24">
-          <SimulationComponent
-            state={{ ...config.initialSimulationState, ...state?.simulation }}
-            onStateChange={handleSimStateChange}
-            onEvent={handleEvent}
-          />
+      {/* Center: Notebook + Simulation side by side */}
+      <div className="flex-1 min-w-0 h-full flex flex-row gap-3 pl-3">
+        {/* Lab Notebook */}
+        {hasNotebook && (
+          <div className="w-[400px] shrink-0 h-full">
+            <LabNotebook
+              pages={config.labNotebook!}
+              topicTitle={config.id.replace(/-/g, " ").replace(/\b\w/g, c => c.toUpperCase())}
+            />
+          </div>
+        )}
+
+        {/* Simulation card */}
+        <div className="flex-1 flex flex-col relative min-w-0 bg-paper rounded-2xl overflow-hidden">
+          <div className="flex-1 flex flex-col p-4 sm:p-6 pb-24">
+            <SimulationComponent
+              state={{ ...config.initialSimulationState, ...state?.simulation }}
+              onStateChange={handleSimStateChange}
+              onEvent={handleEvent}
+            />
+          </div>
+
+          {/* Companion — hidden when chat is open (it "becomes" the chat) */}
+          {!chatOpen && (
+            <Companion
+              reaction={companionReaction}
+              onSuggestionTap={handleSuggestionTap}
+              onCompanionTap={handleCompanionTap}
+            />
+          )}
+
+          {/* Spotlight card — top-left, appears when unlocked */}
+          {config.spotlightContent && (
+            <SpotlightCard
+              config={config.spotlightContent}
+              visible={state?.companion?.spotlightUnlocked ?? false}
+              onTap={handleSpotlightTap}
+            />
+          )}
+
+          {/* Progress bar — bottom, appears when config has progress tracking */}
+          {config.progressCalculator && config.progressMilestones && (
+            <ProgressBar
+              progress={state?.companion?.progress ?? config.initialProgress}
+              calculateProgress={config.progressCalculator}
+              milestones={config.progressMilestones}
+            />
+          )}
         </div>
-
-        {/* Companion — hidden when chat is open (it "becomes" the chat) */}
-        {!chatOpen && (
-          <Companion
-            reaction={companionReaction}
-            onSuggestionTap={handleSuggestionTap}
-            onCompanionTap={handleCompanionTap}
-          />
-        )}
-
-        {/* Spotlight card — top-left, appears when unlocked */}
-        {config.spotlightContent && (
-          <SpotlightCard
-            config={config.spotlightContent}
-            visible={state?.companion?.spotlightUnlocked ?? false}
-            onTap={handleSpotlightTap}
-          />
-        )}
       </div>
 
       {/* Right: Chat panel — full height, slides in */}
@@ -524,7 +558,7 @@ function TopicRunnerInner<
           <motion.div
             key="chat-panel"
             initial={{ width: 0, opacity: 0 }}
-            animate={{ width: 400, opacity: 1 }}
+            animate={{ width: 380, opacity: 1 }}
             exit={{ width: 0, opacity: 0 }}
             transition={{ type: "spring", stiffness: 300, damping: 30 }}
             className="h-full overflow-hidden flex-shrink-0"
