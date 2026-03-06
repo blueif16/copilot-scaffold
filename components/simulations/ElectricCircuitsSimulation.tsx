@@ -5,7 +5,7 @@
 
 "use client";
 
-import { useCallback, useRef, useState, useMemo } from "react";
+import { useCallback, useRef, useState, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { SimulationProps } from "@/lib/types";
 import {
@@ -233,6 +233,19 @@ export function ElectricCircuitsSimulation({
     [components, isComplete, onStateChange, onEvent]
   );
 
+  // ── macOS dock hover effect state ────────────────────
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+
+  // Calculate scale for each dock icon based on distance from hovered icon
+  const getDockIconScale = (index: number) => {
+    if (hoveredIndex === null) return 1;
+    const distance = Math.abs(index - hoveredIndex);
+    if (distance === 0) return 2.0; // Hovered icon - 2x size
+    if (distance === 1) return 1.5; // Adjacent icons
+    if (distance === 2) return 1.2; // Second-level neighbors
+    return 1; // Rest stay normal
+  };
+
   // ── Render grid dots ──────────────────────────────────────
 
   const gridDots = useMemo(() => {
@@ -300,37 +313,45 @@ export function ElectricCircuitsSimulation({
   }, [currentFlow, components]);
 
   return (
-    <div className="flex w-full h-full select-none">
-      {/* ── Component Tray ──────────────────────────────── */}
-      <div className="w-[30%] border-r-4 border-ink bg-paper p-4 overflow-y-auto">
-        <h3 className="font-display text-lg font-bold text-ink/80 mb-4">
-          Components
-        </h3>
-        <div className="space-y-3">
-          {(Object.keys(COMPONENT_ICONS) as ComponentType[]).map((type) => (
-            <motion.div
-              key={type}
-              draggable
-              onDragStart={() => handleDragStart(type)}
-              onDragEnd={handleDragEnd}
-              className="flex items-center gap-3 p-3 border-3 border-ink rounded-lg bg-white shadow-chunky-sm cursor-grab active:cursor-grabbing"
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-            >
-              <img src={COMPONENT_ICONS[type]} alt="" className="w-10 h-10 object-contain" />
-              <span className="font-body text-sm font-medium text-ink">
-                {COMPONENT_LABELS[type]}
-              </span>
-            </motion.div>
-          ))}
-        </div>
-      </div>
-
+    <div className="flex flex-col w-full h-full select-none px-8 py-6 gap-4">
       {/* ── Workspace ───────────────────────────────────── */}
-      <div className="flex-1 relative bg-paper/50">
+      <div className="flex-1 relative bg-paper/50 rounded-2xl">
+        {/* Circuit status indicator - moved to top-right */}
+        <div className="absolute top-6 right-6 z-10">
+          <AnimatePresence mode="wait">
+            {isComplete ? (
+              <motion.div
+                key="complete"
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.8 }}
+                className="flex items-center gap-2 px-4 py-2 border-3 border-ink rounded-full bg-green-100 shadow-chunky-sm"
+              >
+                <span className="text-xl">✅</span>
+                <span className="font-display text-sm font-bold text-ink">
+                  Circuit Complete!
+                </span>
+              </motion.div>
+            ) : (
+              <motion.div
+                key="incomplete"
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.8 }}
+                className="flex items-center gap-2 px-4 py-2 border-3 border-ink rounded-full bg-gray-100 shadow-chunky-sm"
+              >
+                <span className="text-xl">⚪</span>
+                <span className="font-display text-sm font-bold text-ink/60">
+                  Build a circuit
+                </span>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
         <div
           ref={workspaceRef}
-          className="absolute inset-4 border-4 border-ink rounded-lg bg-white shadow-chunky overflow-hidden"
+          className="absolute inset-6 border-4 border-ink rounded-lg bg-white shadow-chunky overflow-hidden"
           onDragOver={(e) => {
             e.preventDefault();
             handleDragMove(e);
@@ -452,38 +473,52 @@ export function ElectricCircuitsSimulation({
             </div>
           )}
         </div>
+      </div>
 
-        {/* Circuit status indicator */}
-        <div className="absolute bottom-8 left-8">
-          <AnimatePresence mode="wait">
-            {isComplete ? (
+      {/* ── Bottom Dock (macOS-style) ──────────────────────── */}
+      <div className="flex justify-center items-end pb-2">
+        <div className="flex items-end gap-2 px-4 py-3 border-4 border-ink rounded-2xl bg-paper/80 backdrop-blur-sm shadow-chunky">
+          {(Object.keys(COMPONENT_ICONS) as ComponentType[]).map((type, index) => {
+            const scale = getDockIconScale(index);
+
+            return (
               <motion.div
-                key="complete"
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.8 }}
-                className="flex items-center gap-2 px-4 py-2 border-3 border-ink rounded-full bg-green-100 shadow-chunky-sm"
+                key={type}
+                draggable
+                onDragStart={() => handleDragStart(type)}
+                onDragEnd={handleDragEnd}
+                onMouseEnter={() => setHoveredIndex(index)}
+                onMouseLeave={() => setHoveredIndex(null)}
+                className="flex flex-col items-center cursor-grab active:cursor-grabbing"
+                animate={{
+                  scale: scale,
+                }}
+                transition={{
+                  type: "spring",
+                  stiffness: 400,
+                  damping: 25,
+                }}
+                style={{
+                  transformOrigin: "bottom center",
+                  width: 48,
+                  height: 48,
+                }}
               >
-                <span className="text-xl">✅</span>
-                <span className="font-display text-sm font-bold text-ink">
-                  Circuit Complete!
-                </span>
+                <div
+                  className="relative flex items-center justify-center w-full h-full"
+                >
+                  <img
+                    src={COMPONENT_ICONS[type]}
+                    alt={COMPONENT_LABELS[type]}
+                    className="w-full h-full object-contain pointer-events-none"
+                    style={{
+                      filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.1))",
+                    }}
+                  />
+                </div>
               </motion.div>
-            ) : (
-              <motion.div
-                key="incomplete"
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.8 }}
-                className="flex items-center gap-2 px-4 py-2 border-3 border-ink rounded-full bg-gray-100 shadow-chunky-sm"
-              >
-                <span className="text-xl">⚪</span>
-                <span className="font-display text-sm font-bold text-ink/60">
-                  Build a circuit
-                </span>
-              </motion.div>
-            )}
-          </AnimatePresence>
+            );
+          })}
         </div>
       </div>
     </div>
