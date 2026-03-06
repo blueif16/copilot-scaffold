@@ -313,9 +313,9 @@ export function ElectricCircuitsSimulation({
   }, [currentFlow, components]);
 
   return (
-    <div className="flex flex-col w-full h-full select-none">
+    <div className="flex flex-col items-center justify-center w-full h-full select-none gap-6">
       {/* ── Workspace ───────────────────────────────────── */}
-      <div className="flex-1 relative bg-paper/50 rounded-2xl mx-8 mt-6 mb-4">
+      <div className="relative bg-paper/50 rounded-2xl p-6">
         {/* Circuit status indicator - only show when complete */}
         {isComplete && (
           <div className="absolute top-6 right-6 z-10">
@@ -335,7 +335,7 @@ export function ElectricCircuitsSimulation({
 
         <div
           ref={workspaceRef}
-          className="absolute inset-6 border-4 border-ink rounded-lg bg-white shadow-chunky overflow-hidden"
+          className="border-4 border-ink rounded-lg bg-white shadow-chunky overflow-hidden"
           onDragOver={(e) => {
             e.preventDefault();
             handleDragMove(e);
@@ -460,7 +460,7 @@ export function ElectricCircuitsSimulation({
       </div>
 
       {/* ── Bottom Dock (macOS-style) ──────────────────────── */}
-      <div className="flex justify-center items-end px-8 pb-4">
+      <div className="flex justify-center items-end">
         <div className="flex items-end gap-2 px-4 py-3 border-4 border-ink rounded-2xl bg-paper/80 backdrop-blur-sm shadow-chunky">
           {(Object.keys(COMPONENT_ICONS) as ComponentType[]).map((type, index) => {
             const scale = getDockIconScale(index);
