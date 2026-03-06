@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { motion } from "framer-motion";
 import type { TopicMeta } from "@/lib/types";
+import { useLocale } from "@/contexts/LocaleContext";
 
 const LEVEL_LABELS: Record<number, string> = {
   1: "Beginner",
@@ -45,6 +46,7 @@ interface TopicCardProps {
 
 export function TopicCard({ topic, index }: TopicCardProps) {
   const palette = COLOR_MAP[topic.color] ?? COLOR_MAP["playful-sky"];
+  const { t } = useLocale();
 
   return (
     <motion.div
@@ -79,10 +81,10 @@ export function TopicCard({ topic, index }: TopicCardProps) {
               <span
                 className={`${palette.accent} border-2 border-ink px-2.5 py-0.5 text-xs font-bold font-body uppercase tracking-wide rounded-lg`}
               >
-                Level {topic.level}
+                {t.level} {topic.level}
               </span>
               <span className="bg-white border-2 border-ink px-2.5 py-0.5 text-xs font-bold font-body rounded-lg">
-                Ages {topic.ageRange[0]}–{topic.ageRange[1]}
+                {t.ages} {topic.ageRange[0]}–{topic.ageRange[1]}
               </span>
             </div>
 
@@ -98,7 +100,7 @@ export function TopicCard({ topic, index }: TopicCardProps) {
 
             {/* CTA hint */}
             <div className="mt-4 flex items-center gap-1.5 text-sm font-bold font-body text-ink/50 group-hover:text-ink transition-colors">
-              <span>Start exploring</span>
+              <span>{t.startExploring}</span>
               <span className="inline-block transition-transform group-hover:translate-x-1">
                 →
               </span>
