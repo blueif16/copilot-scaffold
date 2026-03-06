@@ -101,7 +101,11 @@ function useGeminiVoice(onResult: (text: string) => void) {
     setIsSupported(supported);
 
     return () => {
-      sessionRef.current?.close();
+      // Clean up session on unmount
+      if (sessionRef.current) {
+        sessionRef.current.close();
+        sessionRef.current = null;
+      }
     };
   }, []);
 
