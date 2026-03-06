@@ -313,41 +313,25 @@ export function ElectricCircuitsSimulation({
   }, [currentFlow, components]);
 
   return (
-    <div className="flex flex-col w-full h-full select-none px-8 py-6 gap-4">
+    <div className="flex flex-col w-full h-full select-none px-8 pt-6 pb-4 gap-4">
       {/* ── Workspace ───────────────────────────────────── */}
       <div className="flex-1 relative bg-paper/50 rounded-2xl">
-        {/* Circuit status indicator - moved to top-right */}
-        <div className="absolute top-6 right-6 z-10">
-          <AnimatePresence mode="wait">
-            {isComplete ? (
-              <motion.div
-                key="complete"
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.8 }}
-                className="flex items-center gap-2 px-4 py-2 border-3 border-ink rounded-full bg-green-100 shadow-chunky-sm"
-              >
-                <span className="text-xl">✅</span>
-                <span className="font-display text-sm font-bold text-ink">
-                  Circuit Complete!
-                </span>
-              </motion.div>
-            ) : (
-              <motion.div
-                key="incomplete"
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.8 }}
-                className="flex items-center gap-2 px-4 py-2 border-3 border-ink rounded-full bg-gray-100 shadow-chunky-sm"
-              >
-                <span className="text-xl">⚪</span>
-                <span className="font-display text-sm font-bold text-ink/60">
-                  Build a circuit
-                </span>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
+        {/* Circuit status indicator - only show when complete */}
+        {isComplete && (
+          <div className="absolute top-6 right-6 z-10">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.8 }}
+              className="flex items-center gap-2 px-4 py-2 border-3 border-ink rounded-full bg-green-100 shadow-chunky-sm"
+            >
+              <span className="text-xl">✅</span>
+              <span className="font-display text-sm font-bold text-ink">
+                Circuit Complete!
+              </span>
+            </motion.div>
+          </div>
+        )}
 
         <div
           ref={workspaceRef}
@@ -476,7 +460,7 @@ export function ElectricCircuitsSimulation({
       </div>
 
       {/* ── Bottom Dock (macOS-style) ──────────────────────── */}
-      <div className="flex justify-center items-end pb-2">
+      <div className="flex justify-center items-end">
         <div className="flex items-end gap-2 px-4 py-3 border-4 border-ink rounded-2xl bg-paper/80 backdrop-blur-sm shadow-chunky">
           {(Object.keys(COMPONENT_ICONS) as ComponentType[]).map((type, index) => {
             const scale = getDockIconScale(index);
