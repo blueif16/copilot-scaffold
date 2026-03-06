@@ -3,32 +3,9 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { GeminiVoiceSession } from "@/lib/gemini-voice";
+import { useLocale } from "@/contexts/LocaleContext";
 
 // ── Data ─────────────────────────────────────────────────
-
-const GREETINGS = [
-  "Hey there, scientist! Ready to explore?",
-  "Welcome back! What shall we discover today?",
-  "Ooh, I've been waiting for you! Let's learn something cool.",
-  "Hi hi hi! Pick a topic or ask me anything!",
-  "Science time! I'm SO excited!",
-];
-
-const FUN_FACTS = [
-  "Did you know? Water can exist as solid, liquid, AND gas — all at the same time! It's called the triple point.",
-  "Lightning is about 5 times hotter than the surface of the Sun!",
-  "Your DNA is about 99.9% the same as every other human on Earth.",
-  "Octopuses have three hearts and blue blood!",
-  "A teaspoon of a neutron star would weigh about 6 billion tons!",
-  "Bananas are slightly radioactive because they contain potassium.",
-];
-
-const SUGGESTION_CHIPS = [
-  "Why does ice melt?",
-  "What is electricity?",
-  "How do genes work?",
-  "Why is the sky blue?",
-];
 
 type FaceKey = "happy" | "excited" | "curious" | "thinking" | "surprised" | "watching";
 
@@ -229,6 +206,7 @@ export function CompanionHub() {
   const [chatInput, setChatInput] = useState("");
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [isTyping, setIsTyping] = useState(false);
+  const { t } = useLocale();
 
   const inputRef = useRef<HTMLInputElement>(null);
   const chatInputRef = useRef<HTMLInputElement>(null);
@@ -261,8 +239,8 @@ export function CompanionHub() {
 
   // Random greeting on mount
   useEffect(() => {
-    setGreeting(GREETINGS[Math.floor(Math.random() * GREETINGS.length)]);
-  }, []);
+    setGreeting(t.greetings[Math.floor(Math.random() * t.greetings.length)]);
+  }, [t]);
 
   // Idle face cycle (greeting mode only)
   useEffect(() => {
@@ -294,9 +272,9 @@ export function CompanionHub() {
 
   const handleSurprise = useCallback(() => {
     setFace("surprised");
-    setGreeting(FUN_FACTS[Math.floor(Math.random() * FUN_FACTS.length)]);
+    setGreeting(t.funFacts[Math.floor(Math.random() * t.funFacts.length)]);
     setTimeout(() => setFace("excited"), 1500);
-  }, []);
+  }, [t]);
 
   const openInput = useCallback(() => {
     setMode("input");
@@ -308,8 +286,8 @@ export function CompanionHub() {
     setChatInput("");
     setChatMessages([]);
     setFace("happy");
-    setGreeting(GREETINGS[Math.floor(Math.random() * GREETINGS.length)]);
-  }, []);
+    setGreeting(t.greetings[Math.floor(Math.random() * t.greetings.length)]);
+  }, [t]);
 
   const sendMessage = useCallback(
     (overrideText?: string) => {
@@ -461,7 +439,7 @@ export function CompanionHub() {
                 whileTap={{ scale: 0.95 }}
                 onClick={handleSurprise}
               >
-                Surprise me!
+                {t.surpriseMe}
               </motion.button>
 
               {/* Voice button — large & inviting */}
@@ -481,7 +459,7 @@ export function CompanionHub() {
                 whileTap={{ scale: 0.95 }}
                 onClick={openInput}
               >
-                Ask a question
+                {t.askAQuestion}
               </motion.button>
             </div>
 
@@ -511,7 +489,7 @@ export function CompanionHub() {
           >
             {/* Subtitle */}
             <p className="font-body text-sm text-ink/50">
-              What do you want to know?
+              {t.whatDoYouWantToKnow}
             </p>
 
             {/* ── Centered Input Bar ── */}
@@ -548,7 +526,7 @@ export function CompanionHub() {
                 value={chatInput}
                 onChange={(e) => setChatInput(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && sendMessage()}
-                placeholder={voice.isListening ? "Listening…" : "Ask anything about science…"}
+                placeholder={voice.isListening ? t.listening : t.askAnything}
                 className="flex-1 bg-transparent font-body text-sm outline-none placeholder:text-ink/25 py-2"
               />
 
@@ -565,7 +543,7 @@ export function CompanionHub() {
 
             {/* ── Suggestion Chips ── */}
             <div className="flex flex-wrap justify-center gap-2">
-              {SUGGESTION_CHIPS.map((chip) => (
+              {t.suggestions.map((chip) => (
                 <motion.button
                   key={chip}
                   whileHover={{ y: -2 }}
@@ -591,7 +569,7 @@ export function CompanionHub() {
                   transition={{ duration: 0.8, repeat: Infinity }}
                 />
                 <span className="text-xs font-body text-ink/40">
-                  Listening… speak your question!
+                  {t.speakYourQuestion}
                 </span>
               </motion.div>
             )}
@@ -601,7 +579,7 @@ export function CompanionHub() {
               onClick={backToGreeting}
               className="text-xs font-body text-ink/30 hover:text-ink/60 transition-colors mt-1"
             >
-              ← back to home
+              {t.backToHome}
             </button>
           </motion.div>
         )}
@@ -724,7 +702,7 @@ export function CompanionHub() {
                 value={chatInput}
                 onChange={(e) => setChatInput(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && sendMessage()}
-                placeholder={voice.isListening ? "Listening…" : "Ask a follow-up…"}
+                placeholder={voice.isListening ? t.listening : t.askAnything}
                 className="flex-1 bg-transparent font-body text-sm outline-none placeholder:text-ink/25 py-1"
               />
 

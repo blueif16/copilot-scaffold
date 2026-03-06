@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useLocale } from "@/contexts/LocaleContext";
 
 // ── Message type for the local mock ─────────────────────
 
@@ -27,6 +28,7 @@ export function ChatOverlay({
   const [input, setInput] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const { t } = useLocale();
 
   // Debug logging
   useEffect(() => {
@@ -77,15 +79,15 @@ export function ChatOverlay({
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b-[3px] border-ink bg-playful-mustard/30">
           <span className="font-display text-base font-bold">
-            Ask me anything!
+            {t.askMeAnything}
           </span>
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-lg border-2 border-ink bg-white 
-              flex items-center justify-center font-bold text-ink/70 
+            className="w-8 h-8 rounded-lg border-2 border-ink bg-white
+              flex items-center justify-center font-bold text-ink/70
               hover:bg-ink hover:text-white transition-colors shadow-chunky-sm
               active:shadow-none active:translate-x-0.5 active:translate-y-0.5"
-            aria-label="Close chat"
+            aria-label={t.close}
           >
             ✕
           </button>
@@ -98,7 +100,7 @@ export function ChatOverlay({
         >
           {messages.length === 0 && (
             <p className="text-center text-sm text-ink/40 font-body mt-8">
-              Ask a question about what you see!
+              {t.askAQuestionAbout}
             </p>
           )}
 
@@ -158,23 +160,23 @@ export function ChatOverlay({
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Type a question…"
+              placeholder={t.typeAQuestion}
               disabled={isLoading}
               className="flex-1 border-2 border-ink rounded-xl px-3 py-2.5 font-body text-sm
-                bg-white placeholder:text-ink/30 focus:outline-none focus:ring-2 
+                bg-white placeholder:text-ink/30 focus:outline-none focus:ring-2
                 focus:ring-playful-sky/50 disabled:opacity-50"
             />
             <button
               onClick={handleSend}
               disabled={!input.trim() || isLoading}
-              className="border-2 border-ink rounded-xl px-4 py-2.5 bg-playful-mustard 
+              className="border-2 border-ink rounded-xl px-4 py-2.5 bg-playful-mustard
                 font-body text-sm font-bold shadow-chunky-sm
                 hover:shadow-chunky hover:-translate-x-0.5 hover:-translate-y-0.5
                 active:shadow-none active:translate-x-0.5 active:translate-y-0.5
-                disabled:opacity-40 disabled:shadow-none disabled:translate-x-0 
+                disabled:opacity-40 disabled:shadow-none disabled:translate-x-0
                 disabled:translate-y-0 transition-all"
             >
-              Ask
+              {t.ask}
             </button>
           </div>
         </div>

@@ -4,6 +4,7 @@ import { useRef, useState, useEffect } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import type { TopicMeta } from "@/lib/types";
+import { useLocale } from "@/contexts/LocaleContext";
 
 // ── Color map (mirrors TopicCard) ────────────────────────
 
@@ -45,6 +46,7 @@ function CarouselCard({
   index: number;
 }) {
   const palette = COLOR_MAP[topic.color] ?? COLOR_MAP["playful-sky"];
+  const { t } = useLocale();
 
   return (
     <motion.div
@@ -80,10 +82,10 @@ function CarouselCard({
               <span
                 className={`${palette.accent} border-2 border-ink px-2 py-0.5 text-[10px] font-bold font-body uppercase tracking-wide rounded-lg`}
               >
-                Level {topic.level}
+                {t.level} {topic.level}
               </span>
               <span className="bg-white border-2 border-ink px-2 py-0.5 text-[10px] font-bold font-body rounded-lg">
-                Ages {topic.ageRange[0]}–{topic.ageRange[1]}
+                {t.ages} {topic.ageRange[0]}–{topic.ageRange[1]}
               </span>
             </div>
 
@@ -96,7 +98,7 @@ function CarouselCard({
             </p>
 
             <div className="mt-3 flex items-center gap-1.5 text-xs font-bold font-body text-ink/50 group-hover:text-ink transition-colors">
-              <span>Start exploring</span>
+              <span>{t.startExploring}</span>
               <span className="inline-block transition-transform group-hover:translate-x-1">
                 →
               </span>
@@ -111,6 +113,8 @@ function CarouselCard({
 // ── Coming Soon Card ─────────────────────────────────────
 
 function ComingSoonCard({ delay }: { delay: number }) {
+  const { t } = useLocale();
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 24 }}
@@ -125,10 +129,10 @@ function ComingSoonCard({ delay }: { delay: number }) {
           className="w-14 h-14 object-contain mb-3 opacity-40"
         />
         <p className="font-display text-base font-bold text-ink/30">
-          More coming soon
+          {t.moreComingSoon}
         </p>
         <p className="font-body text-xs text-ink/20 mt-1">
-          Volcanoes, weather, ecosystems…
+          {t.comingSoonSubtext}
         </p>
       </div>
     </motion.div>
@@ -145,6 +149,7 @@ export function TopicCarousel({ topics }: TopicCarouselProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(true);
+  const { t } = useLocale();
 
   const checkScroll = () => {
     const el = scrollRef.current;
@@ -182,7 +187,7 @@ export function TopicCarousel({ topics }: TopicCarouselProps) {
         className="flex items-center gap-3 mb-4 px-6 sm:px-8 lg:px-12"
       >
         <div className="w-3 h-3 bg-playful-peach border-2 border-ink rounded-sm rotate-45" />
-        <h2 className="font-display text-lg font-bold">Pick a topic</h2>
+        <h2 className="font-display text-lg font-bold">{t.pickATopic}</h2>
         <div className="flex-1 h-[3px] bg-ink/10 rounded-full" />
       </motion.div>
 

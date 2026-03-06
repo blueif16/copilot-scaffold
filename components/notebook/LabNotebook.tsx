@@ -3,6 +3,7 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { LabNotebookPage } from "@/lib/types";
+import { useLocale } from "@/contexts/LocaleContext";
 
 // ── Tint map ────────────────────────────────────────────
 
@@ -121,6 +122,7 @@ function FunFactPage({ page }: { page: LabNotebookPage }) {
   const accentBorder = page.bgTint
     ? TINT_BORDER[page.bgTint]
     : "border-playful-mustard/40";
+  const { t } = useLocale();
 
   return (
     <div className={`flex flex-col h-full ${tint} rounded-xl p-5`}>
@@ -132,7 +134,7 @@ function FunFactPage({ page }: { page: LabNotebookPage }) {
           className="w-6 h-6 object-contain select-none"
         />
         <span className="font-display text-xs font-bold text-ink/60 uppercase tracking-wider">
-          Fun Fact
+          {t.funFact}
         </span>
       </div>
 
@@ -188,6 +190,7 @@ interface LabNotebookProps {
 
 export function LabNotebook({ pages, topicTitle, onAskAboutSelection }: LabNotebookProps) {
   const [[currentPage, direction], setPage] = useState([0, 0]);
+  const { t } = useLocale();
 
   // ── Text selection state ─────────────────────────────
   const [selectionText, setSelectionText] = useState<string | null>(null);
@@ -291,7 +294,7 @@ export function LabNotebook({ pages, topicTitle, onAskAboutSelection }: LabNoteb
                 active:shadow-none active:translate-y-0.5 transition-all whitespace-nowrap"
             >
               <span className="text-base leading-none">💡</span>
-              Ask about this
+              {t.askAboutThis}
             </button>
             {/* Tooltip arrow */}
             <div className="absolute left-1/2 -translate-x-1/2 top-full w-0 h-0
@@ -373,7 +376,7 @@ export function LabNotebook({ pages, topicTitle, onAskAboutSelection }: LabNoteb
               active:shadow-none active:translate-x-0.5 active:translate-y-0.5
               disabled:opacity-25 disabled:shadow-none disabled:translate-x-0 disabled:translate-y-0
               disabled:hover:bg-white disabled:hover:text-ink/60"
-            aria-label="Previous page"
+            aria-label={t.previousPage}
           >
             ‹
           </button>
@@ -409,7 +412,7 @@ export function LabNotebook({ pages, topicTitle, onAskAboutSelection }: LabNoteb
               active:shadow-none active:translate-x-0.5 active:translate-y-0.5
               disabled:opacity-25 disabled:shadow-none disabled:translate-x-0 disabled:translate-y-0
               disabled:hover:bg-white disabled:hover:text-ink/60"
-            aria-label="Next page"
+            aria-label={t.nextPage}
           >
             ›
           </button>
