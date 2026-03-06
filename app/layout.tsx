@@ -1,7 +1,9 @@
-import type { Metadata } from "next";
+"use client";
+
 import { Fraunces, Space_Grotesk } from "next/font/google";
 import { GrainOverlay } from "@/components/ui/GrainOverlay";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { LocaleProvider } from "@/contexts/LocaleContext";
 import "./globals.css";
 
 const fraunces = Fraunces({
@@ -16,12 +18,6 @@ const spaceGrotesk = Space_Grotesk({
   display: "swap",
 });
 
-export const metadata: Metadata = {
-  title: "Omniscience — Interactive Learning",
-  description:
-    "Companion-driven educational simulations where the simulation teaches and the companion guides.",
-};
-
 export default function RootLayout({
   children,
 }: {
@@ -34,7 +30,9 @@ export default function RootLayout({
     >
       <body className="min-h-screen bg-paper text-ink font-body antialiased">
         <GrainOverlay />
-        <ErrorBoundary>{children}</ErrorBoundary>
+        <LocaleProvider>
+          <ErrorBoundary>{children}</ErrorBoundary>
+        </LocaleProvider>
       </body>
     </html>
   );
