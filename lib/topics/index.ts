@@ -19,7 +19,7 @@ export const TOPICS: TopicMeta[] = [
     ageRange: [9, 10],
     level: 2,
     route: "/topics/electric-circuits",
-    color: "playful-sky",
+    color: "playful-mustard",
   },
   {
     id: "genetics-basics",
@@ -29,6 +29,6 @@ export const TOPICS: TopicMeta[] = [
     ageRange: [11, 12],
     level: 3,
     route: "/topics/genetics-basics",
-    color: "playful-sky",
+    color: "playful-sage",
   },
 ];

@@ -36,39 +36,47 @@ function ChangingStatesContent() {
       {...(sessionId ? { threadId: sessionId } : {})}
     >
       <ConnectionStatus runtimeUrl="/api/copilotkit" />
-      <main className="h-screen flex flex-col">
-        {/* Header */}
+      <main className="h-screen overflow-hidden flex flex-row bg-ink/[0.06]">
+        {/* Left edge strip: back · title · reset */}
         <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="flex items-center justify-between px-4 sm:px-6 pt-4 pb-2 relative z-10"
+          initial={{ opacity: 0, x: -10 }}
+          animate={{ opacity: 1, x: 0 }}
+          className="flex flex-col items-center justify-between py-5 px-3 sm:px-4 shrink-0 z-10"
         >
           <Link
             href="/"
-            className="text-sm font-body text-ink/50 hover:text-ink/80 transition-colors
-              flex items-center gap-1"
+            className="text-sm font-body text-ink/40 hover:text-ink/70 transition-colors"
+            title="Back to topics"
           >
-            <span>←</span>
-            <span className="hidden sm:inline">Back</span>
+            ←
           </Link>
-          <h1 className="font-display text-lg font-bold">Changing States</h1>
+
+          <h1
+            className="font-display text-xs font-bold text-ink/30 tracking-widest uppercase
+              [writing-mode:vertical-lr] rotate-180 select-none"
+          >
+            Changing States
+          </h1>
+
           <button
             onClick={() => {
               clearTopicSession("changing-states");
               window.location.reload();
             }}
-            className="text-xs font-body text-ink/30 hover:text-ink/60 transition-colors"
+            className="text-sm font-body text-ink/30 hover:text-ink/60 transition-colors"
             title="Start fresh"
           >
-            ↻ Reset
+            ↻
           </button>
         </motion.div>
 
         {/* TopicRunner — manages simulation + companion + chat */}
-        <TopicRunner
-          config={changingStatesConfig}
-          SimulationComponent={ChangingStatesSimulation}
-        />
+        <div className="flex-1 min-w-0 h-full">
+          <TopicRunner
+            config={changingStatesConfig}
+            SimulationComponent={ChangingStatesSimulation}
+          />
+        </div>
       </main>
     </CopilotKit>
   );

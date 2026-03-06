@@ -20,6 +20,16 @@
   }
 }
 
+@layer utilities {
+  .scrollbar-none {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+}
+
 @layer components {
   .btn-chunky {
     @apply border-4 border-ink bg-white px-6 py-3 font-body font-bold shadow-chunky

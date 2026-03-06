@@ -170,7 +170,10 @@ function useGeminiVoice(onResult: (text: string) => void) {
         }
         const base64Audio = btoa(binaryString);
 
-        sessionRef.current?.sendAudio(base64Audio);
+        // Only send if session is still active
+        if (sessionRef.current?.isSessionActive()) {
+          sessionRef.current?.sendAudio(base64Audio);
+        }
 
         // Clean up
         stream.getTracks().forEach((track) => track.stop());
@@ -201,11 +204,11 @@ function useGeminiVoice(onResult: (text: string) => void) {
   const sendText = useCallback((text: string) => {
     if (!isConnected) {
       connect().then((connected) => {
-        if (connected) {
+        if (connected && sessionRef.current?.isSessionActive()) {
           sessionRef.current?.sendText(text);
         }
       });
-    } else {
+    } else if (sessionRef.current?.isSessionActive()) {
       sessionRef.current?.sendText(text);
     }
   }, [isConnected, connect]);
@@ -231,6 +234,7 @@ export function CompanionHub() {
   const handleVoiceResult = useCallback(
     (transcript: string) => {
       if (mode === "greeting") {
+        // Voice from greeting → jump to input mode
         setMode("input");
         setChatInput(transcript);
         setFace("curious");
@@ -241,6 +245,15 @@ export function CompanionHub() {
     [mode],
   );
   const voice = useGeminiVoice(handleVoiceResult);
+
+  // When mic is clicked in greeting mode, switch to input mode
+  const handleMicClick = useCallback(() => {
+    if (mode === "greeting") {
+      setMode("input");
+      setFace("curious");
+    }
+    voice.toggle();
+  }, [mode, voice]);
 
   // Random greeting on mount
   useEffect(() => {
@@ -452,7 +465,7 @@ export function CompanionHub() {
                 <motion.button
                   className="btn-chunky bg-playful-peach px-4 py-3"
                   whileTap={{ scale: 0.92 }}
-                  onClick={voice.toggle}
+                  onClick={handleMicClick}
                   title="Ask with your voice!"
                 >
                   <MicIcon size={22} />
@@ -503,7 +516,7 @@ export function CompanionHub() {
               {voice.isSupported && (
                 <motion.button
                   whileTap={{ scale: 0.9 }}
-                  onClick={voice.toggle}
+                  onClick={handleMicClick}
                   className={`
                     flex-shrink-0 w-10 h-10 rounded-full border-2 border-ink flex items-center justify-center
                     transition-colors duration-200
@@ -684,7 +697,7 @@ export function CompanionHub() {
               {voice.isSupported && (
                 <motion.button
                   whileTap={{ scale: 0.9 }}
-                  onClick={voice.toggle}
+                  onClick={handleMicClick}
                   className={`
                     flex-shrink-0 w-9 h-9 rounded-full border-2 border-ink flex items-center justify-center transition-colors
                     ${voice.isListening ? "bg-playful-peach" : "bg-playful-peach/20 hover:bg-playful-peach/50"}

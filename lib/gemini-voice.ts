@@ -159,10 +159,14 @@ export class GeminiVoiceSession {
       return;
     }
 
-    this.session.sendClientContent({
-      turns: text,
-      turnComplete: true,
-    });
+    try {
+      this.session.sendClientContent({
+        turns: text,
+        turnComplete: true,
+      });
+    } catch (error) {
+      console.error("[Gemini Voice] Error sending text:", error);
+    }
   }
 
   sendAudio(audioData: string) {
@@ -171,26 +175,38 @@ export class GeminiVoiceSession {
       return;
     }
 
-    this.session.sendRealtimeInput({
-      media: {
-        data: audioData,
-        mimeType: "audio/pcm;rate=16000",
-      },
-    });
+    try {
+      this.session.sendRealtimeInput({
+        media: {
+          data: audioData,
+          mimeType: "audio/pcm;rate=16000",
+        },
+      });
+    } catch (error) {
+      console.error("[Gemini Voice] Error sending audio:", error);
+    }
   }
 
   close() {
-    if (this.session) {
-      this.session.close();
-      this.session = null;
-    }
+    try {
+      if (this.session) {
+        this.session.close();
+        this.session = null;
+      }
 
-    if (this.audioContext) {
-      this.audioContext.close();
-      this.audioContext = null;
-    }
+      if (this.audioContext) {
+        this.audioContext.close();
+        this.audioContext = null;
+      }
 
-    this.audioQueue = [];
-    this.isPlaying = false;
+      this.audioQueue = [];
+      this.isPlaying = false;
+    } catch (error) {
+      console.error("[Gemini Voice] Error closing session:", error);
+    }
+  }
+
+  isSessionActive(): boolean {
+    return this.session !== null;
   }
 }
