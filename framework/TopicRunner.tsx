@@ -534,7 +534,7 @@ function TopicRunnerInner<
 
         {/* Simulation card */}
         <div className="flex-1 flex flex-col relative min-w-0 bg-paper rounded-2xl overflow-hidden">
-          <div className="flex-1 flex flex-col p-4 sm:p-6 pb-24">
+          <div className="flex-1 flex flex-col p-4 sm:p-6">
             <SimulationComponent
               state={{ ...config.initialSimulationState, ...state?.simulation }}
               onStateChange={handleSimStateChange}
