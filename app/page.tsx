@@ -2,70 +2,58 @@
 
 import { motion } from "framer-motion";
 import { TOPICS } from "@/lib/topics";
-import { TopicCard } from "@/components/TopicCard";
+import { CompanionHub } from "@/components/home/CompanionHub";
+import { TopicCarousel } from "@/components/home/TopicCarousel";
 
 export default function HomePage() {
   return (
-    <main className="min-h-screen px-6 py-12 sm:px-8 lg:px-12">
-      {/* Header */}
-      <header className="max-w-4xl mx-auto mb-12">
+    <main className="h-screen flex flex-col overflow-hidden">
+      {/* ── Header ── */}
+      <header className="flex-shrink-0 px-6 sm:px-8 lg:px-12 pt-8 pb-2">
         <motion.div
-          initial={{ opacity: 0, y: -16 }}
+          initial={{ opacity: 0, y: -12 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, ease: "easeOut" }}
+          transition={{ duration: 0.5, ease: "easeOut" }}
+          className="flex items-center gap-3"
         >
-          <h1 className="font-display text-5xl sm:text-6xl font-bold tracking-tight">
+          <motion.img
+            src="/assets/beaker.png"
+            alt=""
+            className="w-9 h-9 object-contain select-none"
+            animate={{ rotate: [0, -8, 8, 0] }}
+            transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+          />
+          <h1 className="font-display text-3xl sm:text-4xl font-bold tracking-tight">
             Omniscience
           </h1>
-          <p className="mt-3 font-body text-lg text-ink/60 max-w-lg">
-            Pick a topic, start exploring. Your AI companion watches what you do
-            and helps you discover the science behind it.
-          </p>
         </motion.div>
       </header>
 
-      {/* Topic Grid */}
-      <section className="max-w-4xl mx-auto">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {TOPICS.map((topic, i) => (
-            <TopicCard key={topic.id} topic={topic} index={i} />
-          ))}
-
-          {/* Coming Soon placeholder */}
-          <motion.div
-            initial={{ opacity: 0, y: 24 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{
-              delay: TOPICS.length * 0.1 + 0.2,
-              duration: 0.5,
-              ease: "easeOut",
-            }}
-          >
-            <div className="border-4 border-dashed border-ink/20 rounded-2xl h-full min-h-[320px] flex flex-col items-center justify-center p-6 text-center">
-              <img
-                src="/assets/microscope.png"
-                alt=""
-                className="w-16 h-16 object-contain mb-3 opacity-40"
-              />
-              <p className="font-display text-lg font-bold text-ink/30">
-                More topics coming soon
-              </p>
-              <p className="font-body text-sm text-ink/20 mt-1">
-                Volcanoes, weather, ecosystems…
-              </p>
-            </div>
-          </motion.div>
-        </div>
+      {/* ── Companion Hub (center stage) ── */}
+      <section className="flex-1 min-h-0 flex items-center justify-center px-6 py-4 sm:py-6">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.15, duration: 0.5, ease: "easeOut" }}
+          className="w-full h-full"
+        >
+          <CompanionHub />
+        </motion.div>
       </section>
 
-      {/* Footer hint */}
+      {/* ── Topic Carousel (bottom) ── */}
+      <section className="flex-shrink-0 pb-6">
+        <TopicCarousel topics={TOPICS} />
+      </section>
+
+      {/* ── Footer ── */}
       <motion.footer
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        transition={{ delay: 1, duration: 0.6 }}
-        className="max-w-4xl mx-auto mt-16 text-center"
+        transition={{ delay: 0.8, duration: 0.5 }}
+        className="flex-shrink-0 text-center pb-4"
       >
-        <p className="font-body text-xs text-ink/25">
+        <p className="font-body text-[10px] text-ink/20">
           Built with CopilotKit + LangGraph · Ages 6–12
         </p>
       </motion.footer>

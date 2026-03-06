@@ -8,7 +8,7 @@ import {
   useMemo,
   type ComponentType,
 } from "react";
-import { AnimatePresence } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import { useCoAgent } from "@copilotkit/react-core";
 import { useCopilotChatInternal } from "@copilotkit/react-core";
 import { useCopilotReadable } from "@copilotkit/react-core";
@@ -488,41 +488,54 @@ function TopicRunnerInner<
   }
 
   return (
-    <div className="relative w-full h-full min-h-screen flex flex-col">
-      {/* Simulation — takes up most of the screen */}
-      <div className="flex-1 flex flex-col p-4 sm:p-6 pb-24">
-        <SimulationComponent
-          state={{ ...config.initialSimulationState, ...state?.simulation }}
-          onStateChange={handleSimStateChange}
-          onEvent={handleEvent}
-        />
+    <div className="relative w-full h-full flex flex-row gap-3 py-3 pr-3">
+      {/* Left: Simulation card */}
+      <div className="flex-1 flex flex-col relative min-w-0 bg-paper rounded-2xl overflow-hidden">
+        <div className="flex-1 flex flex-col p-4 sm:p-6 pb-24">
+          <SimulationComponent
+            state={{ ...config.initialSimulationState, ...state?.simulation }}
+            onStateChange={handleSimStateChange}
+            onEvent={handleEvent}
+          />
+        </div>
+
+        {/* Companion — hidden when chat is open (it "becomes" the chat) */}
+        {!chatOpen && (
+          <Companion
+            reaction={companionReaction}
+            onSuggestionTap={handleSuggestionTap}
+            onCompanionTap={handleCompanionTap}
+          />
+        )}
+
+        {/* Spotlight card — top-left, appears when unlocked */}
+        {config.spotlightContent && (
+          <SpotlightCard
+            config={config.spotlightContent}
+            visible={state?.companion?.spotlightUnlocked ?? false}
+            onTap={handleSpotlightTap}
+          />
+        )}
       </div>
 
-      {/* Companion — bottom-right corner */}
-      <Companion
-        reaction={companionReaction}
-        onSuggestionTap={handleSuggestionTap}
-        onCompanionTap={handleCompanionTap}
-      />
-
-      {/* Spotlight card — top-left, appears when unlocked */}
-      {config.spotlightContent && (
-        <SpotlightCard
-          config={config.spotlightContent}
-          visible={state?.companion?.spotlightUnlocked ?? false}
-          onTap={handleSpotlightTap}
-        />
-      )}
-
-      {/* Chat overlay */}
+      {/* Right: Chat panel — full height, slides in */}
       <AnimatePresence>
         {chatOpen && (
-          <ChatOverlay
-            messages={chatMessages}
-            onSend={handleChatSend}
-            onClose={() => setChatOpen(false)}
-            isLoading={chatIsLoading}
-          />
+          <motion.div
+            key="chat-panel"
+            initial={{ width: 0, opacity: 0 }}
+            animate={{ width: 400, opacity: 1 }}
+            exit={{ width: 0, opacity: 0 }}
+            transition={{ type: "spring", stiffness: 300, damping: 30 }}
+            className="h-full overflow-hidden flex-shrink-0"
+          >
+            <ChatOverlay
+              messages={chatMessages}
+              onSend={handleChatSend}
+              onClose={() => setChatOpen(false)}
+              isLoading={chatIsLoading}
+            />
+          </motion.div>
         )}
       </AnimatePresence>
     </div>
