@@ -52,8 +52,8 @@ export const ELECTRIC_CIRCUITS_EVENTS = {
 // ── Grid Configuration ──────────────────────────────────────
 
 export const GRID_SIZE = 40; // pixels
-export const WORKSPACE_WIDTH = 600;
-export const WORKSPACE_HEIGHT = 400;
+export const WORKSPACE_WIDTH = 640; // 16 columns * 40px
+export const WORKSPACE_HEIGHT = 440; // 11 rows * 40px
 
 // ── Initial State ───────────────────────────────────────────
 
