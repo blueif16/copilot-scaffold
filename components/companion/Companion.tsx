@@ -66,12 +66,16 @@ interface CompanionProps {
   reaction: ReactionPayload | null;
   onSuggestionTap: (question: string) => void;
   onCompanionTap: () => void;
+  progress?: number; // 0-100 percentage
+  progressColor?: string; // Color for the progress ring
 }
 
 export function Companion({
   reaction,
   onSuggestionTap,
   onCompanionTap,
+  progress = 0,
+  progressColor,
 }: CompanionProps) {
   const emotion = (reaction?.emotion ?? "idle") as BaseEmotion;
   const faceData = EMOTION_FACES[emotion] ?? EMOTION_FACES.idle;
@@ -87,6 +91,18 @@ export function Companion({
     (q: string) => onSuggestionTap(q),
     [onSuggestionTap],
   );
+
+  // Calculate circular progress
+  const radius = 44; // Slightly larger than avatar (20/2 + padding)
+  const circumference = 2 * Math.PI * radius;
+  const strokeDashoffset = circumference * (1 - progress / 100);
+
+  // Determine progress color based on percentage
+  const ringColor = progressColor ||
+    (progress >= 100 ? "#F4D35E" : // mustard/gold
+     progress >= 66 ? "#EE9B9B" :  // peach
+     progress >= 33 ? "#C5A3D9" :  // lavender
+     "#A8DADC");                    // sky
 
   return (
     <div className="fixed bottom-6 right-4 z-40 flex flex-col items-center">
@@ -108,6 +124,38 @@ export function Companion({
         whileTap={{ scale: 0.94 }}
         aria-label="Talk to companion"
       >
+        {/* Circular progress ring */}
+        {progress > 0 && (
+          <svg
+            className="absolute inset-0 w-full h-full -rotate-90"
+            style={{ width: "120px", height: "120px" }}
+          >
+            {/* Background circle */}
+            <circle
+              cx="60"
+              cy="60"
+              r={radius}
+              fill="none"
+              stroke="rgba(0,0,0,0.05)"
+              strokeWidth="6"
+            />
+            {/* Progress circle */}
+            <motion.circle
+              cx="60"
+              cy="60"
+              r={radius}
+              fill="none"
+              stroke={ringColor}
+              strokeWidth="6"
+              strokeLinecap="round"
+              strokeDasharray={circumference}
+              initial={{ strokeDashoffset: circumference }}
+              animate={{ strokeDashoffset }}
+              transition={{ type: "spring", stiffness: 100, damping: 20 }}
+            />
+          </svg>
+        )}
+
         {/* Glow ring on active reaction */}
         <AnimatePresence>
           {reaction && reaction.type !== "observation" && (

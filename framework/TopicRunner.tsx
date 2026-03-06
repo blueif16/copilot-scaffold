@@ -25,7 +25,6 @@ import { Companion } from "@/components/companion/Companion";
 import { ChatOverlay, type ChatMessage } from "@/components/chat/ChatOverlay";
 import { SpotlightCard } from "@/components/spotlight/SpotlightCard";
 import { LabNotebook } from "@/components/notebook/LabNotebook";
-import { ProgressBar } from "@/components/ui/ProgressBar";
 import { SoundManagerProvider, useSoundManager } from "./SoundManager";
 
 // ── TopicRunner Props ───────────────────────────────────
@@ -447,6 +446,15 @@ function TopicRunnerInner<
     return null;
   }, [displayedReaction, activeSuggestions]);
 
+  // ── Calculate companion progress ──────────────────────
+
+  const companionProgress = useMemo(() => {
+    if (config.progressCalculator) {
+      return config.progressCalculator(state?.companion?.progress ?? config.initialProgress);
+    }
+    return 0;
+  }, [state?.companion?.progress, config.progressCalculator, config.initialProgress]);
+
   // ── Dev tools for testing ─────────────────────────────
 
   useEffect(() => {
@@ -505,7 +513,7 @@ function TopicRunnerInner<
       <div className="flex-1 min-w-0 h-full flex flex-row gap-3 pl-3">
         {/* Lab Notebook */}
         {hasNotebook && (
-          <div className="w-[400px] shrink-0 h-full">
+          <div className="w-[520px] shrink-0 h-full">
             <LabNotebook
               pages={config.labNotebook!}
               topicTitle={config.id.replace(/-/g, " ").replace(/\b\w/g, c => c.toUpperCase())}
@@ -529,6 +537,7 @@ function TopicRunnerInner<
               reaction={companionReaction}
               onSuggestionTap={handleSuggestionTap}
               onCompanionTap={handleCompanionTap}
+              progress={companionProgress}
             />
           )}
 
@@ -538,15 +547,6 @@ function TopicRunnerInner<
               config={config.spotlightContent}
               visible={state?.companion?.spotlightUnlocked ?? false}
               onTap={handleSpotlightTap}
-            />
-          )}
-
-          {/* Progress bar — bottom, appears when config has progress tracking */}
-          {config.progressCalculator && config.progressMilestones && (
-            <ProgressBar
-              progress={state?.companion?.progress ?? config.initialProgress}
-              calculateProgress={config.progressCalculator}
-              milestones={config.progressMilestones}
             />
           )}
         </div>
