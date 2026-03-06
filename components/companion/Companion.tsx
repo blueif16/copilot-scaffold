@@ -93,7 +93,8 @@ export function Companion({
   );
 
   // Calculate circular progress
-  const radius = 44; // Slightly larger than avatar (20/2 + padding)
+  const avatarSize = 80; // w-20 h-20 (sm size)
+  const radius = avatarSize / 2 + 8; // Avatar radius + gap
   const circumference = 2 * Math.PI * radius;
   const strokeDashoffset = circumference * (1 - progress / 100);
 
@@ -103,6 +104,9 @@ export function Companion({
      progress >= 66 ? "#EE9B9B" :  // peach
      progress >= 33 ? "#C5A3D9" :  // lavender
      "#A8DADC");                    // sky
+
+  const svgSize = (radius + 6) * 2; // radius + strokeWidth/2, doubled for full diameter
+  const center = svgSize / 2;
 
   return (
     <div className="fixed bottom-6 right-4 z-40 flex flex-col items-center">
@@ -126,13 +130,19 @@ export function Companion({
       >
         {/* Circular progress ring - always visible */}
         <svg
-          className="absolute inset-0 w-full h-full -rotate-90"
-          style={{ width: "120px", height: "120px" }}
+          className="absolute -rotate-90 pointer-events-none"
+          style={{
+            width: `${svgSize}px`,
+            height: `${svgSize}px`,
+            left: '50%',
+            top: '50%',
+            transform: 'translate(-50%, -50%) rotate(-90deg)'
+          }}
         >
           {/* Background circle */}
           <circle
-            cx="60"
-            cy="60"
+            cx={center}
+            cy={center}
             r={radius}
             fill="none"
             stroke="rgba(0,0,0,0.1)"
@@ -140,8 +150,8 @@ export function Companion({
           />
           {/* Progress circle */}
           <motion.circle
-            cx="60"
-            cy="60"
+            cx={center}
+            cy={center}
             r={radius}
             fill="none"
             stroke={ringColor}
