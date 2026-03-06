@@ -18,10 +18,27 @@ export class GeminiVoiceSession {
   private audioContext: AudioContext | null = null;
   private audioQueue: AudioBuffer[] = [];
   private isPlaying = false;
+  private isConnecting = false;
+  private isClosed = false;
 
   constructor(private config: VoiceSessionConfig) {}
 
   async connect() {
+    // Prevent multiple simultaneous connection attempts
+    if (this.isConnecting) {
+      console.log("[Gemini Voice] Connection already in progress");
+      return false;
+    }
+
+    // Don't reconnect if already connected
+    if (this.session && !this.isClosed) {
+      console.log("[Gemini Voice] Already connected");
+      return true;
+    }
+
+    this.isConnecting = true;
+    this.isClosed = false;
+
     try {
       // Get ephemeral token from our API route
       const response = await fetch("/api/voice", { method: "POST" });
@@ -43,6 +60,7 @@ export class GeminiVoiceSession {
         callbacks: {
           onopen: () => {
             console.log("[Gemini Voice] Session opened");
+            this.isClosed = false;
             this.config.onOpen?.();
           },
           onmessage: (message: LiveServerMessage) => {
@@ -54,6 +72,8 @@ export class GeminiVoiceSession {
           },
           onclose: (e: CloseEvent) => {
             console.log("[Gemini Voice] Session closed:", e.reason);
+            this.isClosed = true;
+            this.session = null;
             this.config.onClose?.();
           },
         },
@@ -70,11 +90,17 @@ export class GeminiVoiceSession {
       });
 
       // Initialize Web Audio API for playback
-      this.audioContext = new AudioContext({ sampleRate: 24000 });
+      if (!this.audioContext) {
+        this.audioContext = new AudioContext({ sampleRate: 24000 });
+      }
 
+      this.isConnecting = false;
       return true;
     } catch (error) {
       console.error("[Gemini Voice] Connection failed:", error);
+      this.isConnecting = false;
+      this.isClosed = true;
+      this.session = null;
       this.config.onError?.(error as Error);
       return false;
     }
@@ -154,8 +180,8 @@ export class GeminiVoiceSession {
   }
 
   sendText(text: string) {
-    if (!this.session) {
-      console.error("[Gemini Voice] Session not connected");
+    if (!this.session || this.isClosed) {
+      console.error("[Gemini Voice] Session not connected or closed");
       return;
     }
 
@@ -166,12 +192,14 @@ export class GeminiVoiceSession {
       });
     } catch (error) {
       console.error("[Gemini Voice] Error sending text:", error);
+      this.isClosed = true;
+      this.session = null;
     }
   }
 
   sendAudio(audioData: string) {
-    if (!this.session) {
-      console.error("[Gemini Voice] Session not connected");
+    if (!this.session || this.isClosed) {
+      console.error("[Gemini Voice] Session not connected or closed");
       return;
     }
 
@@ -184,15 +212,18 @@ export class GeminiVoiceSession {
       });
     } catch (error) {
       console.error("[Gemini Voice] Error sending audio:", error);
+      this.isClosed = true;
+      this.session = null;
     }
   }
 
   close() {
     try {
-      if (this.session) {
+      if (this.session && !this.isClosed) {
         this.session.close();
-        this.session = null;
       }
+      this.session = null;
+      this.isClosed = true;
 
       if (this.audioContext) {
         this.audioContext.close();
@@ -203,10 +234,12 @@ export class GeminiVoiceSession {
       this.isPlaying = false;
     } catch (error) {
       console.error("[Gemini Voice] Error closing session:", error);
+      this.session = null;
+      this.isClosed = true;
     }
   }
 
   isSessionActive(): boolean {
-    return this.session !== null;
+    return this.session !== null && !this.isClosed;
   }
 }
