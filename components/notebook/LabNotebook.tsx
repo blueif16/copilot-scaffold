@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { LabNotebookPage } from "@/lib/types";
 
@@ -183,10 +183,57 @@ function NotebookPageContent({ page }: { page: LabNotebookPage }) {
 interface LabNotebookProps {
   pages: LabNotebookPage[];
   topicTitle: string;
+  onAskAboutSelection?: (selectedText: string) => void;
 }
 
-export function LabNotebook({ pages, topicTitle }: LabNotebookProps) {
+export function LabNotebook({ pages, topicTitle, onAskAboutSelection }: LabNotebookProps) {
   const [[currentPage, direction], setPage] = useState([0, 0]);
+
+  // ── Text selection state ─────────────────────────────
+  const [selectionText, setSelectionText] = useState<string | null>(null);
+  const [tooltipPos, setTooltipPos] = useState<{ x: number; y: number } | null>(null);
+  const notebookRef = useRef<HTMLDivElement>(null);
+
+  const handleMouseUp = useCallback(() => {
+    const selection = window.getSelection();
+    const text = selection?.toString().trim();
+    if (!text || text.length < 2) {
+      setSelectionText(null);
+      setTooltipPos(null);
+      return;
+    }
+    // Make sure selection is inside the notebook
+    if (
+      notebookRef.current &&
+      selection?.rangeCount &&
+      notebookRef.current.contains(selection.anchorNode)
+    ) {
+      const range = selection.getRangeAt(0);
+      const rect = range.getBoundingClientRect();
+      const parentRect = notebookRef.current.getBoundingClientRect();
+      setSelectionText(text);
+      setTooltipPos({
+        x: rect.left + rect.width / 2 - parentRect.left,
+        y: rect.top - parentRect.top - 8,
+      });
+    }
+  }, []);
+
+  const handleAskClick = useCallback(() => {
+    if (selectionText && onAskAboutSelection) {
+      onAskAboutSelection(selectionText);
+    }
+    // Clear selection
+    window.getSelection()?.removeAllRanges();
+    setSelectionText(null);
+    setTooltipPos(null);
+  }, [selectionText, onAskAboutSelection]);
+
+  // Dismiss tooltip when clicking outside or on page change
+  useEffect(() => {
+    setSelectionText(null);
+    setTooltipPos(null);
+  }, [currentPage]);
 
   const paginate = useCallback(
     (newDirection: number) => {
@@ -211,7 +258,50 @@ export function LabNotebook({ pages, topicTitle }: LabNotebookProps) {
     : "bg-playful-sky";
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="relative flex flex-col h-full" ref={notebookRef} onMouseUp={handleMouseUp}>
+      {/* Yellow highlight style for selected text inside notebook */}
+      <style>{`
+        .notebook-selectable ::selection {
+          background: #FEF3B0;
+          color: inherit;
+        }
+      `}</style>
+
+      {/* ── "Ask about it" floating tooltip ── */}
+      <AnimatePresence>
+        {selectionText && tooltipPos && onAskAboutSelection && (
+          <motion.div
+            key="ask-tooltip"
+            initial={{ opacity: 0, y: 4, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 4, scale: 0.95 }}
+            transition={{ duration: 0.15 }}
+            className="absolute z-50 pointer-events-auto"
+            style={{
+              left: tooltipPos.x,
+              top: tooltipPos.y,
+              transform: "translate(-50%, -100%)",
+            }}
+          >
+            <button
+              onClick={handleAskClick}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg
+                bg-playful-mustard border-2 border-ink text-ink font-display text-xs font-bold
+                shadow-chunky-sm hover:shadow-chunky hover:-translate-y-0.5
+                active:shadow-none active:translate-y-0.5 transition-all whitespace-nowrap"
+            >
+              <span className="text-base leading-none">💡</span>
+              Ask about this
+            </button>
+            {/* Tooltip arrow */}
+            <div className="absolute left-1/2 -translate-x-1/2 top-full w-0 h-0
+              border-l-[6px] border-l-transparent
+              border-r-[6px] border-r-transparent
+              border-t-[6px] border-t-ink" />
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* ── Book body ─────────────────────────────────── */}
       <div className="flex flex-col h-full border-4 border-ink rounded-2xl bg-white shadow-chunky overflow-hidden">
         {/* Header */}
@@ -248,7 +338,7 @@ export function LabNotebook({ pages, topicTitle }: LabNotebookProps) {
         </div>
 
         {/* Animated page content */}
-        <div className="flex-1 min-h-0 px-3 pb-2 pt-1 relative overflow-hidden">
+        <div className="flex-1 min-h-0 px-3 pb-2 pt-1 relative overflow-hidden notebook-selectable">
           <AnimatePresence mode="wait" custom={direction}>
             <motion.div
               key={currentPage}

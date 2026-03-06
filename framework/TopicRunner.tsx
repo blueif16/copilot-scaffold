@@ -403,6 +403,16 @@ function TopicRunnerInner<
     handleEvent({ type: "spotlight_tap", data: {} });
   }, [handleEvent]);
 
+  // ── Lab Notebook "Ask about this" handler ──────────────
+  const handleAskAboutSelection = useCallback(
+    (selectedText: string) => {
+      setChatOpen(true);
+      const message = `Teach me what the following means!\n"${selectedText}"`;
+      setTimeout(() => handleChatSend(message), 150);
+    },
+    [handleChatSend],
+  );
+
   // ── Merge reaction suggestions with contextual ones ───
   // If the current reaction has suggestions, show those.
   // Otherwise show contextual suggestions on the companion.
@@ -517,6 +527,7 @@ function TopicRunnerInner<
             <LabNotebook
               pages={config.labNotebook!}
               topicTitle={config.id.replace(/-/g, " ").replace(/\b\w/g, c => c.toUpperCase())}
+              onAskAboutSelection={handleAskAboutSelection}
             />
           </div>
         )}
