@@ -1,3 +1,5 @@
+"use client";
+
 interface CourseCardProps {
   title: string;
   format: "lab" | "dialogue";
