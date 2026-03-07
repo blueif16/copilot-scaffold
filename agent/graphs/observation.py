@@ -44,8 +44,8 @@ class ObservationAgentState(CopilotKitState):
     events: dict[str, Any]
     companion: dict[str, Any]
     # Internal routing fields (small, transient)
-    _pending_reaction: dict[str, Any] | None
-    _ai_hint: str | None
+    _pending_reaction: Optional[dict[str, Any]]
+    _ai_hint: Optional[str]
     _event_counts: dict[str, int]
 
 
