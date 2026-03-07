@@ -15,6 +15,8 @@
     "@copilotkit/runtime": "^1.8.16",
     "@copilotkit/runtime-client-gql": "^1.8.16",
     "@google/genai": "^1.44.0",
+    "@supabase/ssr": "^0.5.2",
+    "@supabase/supabase-js": "^2.98.0",
     "autoprefixer": "^10.4.27",
     "framer-motion": "^11.18.0",
     "next": "14.2.29",
