@@ -4,6 +4,7 @@ import { Fraunces, Space_Grotesk } from "next/font/google";
 import { GrainOverlay } from "@/components/ui/GrainOverlay";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { LocaleProvider } from "@/contexts/LocaleContext";
+import { AuthProvider } from "@/contexts/AuthContext";
 import "./globals.css";
 
 const fraunces = Fraunces({
@@ -30,9 +31,11 @@ export default function RootLayout({
     >
       <body className="min-h-screen bg-paper text-ink font-body antialiased">
         <GrainOverlay />
-        <LocaleProvider>
-          <ErrorBoundary>{children}</ErrorBoundary>
-        </LocaleProvider>
+        <AuthProvider>
+          <LocaleProvider>
+            <ErrorBoundary>{children}</ErrorBoundary>
+          </LocaleProvider>
+        </AuthProvider>
       </body>
     </html>
   );
