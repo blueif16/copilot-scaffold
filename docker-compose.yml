@@ -216,9 +216,11 @@ services:
     ports:
       - "8283:8283"
     environment:
-      LETTA_PG_URI: postgres://postgres:${POSTGRES_PASSWORD:-your-super-secret-and-long-postgres-password}@supabase-db:5432/letta
+      LETTA_PG_URI: postgresql://postgres:${POSTGRES_PASSWORD:-your-super-secret-and-long-postgres-password}@supabase-db:5432/letta
     command: >
-      sh -c "pip install psycopg2-binary && letta server"
+      sh -c "pip install --quiet psycopg2-binary &&
+             cd /app && alembic upgrade head &&
+             exec letta server"
     depends_on:
       supabase-db:
         condition: service_healthy
