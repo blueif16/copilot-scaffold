@@ -49,29 +49,43 @@ class UpdateMemoryResponse(BaseModel):
 
 # ── Build graphs with config injected via closure ───
 
+# TODO: Fetch student memory and pass to graph builders in Slice 13
+
 # Changing States (Level 1, Ages 6-8)
 observation_graph_changing_states = build_observation_graph(
     changing_states_config,
     changing_states_reactions,
+    student_memory=None,  # TODO: Fetch from Letta in Slice 13
 )
 
-chat_graph_changing_states = build_chat_graph(changing_states_config)
+chat_graph_changing_states = build_chat_graph(
+    changing_states_config,
+    student_memory=None,  # TODO: Fetch from Letta in Slice 13
+)
 
 # Electric Circuits (Level 2, Ages 9-10)
 observation_graph_electric_circuits = build_observation_graph(
     electric_circuits_config,
     electric_circuits_reactions,
+    student_memory=None,  # TODO: Fetch from Letta in Slice 13
 )
 
-chat_graph_electric_circuits = build_chat_graph(electric_circuits_config)
+chat_graph_electric_circuits = build_chat_graph(
+    electric_circuits_config,
+    student_memory=None,  # TODO: Fetch from Letta in Slice 13
+)
 
 # Genetics Basics (Level 3, Ages 11-12)
 observation_graph_genetics = build_observation_graph(
     genetics_basics_config,
     genetics_basics_reactions,
+    student_memory=None,  # TODO: Fetch from Letta in Slice 13
 )
 
-chat_graph_genetics = build_chat_graph(genetics_basics_config)
+chat_graph_genetics = build_chat_graph(
+    genetics_basics_config,
+    student_memory=None,  # TODO: Fetch from Letta in Slice 13
+)
 
 # ── Create FastAPI app and register agents ────────────────
 
