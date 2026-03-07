@@ -12,7 +12,8 @@ services:
       POSTGRES_DB: postgres
     volumes:
       - supabase-db-data:/var/lib/postgresql/data
-      - ./supabase/init-letta-db.sql:/docker-entrypoint-initdb.d/init-letta-db.sql:ro
+      - ./supabase/init-supabase-schema.sql:/docker-entrypoint-initdb.d/01-init-supabase-schema.sql:ro
+      - ./supabase/init-letta-db.sql:/docker-entrypoint-initdb.d/02-init-letta-db.sql:ro
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
@@ -216,6 +217,8 @@ services:
       - "8283:8283"
     environment:
       LETTA_PG_URI: postgres://postgres:${POSTGRES_PASSWORD:-your-super-secret-and-long-postgres-password}@supabase-db:5432/letta
+    command: >
+      sh -c "pip install psycopg2-binary && letta server"
     depends_on:
       supabase-db:
         condition: service_healthy
