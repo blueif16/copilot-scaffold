@@ -10,7 +10,7 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Optional
 
 from copilotkit import CopilotKitState
 from langchain_core.messages import SystemMessage
@@ -68,8 +68,13 @@ class ChatAgentState(CopilotKitState):
 # ── Graph Builder ────────────────────────────────────────
 
 
-def build_chat_graph(topic_config: TopicConfig):
-    """Build the chat agent graph. TopicConfig injected via closure."""
+def build_chat_graph(topic_config: TopicConfig, student_memory: Optional[dict] = None):
+    """Build the chat agent graph. TopicConfig injected via closure.
+
+    Args:
+        topic_config: Topic-specific configuration
+        student_memory: Optional student memory from Letta (injected into AI prompts)
+    """
 
     async def conversational_response(
         state: ChatAgentState, config: RunnableConfig
@@ -83,10 +88,21 @@ def build_chat_graph(topic_config: TopicConfig):
         print(f"[Chat Agent] Companion progress: {state.get('companion', {}).get('progress', {})}")
 
         try:
+            # Build memory context if available (student_memory captured by closure)
+            memory_context = ""
+            if student_memory:
+                memory_context = f"""
+STUDENT MEMORY (from past sessions):
+- Profile: {student_memory.get('student_profile', 'N/A')}
+- Learning Style: {student_memory.get('learning_style', 'N/A')}
+- Knowledge: {student_memory.get('knowledge_state', 'N/A')}
+- Interests: {student_memory.get('interests', 'N/A')}
+"""
+
             # topic_config accessed via closure
             sim = state.get("simulation", {})
             system_msg = f"""{topic_config.chat_system_prompt}
-
+{memory_context}
 CURRENT STATE:
 Phase: {sim.get("phase")}
 Temperature: {sim.get("temperature")}
