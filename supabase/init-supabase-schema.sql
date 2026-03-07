@@ -10,8 +10,8 @@
 CREATE ROLE anon NOLOGIN NOINHERIT;
 CREATE ROLE authenticated NOLOGIN NOINHERIT;
 CREATE ROLE service_role NOLOGIN NOINHERIT BYPASSRLS;
-CREATE ROLE supabase_auth_admin NOLOGIN NOINHERIT CREATEROLE CREATEDB;
-CREATE ROLE supabase_storage_admin NOLOGIN NOINHERIT CREATEROLE CREATEDB;
+CREATE ROLE supabase_auth_admin LOGIN NOINHERIT CREATEROLE CREATEDB PASSWORD 'your-super-secret-and-long-postgres-password';
+CREATE ROLE supabase_storage_admin LOGIN NOINHERIT CREATEROLE CREATEDB PASSWORD 'your-super-secret-and-long-postgres-password';
 CREATE ROLE supabase_admin NOLOGIN NOINHERIT CREATEROLE CREATEDB;
 CREATE ROLE authenticator NOINHERIT LOGIN PASSWORD 'your-super-secret-and-long-postgres-password';
 
