@@ -12,11 +12,13 @@ load_env()
 
 from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.concurrency import run_in_threadpool
 from copilotkit import LangGraphAGUIAgent
 from ag_ui_langgraph import add_langgraph_fastapi_endpoint
 from pydantic import BaseModel
 import uvicorn
 import logging
+import time
 from typing import Optional, Dict, Any
 
 logger = logging.getLogger(__name__)
@@ -53,42 +55,44 @@ class UpdateMemoryResponse(BaseModel):
 
 # ── Build graphs with config injected via closure ───
 
-# TODO: Fetch student memory and pass to graph builders in Slice 13
+# Note: Graphs are built at module level with student_memory=None.
+# In Slice 13, this will be refactored to fetch memory per-request.
+# Current architecture locks None into the closure, preventing per-student memory.
 
 # Changing States (Level 1, Ages 6-8)
 observation_graph_changing_states = build_observation_graph(
     changing_states_config,
     changing_states_reactions,
-    student_memory=None,  # TODO: Fetch from Letta in Slice 13
+    student_memory=None,  # TODO: Refactor to per-request memory fetch in Slice 13
 )
 
 chat_graph_changing_states = build_chat_graph(
     changing_states_config,
-    student_memory=None,  # TODO: Fetch from Letta in Slice 13
+    student_memory=None,  # TODO: Refactor to per-request memory fetch in Slice 13
 )
 
 # Electric Circuits (Level 2, Ages 9-10)
 observation_graph_electric_circuits = build_observation_graph(
     electric_circuits_config,
     electric_circuits_reactions,
-    student_memory=None,  # TODO: Fetch from Letta in Slice 13
+    student_memory=None,  # TODO: Refactor to per-request memory fetch in Slice 13
 )
 
 chat_graph_electric_circuits = build_chat_graph(
     electric_circuits_config,
-    student_memory=None,  # TODO: Fetch from Letta in Slice 13
+    student_memory=None,  # TODO: Refactor to per-request memory fetch in Slice 13
 )
 
 # Genetics Basics (Level 3, Ages 11-12)
 observation_graph_genetics = build_observation_graph(
     genetics_basics_config,
     genetics_basics_reactions,
-    student_memory=None,  # TODO: Fetch from Letta in Slice 13
+    student_memory=None,  # TODO: Refactor to per-request memory fetch in Slice 13
 )
 
 chat_graph_genetics = build_chat_graph(
     genetics_basics_config,
-    student_memory=None,  # TODO: Fetch from Letta in Slice 13
+    student_memory=None,  # TODO: Refactor to per-request memory fetch in Slice 13
 )
 
 # Course Builder (Teacher-facing)
@@ -219,13 +223,20 @@ async def get_me(user: Optional[Dict[str, Any]] = Depends(get_current_user)):
 async def create_memory_agent_endpoint(
     user_id: str,
     request: CreateMemoryAgentRequest,
-    user: Dict[str, Any] = Depends(get_current_user)
+    user: Optional[Dict[str, Any]] = Depends(get_current_user)
 ):
     """
     Create a Letta memory agent for a new student.
 
     Requires authentication. Creates agent and updates profiles.letta_agent_id.
     """
+    # Check authentication first
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required"
+        )
+
     # Authorization check: only allow users to create agents for themselves
     if user["id"] != user_id:
         raise HTTPException(
@@ -233,10 +244,12 @@ async def create_memory_agent_endpoint(
             detail="Not authorized to create agent for this user"
         )
 
-    supabase = get_supabase_client()
+    supabase = await run_in_threadpool(get_supabase_client)
 
     # Check if user exists
-    profile_response = supabase.table("profiles").select("*").eq("id", user_id).execute()
+    profile_response = await run_in_threadpool(
+        lambda: supabase.table("profiles").select("*").eq("id", user_id).execute()
+    )
     if not profile_response.data:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -253,26 +266,50 @@ async def create_memory_agent_endpoint(
         )
 
     try:
-        # Create Letta agent
-        agent_id = create_student_agent(user_id, request.name, request.age)
+        # Reserve the slot atomically to prevent race conditions
+        # Use a placeholder value to indicate creation in progress
+        reservation_token = f"creating-{int(time.time())}"
+
+        update_response = await run_in_threadpool(
+            lambda: supabase.table("profiles").update({
+                "letta_agent_id": reservation_token
+            }).eq("id", user_id).is_("letta_agent_id", "null").execute()
+        )
+
+        # If no rows were updated, another request won the race
+        if not update_response.data:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"Agent creation already in progress for user {user_id}"
+            )
 
         try:
-            # Update profiles table with agent_id
-            supabase.table("profiles").update({
-                "letta_agent_id": agent_id
-            }).eq("id", user_id).execute()
-        except Exception as db_error:
-            # Database update failed - attempt to clean up the created agent
-            logger.error(f"Failed to update profile for user {user_id} with agent {agent_id}: {db_error}", exc_info=True)
-            try:
-                # Note: Letta client doesn't expose delete_agent in current implementation
-                # This would need to be added if cleanup is critical
-                logger.warning(f"Agent {agent_id} created but not linked to user {user_id} - manual cleanup may be needed")
-            except Exception as cleanup_error:
-                logger.error(f"Failed to cleanup agent {agent_id}: {cleanup_error}", exc_info=True)
-            raise
+            # Create Letta agent
+            agent_id = await run_in_threadpool(
+                create_student_agent, user_id, request.name, request.age
+            )
 
-        return CreateMemoryAgentResponse(agent_id=agent_id)
+            # Replace reservation token with actual agent_id
+            await run_in_threadpool(
+                lambda: supabase.table("profiles").update({
+                    "letta_agent_id": agent_id
+                }).eq("id", user_id).execute()
+            )
+
+            return CreateMemoryAgentResponse(agent_id=agent_id)
+
+        except Exception as agent_error:
+            # Agent creation failed - clear the reservation token
+            logger.error(f"Failed to create agent for user {user_id}: {agent_error}", exc_info=True)
+            try:
+                await run_in_threadpool(
+                    lambda: supabase.table("profiles").update({
+                        "letta_agent_id": None
+                    }).eq("id", user_id).execute()
+                )
+            except Exception as cleanup_error:
+                logger.error(f"Failed to clear reservation token for user {user_id}: {cleanup_error}", exc_info=True)
+            raise
 
     except Exception as e:
         logger.error(f"Failed to create memory agent for user {user_id}: {e}", exc_info=True)
@@ -286,13 +323,20 @@ async def create_memory_agent_endpoint(
 async def update_memory_endpoint(
     user_id: str,
     request: UpdateMemoryRequest,
-    user: Dict[str, Any] = Depends(get_current_user)
+    user: Optional[Dict[str, Any]] = Depends(get_current_user)
 ):
     """
     Update student memory after a learning session.
 
     Requires authentication. Fetches letta_agent_id and updates memory.
     """
+    # Check authentication first
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required"
+        )
+
     # Authorization check: only allow users to update their own memory
     if user["id"] != user_id:
         raise HTTPException(
@@ -300,10 +344,12 @@ async def update_memory_endpoint(
             detail="Not authorized to update memory for this user"
         )
 
-    supabase = get_supabase_client()
+    supabase = await run_in_threadpool(get_supabase_client)
 
     # Fetch user profile to get letta_agent_id
-    profile_response = supabase.table("profiles").select("letta_agent_id").eq("id", user_id).execute()
+    profile_response = await run_in_threadpool(
+        lambda: supabase.table("profiles").select("letta_agent_id").eq("id", user_id).execute()
+    )
     if not profile_response.data:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -321,7 +367,8 @@ async def update_memory_endpoint(
 
     try:
         # Update student memory
-        update_student_memory_after_session(
+        await run_in_threadpool(
+            update_student_memory_after_session,
             agent_id=agent_id,
             session_summary=request.session_summary,
             topic=request.topic,

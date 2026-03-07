@@ -10,14 +10,9 @@ Tests the complete Letta integration including:
 """
 
 import os
-import sys
 from unittest.mock import MagicMock, patch, Mock
 
 import pytest
-
-# Python 3.9 doesn't support PEP 604 union syntax (dict | None)
-# which is used in the graph state classes
-PYTHON_39 = sys.version_info < (3, 10)
 
 
 # ── Test 1: Letta client initialization ──────────────────────
@@ -113,7 +108,7 @@ def test_get_student_memory():
     with patch.dict(os.environ, {"LETTA_BASE_URL": "http://localhost:8283"}):
         with patch("memory.letta_client.Letta") as mock_letta_cls:
             mock_client = MagicMock()
-            mock_client.agents.blocks.retrieve.side_effect = lambda agent_id, block_label: mock_blocks[block_label]
+            mock_client.agents.blocks.retrieve.side_effect = lambda _agent_id, block_label: mock_blocks[block_label]
             mock_letta_cls.return_value = mock_client
 
             memory = get_student_memory(agent_id="agent-123")
@@ -172,7 +167,6 @@ def test_update_student_memory_after_session():
 # ── Test 5: Graph builder memory injection ───────────────────
 
 
-@pytest.mark.skipif(PYTHON_39, reason="Python 3.9 doesn't support PEP 604 union syntax")
 def test_observation_graph_with_memory():
     """Verify observation graph compiles with student memory injection."""
     from graphs.observation import build_observation_graph
@@ -228,7 +222,6 @@ def test_chat_graph_with_memory():
     assert "respond" in node_ids
 
 
-@pytest.mark.skipif(PYTHON_39, reason="Python 3.9 doesn't support PEP 604 union syntax")
 def test_graphs_compile_without_memory():
     """Verify graphs compile successfully when student_memory is None."""
     from graphs.observation import build_observation_graph
