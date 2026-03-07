@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState, useEffect, type ComponentType } from "react";
+import { Suspense, useState, useEffect, useRef, type ComponentType } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { CopilotKit } from "@copilotkit/react-core";
@@ -11,6 +11,8 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { LoadingScreen } from "@/components/ui/LoadingScreen";
 import { ConnectionStatus } from "@/components/ui/ConnectionStatus";
 import { TOPICS } from "@/lib/topics";
+import { useAuth } from "@/contexts/AuthContext";
+import { createSupabaseBrowser } from "@/lib/supabase/client";
 import type { TopicConfig, SimulationProps, TopicMeta } from "@/lib/types";
 
 // ── Color palette for mini cards ─────────────────────────
@@ -135,11 +137,56 @@ function TopicPageContent<
   const [sessionId, setSessionId] = useState<string | undefined>(undefined);
   const [mounted, setMounted] = useState(false);
   const [stripOpen, setStripOpen] = useState(false);
+  const { user } = useAuth();
+  const sessionStartTimeRef = useRef<number>(Date.now());
 
   useEffect(() => {
     setSessionId(getTopicSessionId(topicSlug));
     setMounted(true);
+    sessionStartTimeRef.current = Date.now();
   }, [topicSlug]);
+
+  // Track session end on unmount
+  useEffect(() => {
+    return () => {
+      // Only send session end for authenticated students
+      if (!user?.id) return;
+
+      const durationMinutes = Math.round((Date.now() - sessionStartTimeRef.current) / 60000);
+
+      // Only track sessions longer than 1 minute
+      if (durationMinutes < 1) return;
+
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8123";
+
+      // Use sendBeacon for reliable delivery on page unload
+      const supabase = createSupabaseBrowser();
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (!session?.access_token) return;
+
+        const payload = JSON.stringify({
+          topic: title,
+          duration_minutes: durationMinutes,
+          session_summary: `Completed ${title} session`
+        });
+
+        // Try fetch first (works during normal navigation)
+        fetch(`${backendUrl}/api/sessions/${user.id}/end`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`
+          },
+          body: payload,
+          keepalive: true
+        }).catch(() => {
+          // Fallback to sendBeacon if fetch fails
+          const blob = new Blob([payload], { type: 'application/json' });
+          navigator.sendBeacon(`${backendUrl}/api/sessions/${user.id}/end`, blob);
+        });
+      });
+    };
+  }, [user?.id, topicSlug, title]);
 
   // Close strip on Escape
   useEffect(() => {
