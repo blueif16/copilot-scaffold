@@ -10,11 +10,12 @@ from config import load_env
 # Load .env before any other imports that might need API keys
 load_env()
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from copilotkit import LangGraphAGUIAgent
 from ag_ui_langgraph import add_langgraph_fastapi_endpoint
 import uvicorn
+from typing import Optional, Dict, Any
 
 from graphs.chat import build_chat_graph
 from graphs.observation import build_observation_graph
@@ -24,6 +25,7 @@ from topics.electric_circuits.config import electric_circuits_config
 from topics.electric_circuits.reactions import electric_circuits_reactions
 from topics.genetics_basics.config import genetics_basics_config
 from topics.genetics_basics.reactions import genetics_basics_reactions
+from middleware.auth import get_current_user
 
 # ── Build graphs with config injected via closure ───
 
@@ -134,6 +136,29 @@ add_langgraph_fastapi_endpoint(
 def health():
     """Health check."""
     return {"status": "ok"}
+
+
+# Example protected endpoint (for testing auth)
+@app.get("/me")
+async def get_me(user: Optional[Dict[str, Any]] = Depends(get_current_user)):
+    """
+    Get current user information.
+
+    Optional authentication - returns user data if authenticated, 401 if not.
+    """
+    if not user:
+        from fastapi import HTTPException, status
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required"
+        )
+
+    return {
+        "id": user["id"],
+        "email": user["email"],
+        "role": user["role"],
+        "display_name": user.get("display_name"),
+    }
 
 
 
