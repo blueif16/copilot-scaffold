@@ -10,10 +10,11 @@ from config import load_env
 # Load .env before any other imports that might need API keys
 load_env()
 
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from copilotkit import LangGraphAGUIAgent
 from ag_ui_langgraph import add_langgraph_fastapi_endpoint
+from pydantic import BaseModel
 import uvicorn
 from typing import Optional, Dict, Any
 
@@ -26,6 +27,25 @@ from topics.electric_circuits.reactions import electric_circuits_reactions
 from topics.genetics_basics.config import genetics_basics_config
 from topics.genetics_basics.reactions import genetics_basics_reactions
 from middleware.auth import get_current_user
+from memory.letta_client import create_student_agent, update_student_memory_after_session, get_student_memory
+from lib.supabase_client import get_supabase_client
+
+# ── Pydantic models for request/response bodies ───
+
+class CreateMemoryAgentRequest(BaseModel):
+    name: str
+    age: int
+
+class CreateMemoryAgentResponse(BaseModel):
+    agent_id: str
+
+class UpdateMemoryRequest(BaseModel):
+    session_summary: str
+    topic: str
+    duration_minutes: int
+
+class UpdateMemoryResponse(BaseModel):
+    success: bool
 
 # ── Build graphs with config injected via closure ───
 
@@ -160,5 +180,102 @@ async def get_me(user: Optional[Dict[str, Any]] = Depends(get_current_user)):
         "display_name": user.get("display_name"),
     }
 
+
+# ── Memory Agent Endpoints ─────────────────────────────────
+
+@app.post("/api/students/{user_id}/create-memory-agent", response_model=CreateMemoryAgentResponse)
+async def create_memory_agent_endpoint(
+    user_id: str,
+    request: CreateMemoryAgentRequest,
+    user: Dict[str, Any] = Depends(get_current_user)
+):
+    """
+    Create a Letta memory agent for a new student.
+
+    Requires authentication. Creates agent and updates profiles.letta_agent_id.
+    """
+    supabase = get_supabase_client()
+
+    # Check if user exists
+    profile_response = supabase.table("profiles").select("*").eq("id", user_id).execute()
+    if not profile_response.data:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"User {user_id} not found"
+        )
+
+    profile = profile_response.data[0]
+
+    # Check if agent already exists
+    if profile.get("letta_agent_id"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Memory agent already exists for user {user_id}"
+        )
+
+    try:
+        # Create Letta agent
+        agent_id = create_student_agent(user_id, request.name, request.age)
+
+        # Update profiles table with agent_id
+        supabase.table("profiles").update({
+            "letta_agent_id": agent_id
+        }).eq("id", user_id).execute()
+
+        return CreateMemoryAgentResponse(agent_id=agent_id)
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to create memory agent: {str(e)}"
+        )
+
+
+@app.post("/api/students/{user_id}/update-memory", response_model=UpdateMemoryResponse)
+async def update_memory_endpoint(
+    user_id: str,
+    request: UpdateMemoryRequest,
+    user: Dict[str, Any] = Depends(get_current_user)
+):
+    """
+    Update student memory after a learning session.
+
+    Requires authentication. Fetches letta_agent_id and updates memory.
+    """
+    supabase = get_supabase_client()
+
+    # Fetch user profile to get letta_agent_id
+    profile_response = supabase.table("profiles").select("letta_agent_id").eq("id", user_id).execute()
+    if not profile_response.data:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"User {user_id} not found"
+        )
+
+    profile = profile_response.data[0]
+    agent_id = profile.get("letta_agent_id")
+
+    if not agent_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"No memory agent found for user {user_id}. Create one first."
+        )
+
+    try:
+        # Update student memory
+        update_student_memory_after_session(
+            agent_id=agent_id,
+            session_summary=request.session_summary,
+            topic=request.topic,
+            duration_minutes=request.duration_minutes
+        )
+
+        return UpdateMemoryResponse(success=True)
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to update memory: {str(e)}"
+        )
 
 
