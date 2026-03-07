@@ -1,9 +1,11 @@
 "use client";
 
 import { useAuth } from "@/contexts/AuthContext";
+import { useRouter } from "next/navigation";
 
 export default function TeacherDashboardPage() {
   const { profile } = useAuth();
+  const router = useRouter();
 
   return (
     <div className="max-w-5xl">
@@ -17,7 +19,7 @@ export default function TeacherDashboardPage() {
       </div>
 
       {/* Empty state */}
-      <div className="border border-ink/20 rounded-lg shadow-sm p-12 text-center">
+      <div className="border border-ink/10 rounded-lg shadow-sm p-12 text-center bg-white/50">
         <div className="max-w-md mx-auto">
           <div className="w-16 h-16 bg-ink/5 rounded-lg mx-auto mb-4 flex items-center justify-center">
             <svg
@@ -40,7 +42,10 @@ export default function TeacherDashboardPage() {
           <p className="text-ink/60 mb-6">
             Create your first course to get started with teaching on Omniscience.
           </p>
-          <button className="px-6 py-3 bg-ink text-paper rounded-lg hover:bg-ink/90 transition-colors font-medium">
+          <button
+            onClick={() => router.push("/teacher/courses/new")}
+            className="px-6 py-3 bg-ink text-paper rounded-lg hover:bg-ink/90 transition-colors font-medium shadow-sm"
+          >
             Create New Course
           </button>
         </div>
