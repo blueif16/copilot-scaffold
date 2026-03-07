@@ -11,9 +11,9 @@
 
 import pytest
 
-from models import ReactionRegistry, SimulationEvent
-from topics.changing_states.reactions import changing_states_reactions
-from tests.fixtures.sample_events import (
+from ..models import ReactionRegistry, SimulationEvent
+from ..topics.changing_states.reactions import changing_states_reactions
+from .fixtures.sample_events import (
     FIRST_INTERACTION,
     PHASE_CHANGE_SOLID_TO_LIQUID,
     DWELL_TIMEOUT_SOLID,

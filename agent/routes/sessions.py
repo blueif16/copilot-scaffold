@@ -10,9 +10,9 @@ from pydantic import BaseModel
 from typing import Optional, Dict, Any
 import logging
 
-from middleware.auth import get_current_user
-from memory.letta_client import update_student_memory_after_session, get_student_memory
-from lib.supabase_client import get_supabase_client
+from ..middleware.auth import get_current_user
+from ..memory.letta_client import update_student_memory_after_session, get_student_memory
+from ..lib.supabase_client import get_supabase_client
 
 logger = logging.getLogger(__name__)
 

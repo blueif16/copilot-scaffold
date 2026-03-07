@@ -8,8 +8,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from graphs.chat import build_chat_graph
-from topics.changing_states.config import changing_states_config
+from ..graphs.chat import build_chat_graph
+from ..topics.changing_states.config import changing_states_config
 
 
 def test_chat_graph_compiles():
