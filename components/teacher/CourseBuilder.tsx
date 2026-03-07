@@ -3,6 +3,9 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { SandpackProvider, SandpackPreview } from "@codesandbox/sandpack-react";
+import { CopilotKit } from "@copilotkit/react-core";
+import { useCopilotChat, useCopilotAction } from "@copilotkit/react-core";
+import { Role, TextMessage } from "@copilotkit/runtime-client-gql";
 import {
   CourseTemplate,
   ChatMessage,
@@ -37,61 +40,109 @@ const TEMPLATES: CourseTemplate[] = [
   },
 ];
 
-export default function CourseBuilder() {
+function CourseBuilderContent() {
   const [phase, setPhase] = useState<BuilderPhase>("landing");
   const [selectedTemplate, setSelectedTemplate] = useState<CourseTemplate | null>(null);
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
   const [files, setFiles] = useState<Record<string, string>>({});
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // CopilotKit integration
+  const {
+    visibleMessages,
+    appendMessage,
+    isLoading,
+  } = useCopilotChat();
+
+  // Convert CopilotKit messages to our ChatMessage format
+  const messages: ChatMessage[] = visibleMessages.map((msg) => ({
+    id: msg.id,
+    role: msg.role === Role.User ? "user" : "assistant",
+    content: typeof msg.content === "string" ? msg.content : "",
+    timestamp: new Date(msg.createdAt || Date.now()),
+  }));
+
+  // Handle write_file tool calls from agent
+  useCopilotAction({
+    name: "write_file",
+    description: "Write a new file to the Sandpack preview",
+    parameters: [
+      {
+        name: "path",
+        type: "string",
+        description: "File path (e.g., /App.tsx)",
+        required: true,
+      },
+      {
+        name: "content",
+        type: "string",
+        description: "File content",
+        required: true,
+      },
+    ],
+    handler: async ({ path, content }) => {
+      setFiles((prev) => ({ ...prev, [path]: content }));
+      // Transition to split view when first file is written
+      if (Object.keys(files).length === 0) {
+        setPhase("split");
+      }
+      return { success: true, path };
+    },
+  });
+
+  // Handle update_file tool calls from agent
+  useCopilotAction({
+    name: "update_file",
+    description: "Update an existing file in the Sandpack preview",
+    parameters: [
+      {
+        name: "path",
+        type: "string",
+        description: "File path to update",
+        required: true,
+      },
+      {
+        name: "content",
+        type: "string",
+        description: "New file content",
+        required: true,
+      },
+    ],
+    handler: async ({ path, content }) => {
+      setFiles((prev) => ({ ...prev, [path]: content }));
+      return { success: true, path };
+    },
+  });
+
   // Auto-scroll to bottom when messages change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  }, [visibleMessages]);
 
   const handleTemplateClick = useCallback((template: CourseTemplate) => {
     setSelectedTemplate(template);
     setPhase("chat");
-    setMessages([
-      {
-        id: "1",
-        role: "assistant",
+    appendMessage(
+      new TextMessage({
         content: `Great choice! Let's build a ${template.name} lesson. What age group are you teaching?`,
-        timestamp: new Date(),
-      },
-    ]);
-  }, []);
+        role: Role.Assistant,
+      })
+    );
+  }, [appendMessage]);
 
   const handleSendMessage = useCallback(async () => {
     if (!input.trim() || isLoading) return;
 
-    const userMessage: ChatMessage = {
-      id: Date.now().toString(),
-      role: "user",
-      content: input,
-      timestamp: new Date(),
-    };
-
-    setMessages((prev) => [...prev, userMessage]);
+    appendMessage(
+      new TextMessage({
+        content: input,
+        role: Role.User,
+      })
+    );
     setInput("");
-    setIsLoading(true);
-
-    // Simulate AI response (will be replaced with actual API call in Slice 11)
-    setTimeout(() => {
-      const assistantMessage: ChatMessage = {
-        id: (Date.now() + 1).toString(),
-        role: "assistant",
-        content: "I'm working on that...",
-        timestamp: new Date(),
-      };
-      setMessages((prev) => [...prev, assistantMessage]);
-      setIsLoading(false);
-    }, 1000);
-  }, [input, isLoading]);
+  }, [input, isLoading, appendMessage]);
 
   const handleKeyPress = useCallback(
     (e: React.KeyboardEvent) => {
@@ -102,21 +153,6 @@ export default function CourseBuilder() {
     },
     [handleSendMessage]
   );
-
-  // Manual test trigger - simulates file update to test split pane transition
-  const triggerSplitView = useCallback(() => {
-    setFiles({
-      "/App.tsx": `export default function App() {
-  return (
-    <div style={{ padding: 20 }}>
-      <h1>Water Cycle Simulation</h1>
-      <p>This is a placeholder preview</p>
-    </div>
-  );
-}`,
-    });
-    setPhase("split");
-  }, []);
 
   return (
     <div className="h-screen bg-paper flex flex-col">
@@ -257,13 +293,6 @@ export default function CourseBuilder() {
                 >
                   Send
                 </button>
-                {/* Manual test button */}
-                <button
-                  onClick={triggerSplitView}
-                  className="btn-chunky px-6 py-3 bg-peach text-sm"
-                >
-                  Test Split
-                </button>
               </div>
             </div>
           </motion.div>
@@ -375,5 +404,13 @@ export default function CourseBuilder() {
         )}
       </AnimatePresence>
     </div>
+  );
+}
+
+export default function CourseBuilder() {
+  return (
+    <CopilotKit runtimeUrl="/api/course-builder" agent="course-builder">
+      <CourseBuilderContent />
+    </CopilotKit>
   );
 }
