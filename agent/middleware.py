@@ -5,6 +5,7 @@ Issues fixed:
 1. context field: {} -> []
 2. messages missing id field
 3. Missing threadId, runId, state, tools, forwardedProps fields
+4. Extract user_id from Authorization header and inject into config
 """
 from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -66,6 +67,29 @@ class FixAGUIProtocolMiddleware(BaseHTTPMiddleware):
                         if isinstance(msg, dict) and "id" not in msg:
                             msg["id"] = str(uuid.uuid4())
                             modified = True
+
+                # Fix 8: Extract user_id from Authorization header and inject into config
+                auth_header = request.headers.get("Authorization")
+                if auth_header and auth_header.startswith("Bearer "):
+                    token = auth_header.split(" ", 1)[1]
+                    # Verify token and extract user_id
+                    try:
+                        from middleware.auth import verify_token
+                        user_data = await verify_token(token)
+                        user_id = user_data.get("id")
+
+                        if user_id:
+                            # Inject user_id into config.configurable
+                            if "config" not in data:
+                                data["config"] = {}
+                            if "configurable" not in data["config"]:
+                                data["config"]["configurable"] = {}
+                            data["config"]["configurable"]["user_id"] = user_id
+                            modified = True
+                            print(f"[FixAGUIProtocol] Injected user_id={user_id} into config")
+                    except Exception as e:
+                        print(f"[FixAGUIProtocol] Failed to extract user_id: {e}")
+                        # Continue without user_id - don't block the request
 
                 if modified:
                     print(f"[FixAGUIProtocol] Fixed request: threadId={data.get('threadId')}, runId={data.get('runId')}, {len(data.get('messages', []))} messages")
