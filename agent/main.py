@@ -5,7 +5,7 @@
 # Frontend connects via LangGraphHttpAgent to agent-specific paths.
 # ═══════════════════════════════════════════════════════════
 
-from config import load_env
+from .config import load_env
 
 # Load .env before any other imports that might need API keys
 load_env()
@@ -23,20 +23,20 @@ from typing import Optional, Dict, Any
 
 logger = logging.getLogger(__name__)
 
-from graphs.chat import build_chat_graph
-from graphs.observation import build_observation_graph
-from graphs.course_builder import build_course_builder_graph
-from topics.changing_states.config import changing_states_config
-from topics.changing_states.reactions import changing_states_reactions
-from topics.electric_circuits.config import electric_circuits_config
-from topics.electric_circuits.reactions import electric_circuits_reactions
-from topics.genetics_basics.config import genetics_basics_config
-from topics.genetics_basics.reactions import genetics_basics_reactions
-from middleware.auth import get_current_user
-from middleware import FixAGUIProtocolMiddleware
-from memory.letta_client import create_student_agent, update_student_memory_after_session, get_student_memory
-from lib.supabase_client import get_supabase_client
-from routes.sessions import router as sessions_router
+from .graphs.chat import build_chat_graph
+from .graphs.observation import build_observation_graph
+from .graphs.course_builder import build_course_builder_graph
+from .topics.changing_states.config import changing_states_config
+from .topics.changing_states.reactions import changing_states_reactions
+from .topics.electric_circuits.config import electric_circuits_config
+from .topics.electric_circuits.reactions import electric_circuits_reactions
+from .topics.genetics_basics.config import genetics_basics_config
+from .topics.genetics_basics.reactions import genetics_basics_reactions
+from .middleware.auth import get_current_user
+from .middleware import FixAGUIProtocolMiddleware
+from .memory.letta_client import create_student_agent, update_student_memory_after_session, get_student_memory
+from .lib.supabase_client import get_supabase_client
+from .routes.sessions import router as sessions_router
 
 # ── Pydantic models for request/response bodies ───
 
