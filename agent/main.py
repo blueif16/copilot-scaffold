@@ -23,6 +23,7 @@ logger = logging.getLogger(__name__)
 
 from graphs.chat import build_chat_graph
 from graphs.observation import build_observation_graph
+from graphs.course_builder import build_course_builder_graph
 from topics.changing_states.config import changing_states_config
 from topics.changing_states.reactions import changing_states_reactions
 from topics.electric_circuits.config import electric_circuits_config
@@ -89,6 +90,9 @@ chat_graph_genetics = build_chat_graph(
     genetics_basics_config,
     student_memory=None,  # TODO: Fetch from Letta in Slice 13
 )
+
+# Course Builder (Teacher-facing)
+course_builder_graph = build_course_builder_graph()
 
 # ── Create FastAPI app and register agents ────────────────
 
@@ -166,6 +170,17 @@ add_langgraph_fastapi_endpoint(
         graph=chat_graph_genetics,
     ),
     path="/agents/chat-genetics-basics",
+)
+
+# Course Builder (Teacher-facing)
+add_langgraph_fastapi_endpoint(
+    app=app,
+    agent=LangGraphAGUIAgent(
+        name="course-builder",
+        description="Helps teachers create interactive science lessons with JSX code generation",
+        graph=course_builder_graph,
+    ),
+    path="/agents/course-builder",
 )
 
 # Health check endpoint
