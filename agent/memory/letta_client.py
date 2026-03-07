@@ -8,7 +8,7 @@ after learning sessions.
 
 import os
 from typing import Optional
-from letta import Letta
+from letta_client import Letta
 
 
 def get_letta_client() -> Letta:
