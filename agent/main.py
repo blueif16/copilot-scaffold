@@ -33,6 +33,7 @@ from topics.electric_circuits.reactions import electric_circuits_reactions
 from topics.genetics_basics.config import genetics_basics_config
 from topics.genetics_basics.reactions import genetics_basics_reactions
 from middleware.auth import get_current_user
+from middleware import FixAGUIProtocolMiddleware
 from memory.letta_client import create_student_agent, update_student_memory_after_session, get_student_memory
 from lib.supabase_client import get_supabase_client
 
@@ -55,44 +56,63 @@ class UpdateMemoryResponse(BaseModel):
 
 # ── Build graphs with config injected via closure ───
 
-# Note: Graphs are built at module level with student_memory=None.
-# In Slice 13, this will be refactored to fetch memory per-request.
-# Current architecture locks None into the closure, preventing per-student memory.
+# Memory fetcher function for per-request memory injection
+def fetch_student_memory(user_id: str) -> Optional[dict]:
+    """
+    Fetch student memory from Letta for a given user_id.
+
+    Returns None if user has no agent or if fetch fails.
+    """
+    try:
+        supabase = get_supabase_client()
+        profile_response = supabase.table("profiles").select("letta_agent_id").eq("id", user_id).execute()
+
+        if not profile_response.data:
+            return None
+
+        agent_id = profile_response.data[0].get("letta_agent_id")
+        if not agent_id:
+            return None
+
+        return get_student_memory(agent_id)
+    except Exception as e:
+        logger.error(f"Failed to fetch memory for user {user_id}: {e}")
+        return None
 
 # Changing States (Level 1, Ages 6-8)
 observation_graph_changing_states = build_observation_graph(
     changing_states_config,
     changing_states_reactions,
-    student_memory=None,  # TODO: Refactor to per-request memory fetch in Slice 13
+    memory_fetcher=fetch_student_memory,
 )
 
 chat_graph_changing_states = build_chat_graph(
     changing_states_config,
-    student_memory=None,  # TODO: Refactor to per-request memory fetch in Slice 13
+    memory_fetcher=fetch_student_memory,
 )
 
 # Electric Circuits (Level 2, Ages 9-10)
 observation_graph_electric_circuits = build_observation_graph(
     electric_circuits_config,
     electric_circuits_reactions,
-    student_memory=None,  # TODO: Refactor to per-request memory fetch in Slice 13
+    memory_fetcher=fetch_student_memory,
 )
 
 chat_graph_electric_circuits = build_chat_graph(
     electric_circuits_config,
-    student_memory=None,  # TODO: Refactor to per-request memory fetch in Slice 13
+    memory_fetcher=fetch_student_memory,
 )
 
 # Genetics Basics (Level 3, Ages 11-12)
 observation_graph_genetics = build_observation_graph(
     genetics_basics_config,
     genetics_basics_reactions,
-    student_memory=None,  # TODO: Refactor to per-request memory fetch in Slice 13
+    memory_fetcher=fetch_student_memory,
 )
 
 chat_graph_genetics = build_chat_graph(
     genetics_basics_config,
-    student_memory=None,  # TODO: Refactor to per-request memory fetch in Slice 13
+    memory_fetcher=fetch_student_memory,
 )
 
 # Course Builder (Teacher-facing)
@@ -101,6 +121,9 @@ course_builder_graph = build_course_builder_graph()
 # ── Create FastAPI app and register agents ────────────────
 
 app = FastAPI()
+
+# Add protocol fix middleware (must be before CORS)
+app.add_middleware(FixAGUIProtocolMiddleware)
 
 # Add CORS middleware to allow frontend connections
 app.add_middleware(

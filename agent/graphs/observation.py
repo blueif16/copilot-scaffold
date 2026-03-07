@@ -11,7 +11,7 @@
 from __future__ import annotations
 
 import time
-from typing import Any, Literal, Optional
+from typing import Any, Literal, Optional, Callable
 
 from copilotkit import CopilotKitState
 from copilotkit.langgraph import copilotkit_emit_state
@@ -55,7 +55,7 @@ class ObservationAgentState(CopilotKitState):
 def build_observation_graph(
     topic_config: TopicConfig,
     reaction_registry: ReactionRegistry,
-    student_memory: Optional[dict] = None,
+    memory_fetcher: Optional[Callable[[str], dict]] = None,
 ):
     """Build the observation agent graph.
 
@@ -65,7 +65,9 @@ def build_observation_graph(
     Args:
         topic_config: Topic-specific configuration
         reaction_registry: Registry of programmed reactions
-        student_memory: Optional student memory from Letta (injected into AI prompts)
+        memory_fetcher: Optional callable that returns student memory dict.
+                       Called per-request with user_id from config.
+                       Signature: (user_id: str) -> dict
     """
 
     # Pre-compute allowed emotions/animations for the AI tool
@@ -155,16 +157,25 @@ def build_observation_graph(
         try:
             hint = state.get("_ai_hint") or ""
 
-            # Build memory context if available (student_memory captured by closure)
+            # Fetch memory per-request if memory_fetcher provided
             memory_context = ""
-            if student_memory:
-                memory_context = f"""
+            if memory_fetcher:
+                try:
+                    # Extract user_id from config (passed by CopilotKit middleware)
+                    user_id = config.get("configurable", {}).get("user_id")
+                    if user_id:
+                        student_memory = memory_fetcher(user_id)
+                        if student_memory:
+                            memory_context = f"""
 STUDENT MEMORY (from past sessions):
 - Profile: {student_memory.get('student_profile', 'N/A')}
 - Learning Style: {student_memory.get('learning_style', 'N/A')}
 - Knowledge: {student_memory.get('knowledge_state', 'N/A')}
 - Interests: {student_memory.get('interests', 'N/A')}
 """
+                except Exception as e:
+                    print(f"Failed to fetch student memory: {e}")
+                    # Continue without memory - don't block the request
 
             # topic_config accessed via closure
             prompt = f"""{topic_config.pedagogical_prompt}
