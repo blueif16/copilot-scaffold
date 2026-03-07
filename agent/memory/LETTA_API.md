@@ -3,7 +3,7 @@
 ## Client Initialization
 
 ```python
-from letta import Letta
+from letta_client import Letta
 
 # Self-hosted server
 client = Letta(base_url="http://localhost:8283")

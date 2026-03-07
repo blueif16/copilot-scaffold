@@ -208,6 +208,13 @@ async def create_memory_agent_endpoint(
 
     Requires authentication. Creates agent and updates profiles.letta_agent_id.
     """
+    # Authorization check: only allow users to create agents for themselves
+    if user["id"] != user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to create agent for this user"
+        )
+
     supabase = get_supabase_client()
 
     # Check if user exists
@@ -256,6 +263,13 @@ async def update_memory_endpoint(
 
     Requires authentication. Fetches letta_agent_id and updates memory.
     """
+    # Authorization check: only allow users to update their own memory
+    if user["id"] != user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to update memory for this user"
+        )
+
     supabase = get_supabase_client()
 
     # Fetch user profile to get letta_agent_id
