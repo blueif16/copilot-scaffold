@@ -8,7 +8,7 @@ from typing import Optional, Dict, Any
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
-from agent.lib.supabase_client import get_supabase_client
+from lib.supabase_client import get_supabase_client
 
 
 security = HTTPBearer(auto_error=False)
