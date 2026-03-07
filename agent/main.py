@@ -55,6 +55,12 @@ class UpdateMemoryRequest(BaseModel):
 class UpdateMemoryResponse(BaseModel):
     success: bool
 
+class GetMemoryResponse(BaseModel):
+    student_profile: Optional[str] = None
+    learning_style: Optional[str] = None
+    knowledge_state: Optional[str] = None
+    interests: Optional[str] = None
+
 # ── Build graphs with config injected via closure ───
 
 # Memory fetcher function for per-request memory injection
@@ -409,6 +415,82 @@ async def update_memory_endpoint(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to update memory"
+        )
+
+
+@app.get("/api/students/{user_id}/memory", response_model=GetMemoryResponse)
+async def get_memory_endpoint(
+    user_id: str,
+    user: Optional[Dict[str, Any]] = Depends(get_current_user)
+):
+    """
+    Get student memory from Letta agent.
+
+    Requires authentication. Returns memory blocks or empty values if no agent exists.
+    """
+    # Check authentication first
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required"
+        )
+
+    # Authorization check: only allow users to fetch their own memory
+    if user["id"] != user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to access memory for this user"
+        )
+
+    supabase = await run_in_threadpool(get_supabase_client)
+
+    # Fetch user profile to get letta_agent_id
+    profile_response = await run_in_threadpool(
+        lambda: supabase.table("profiles").select("letta_agent_id").eq("id", user_id).execute()
+    )
+
+    if not profile_response.data:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"User {user_id} not found"
+        )
+
+    profile = profile_response.data[0]
+    agent_id = profile.get("letta_agent_id")
+
+    # If no agent exists, return empty memory
+    if not agent_id:
+        return GetMemoryResponse(
+            student_profile=None,
+            learning_style=None,
+            knowledge_state=None,
+            interests=None
+        )
+
+    try:
+        # Fetch memory from Letta
+        memory = await run_in_threadpool(get_student_memory, agent_id)
+
+        if not memory:
+            return GetMemoryResponse(
+                student_profile=None,
+                learning_style=None,
+                knowledge_state=None,
+                interests=None
+            )
+
+        return GetMemoryResponse(
+            student_profile=memory.get("student_profile"),
+            learning_style=memory.get("learning_style"),
+            knowledge_state=memory.get("knowledge_state"),
+            interests=memory.get("interests")
+        )
+
+    except Exception as e:
+        logger.error(f"Failed to fetch memory for user {user_id}, agent {agent_id}: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to fetch memory"
         )
 
 

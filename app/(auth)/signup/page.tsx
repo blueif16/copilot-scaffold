@@ -42,6 +42,29 @@ export default function SignupPage() {
       }
 
       if (data.user) {
+        // Create memory agent for students
+        if (role === 'student') {
+          try {
+            const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8123";
+            const { data: { session } } = await supabase.auth.getSession();
+
+            await fetch(`${backendUrl}/api/students/${data.user.id}/create-memory-agent`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${session?.access_token}`
+              },
+              body: JSON.stringify({
+                name: email.split('@')[0],
+                age: 10 // Default age, can be customized later
+              })
+            });
+          } catch (memoryError) {
+            console.error("[slice-8-auth] Failed to create memory agent:", memoryError);
+            // Don't block signup if memory agent creation fails
+          }
+        }
+
         // Redirect to home page
         router.push("/");
         router.refresh();

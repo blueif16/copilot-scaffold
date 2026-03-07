@@ -24,14 +24,26 @@ export default function SaveDraftButton({
     setMessage(null);
 
     try {
-      // Extract simulation JSX from files (typically /App.tsx)
-      const simulation_jsx = files["/App.tsx"] || files["/index.tsx"] || "";
+      // Extract simulation JSX from files (typically /App.tsx or /App.jsx)
+      const simulation_jsx = files["/App.jsx"] || files["/App.tsx"] || files["/index.tsx"] || "";
+
+      // Extract interactions.json if it exists
+      let interactions_json = null;
+      const interactionsFile = files["/interactions.json"];
+      if (interactionsFile) {
+        try {
+          interactions_json = JSON.parse(interactionsFile);
+        } catch (parseError) {
+          console.error("Failed to parse interactions.json:", parseError);
+        }
+      }
 
       const result = await saveDraft({
         title,
         description,
         format,
         simulation_jsx,
+        interactions_json,
       });
 
       if (result.success) {
