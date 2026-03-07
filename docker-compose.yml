@@ -209,7 +209,7 @@ services:
 
   # Letta (Student Memory System)
   letta:
-    image: letta/letta:latest
+    image: letta/letta:0.6.4
     container_name: omniscience-letta
     ports:
       - "8283:8283"

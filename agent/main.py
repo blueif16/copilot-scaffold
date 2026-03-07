@@ -16,7 +16,10 @@ from copilotkit import LangGraphAGUIAgent
 from ag_ui_langgraph import add_langgraph_fastapi_endpoint
 from pydantic import BaseModel
 import uvicorn
+import logging
 from typing import Optional, Dict, Any
+
+logger = logging.getLogger(__name__)
 
 from graphs.chat import build_chat_graph
 from graphs.observation import build_observation_graph
@@ -238,17 +241,29 @@ async def create_memory_agent_endpoint(
         # Create Letta agent
         agent_id = create_student_agent(user_id, request.name, request.age)
 
-        # Update profiles table with agent_id
-        supabase.table("profiles").update({
-            "letta_agent_id": agent_id
-        }).eq("id", user_id).execute()
+        try:
+            # Update profiles table with agent_id
+            supabase.table("profiles").update({
+                "letta_agent_id": agent_id
+            }).eq("id", user_id).execute()
+        except Exception as db_error:
+            # Database update failed - attempt to clean up the created agent
+            logger.error(f"Failed to update profile for user {user_id} with agent {agent_id}: {db_error}", exc_info=True)
+            try:
+                # Note: Letta client doesn't expose delete_agent in current implementation
+                # This would need to be added if cleanup is critical
+                logger.warning(f"Agent {agent_id} created but not linked to user {user_id} - manual cleanup may be needed")
+            except Exception as cleanup_error:
+                logger.error(f"Failed to cleanup agent {agent_id}: {cleanup_error}", exc_info=True)
+            raise
 
         return CreateMemoryAgentResponse(agent_id=agent_id)
 
     except Exception as e:
+        logger.error(f"Failed to create memory agent for user {user_id}: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to create memory agent: {str(e)}"
+            detail="Failed to create memory agent"
         )
 
 
@@ -301,9 +316,10 @@ async def update_memory_endpoint(
         return UpdateMemoryResponse(success=True)
 
     except Exception as e:
+        logger.error(f"Failed to update memory for user {user_id}, agent {agent_id}: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to update memory: {str(e)}"
+            detail="Failed to update memory"
         )
 
 
