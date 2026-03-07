@@ -63,6 +63,23 @@ export const translations = {
     previousPage: "Previous page",
     nextPage: "Next page",
     funFact: "Fun Fact",
+
+    // Auth
+    login: "Log in",
+    signup: "Sign up",
+    email: "Email",
+    password: "Password",
+    role: "I am a...",
+    student: "Student",
+    teacher: "Teacher",
+    loginButton: "Log in",
+    signupButton: "Sign up",
+    noAccount: "Don't have an account?",
+    haveAccount: "Already have an account?",
+    loginError: "Login failed. Please check your credentials.",
+    signupError: "Signup failed. Please try again.",
+    welcomeBack: "Welcome back!",
+    joinOmniscience: "Join Omniscience",
   },
   zh: {
     appName: "无垠科学",
@@ -126,6 +143,23 @@ export const translations = {
     previousPage: "上一页",
     nextPage: "下一页",
     funFact: "趣味知识",
+
+    // Auth
+    login: "登录",
+    signup: "注册",
+    email: "邮箱",
+    password: "密码",
+    role: "我是...",
+    student: "学生",
+    teacher: "教师",
+    loginButton: "登录",
+    signupButton: "注册",
+    noAccount: "还没有账号？",
+    haveAccount: "已有账号？",
+    loginError: "登录失败。请检查您的凭据。",
+    signupError: "注册失败。请重试。",
+    welcomeBack: "欢迎回来！",
+    joinOmniscience: "加入无垠科学",
   },
 } as const;
 
