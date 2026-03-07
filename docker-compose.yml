@@ -207,6 +207,25 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  # Letta (Student Memory System)
+  letta:
+    image: letta/letta:0.6.4
+    container_name: omniscience-letta
+    ports:
+      - "8283:8283"
+    environment:
+      LETTA_PG_URI: postgres://postgres:${POSTGRES_PASSWORD:-your-super-secret-and-long-postgres-password}@supabase-db:5432/letta
+    depends_on:
+      supabase-db:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8283/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
   backend:
     build:
       context: .
@@ -219,10 +238,13 @@ services:
       - LANGSMITH_API_KEY=${LANGSMITH_API_KEY:-}
       - SUPABASE_URL=${USE_SELFHOSTED_SUPABASE:-false}
       - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
+      - LETTA_BASE_URL=http://letta:8283
     env_file:
       - .env
     depends_on:
       kong:
+        condition: service_healthy
+      letta:
         condition: service_healthy
     restart: unless-stopped
     healthcheck:
