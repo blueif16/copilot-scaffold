@@ -36,6 +36,7 @@ from middleware.auth import get_current_user
 from middleware import FixAGUIProtocolMiddleware
 from memory.letta_client import create_student_agent, update_student_memory_after_session, get_student_memory
 from lib.supabase_client import get_supabase_client
+from routes.sessions import router as sessions_router
 
 # ── Pydantic models for request/response bodies ───
 
@@ -133,6 +134,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Register session routes
+app.include_router(sessions_router)
 
 # ── Register all agents ────────────────────────────────────
 
