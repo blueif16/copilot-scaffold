@@ -12,6 +12,7 @@ import {
   BuilderPhase,
 } from "@/lib/types/course-builder";
 import TemplateCard from "./TemplateCard";
+import SaveDraftButton from "@/app/(teacher)/courses/components/SaveDraftButton";
 
 const TEMPLATES: CourseTemplate[] = [
   {
@@ -382,9 +383,12 @@ function CourseBuilderContent() {
             <div className="w-1/2 bg-white flex flex-col">
               <div className="border-b-4 border-ink bg-white p-4 flex justify-between items-center">
                 <h3 className="font-display text-xl font-bold text-ink">Live Preview</h3>
-                <button className="btn-chunky px-4 py-2 bg-sage text-sm">
-                  Save Draft
-                </button>
+                <SaveDraftButton
+                  title={selectedTemplate?.name || "New Course"}
+                  description={selectedTemplate?.description}
+                  format={selectedTemplate?.format || "lab"}
+                  files={files}
+                />
               </div>
               <div className="flex-1 overflow-hidden">
                 <SandpackProvider
