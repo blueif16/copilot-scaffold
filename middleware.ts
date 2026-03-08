@@ -42,18 +42,30 @@ export async function middleware(request: NextRequest) {
 
   // Role-based routing
   if (user) {
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", user.id)
-      .single();
+    let profileRole: string | null = null;
+
+    try {
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", user.id)
+        .single();
+
+      if (profileError) {
+        console.error("[middleware] Profile fetch error:", profileError);
+      } else {
+        profileRole = profile?.role;
+      }
+    } catch (err) {
+      console.error("[middleware] Profile fetch exception:", err);
+    }
 
     const isTeacherRoute =
       request.nextUrl.pathname.startsWith("/teacher/") ||
       request.nextUrl.pathname.startsWith("/dashboard") ||
       request.nextUrl.pathname.startsWith("/courses/new");
 
-    if (isTeacherRoute && profile?.role !== "teacher") {
+    if (isTeacherRoute && profileRole !== "teacher") {
       return NextResponse.redirect(new URL("/", request.url));
     }
   }
