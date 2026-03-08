@@ -12,7 +12,7 @@ import {
   BuilderPhase,
 } from "@/lib/types/course-builder";
 import TemplateCard from "./TemplateCard";
-import SaveDraftButton from "@/app/(teacher)/courses/components/SaveDraftButton";
+import SaveDraftButton from "@/components/teacher/SaveDraftButton";
 
 const TEMPLATES: CourseTemplate[] = [
   {
@@ -58,7 +58,7 @@ function CourseBuilderContent() {
   } = useCopilotChat();
 
   // Convert CopilotKit messages to our ChatMessage format
-  const messages: ChatMessage[] = visibleMessages.map((msg) => {
+  const messages: ChatMessage[] = (visibleMessages || []).map((msg) => {
     const msgAny = msg as any;
     return {
       id: msg.id,
@@ -88,10 +88,6 @@ function CourseBuilderContent() {
     ],
     handler: async ({ path, content }) => {
       setFiles((prev) => ({ ...prev, [path]: content }));
-      // Transition to split view when first file is written
-      if (Object.keys(files).length === 0) {
-        setPhase("split");
-      }
       return { success: true, path };
     },
   });
@@ -124,6 +120,13 @@ function CourseBuilderContent() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [visibleMessages]);
+
+  // Transition to split view when first file is written
+  useEffect(() => {
+    if (Object.keys(files).length > 0 && phase !== "split") {
+      setPhase("split");
+    }
+  }, [files, phase]);
 
   const handleTemplateClick = useCallback((template: CourseTemplate) => {
     setSelectedTemplate(template);
