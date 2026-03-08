@@ -1,6 +1,6 @@
-export const dynamic = 'force-dynamic';
-
 "use client";
+
+export const dynamic = 'force-dynamic';
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -47,6 +47,11 @@ export default function LoginPage() {
       setError(t.loginError);
       setLoading(false);
     }
+  };
+
+  const fillDemoCredentials = (role: "student" | "teacher") => {
+    setEmail(`demo-${role}@omniscience.app`);
+    setPassword("demo123");
   };
 
   return (
@@ -118,6 +123,27 @@ export default function LoginPage() {
               className="w-full px-4 py-3 border-3 border-ink rounded-lg font-body text-base focus:outline-none focus:ring-2 focus:ring-playful-sky"
               placeholder="••••••••"
             />
+          </div>
+
+          {/* Demo User Quick Fill */}
+          <div className="border-t-2 border-ink/10 pt-4">
+            <p className="font-body text-xs text-ink/50 mb-2 text-center">Quick demo login:</p>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => fillDemoCredentials("student")}
+                className="flex-1 px-3 py-2 border-2 border-playful-peach bg-playful-peach/20 rounded-lg font-body text-xs font-semibold hover:bg-playful-peach/40 transition-colors"
+              >
+                👨‍🎓 Student
+              </button>
+              <button
+                type="button"
+                onClick={() => fillDemoCredentials("teacher")}
+                className="flex-1 px-3 py-2 border-2 border-playful-lavender bg-playful-lavender/20 rounded-lg font-body text-xs font-semibold hover:bg-playful-lavender/40 transition-colors"
+              >
+                👩‍🏫 Teacher
+              </button>
+            </div>
           </div>
 
           {/* Error Message */}

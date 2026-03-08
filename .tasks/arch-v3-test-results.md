@@ -1,44 +1,52 @@
 # Arch V3 E2E Test Results
 
-**Date:** 2026-03-07 18:18:33
+**Date:** 2026-03-07 18:37:03
 
-**Summary:** 6/6 tests passed
+**Summary:** 8/8 tests passed
 
 ## Test Results
 
 ### ✅ T2.1a: Student signup
-- User created: test-student-1772936311@example.com
-- Timestamp: 2026-03-07T18:18:32.124210
+- User created: test-student-1772937421@example.com
+- Timestamp: 2026-03-07T18:37:01.898167
 
 ### ✅ T2.1b: Get user profile
-- User ID: 99cfa301-dee7-49bc-85e1-f4f3e9fa697f
-- Timestamp: 2026-03-07T18:18:32.299812
+- User ID: 8d0214d7-19d8-42d1-a279-4a4fd58489a9
+- Timestamp: 2026-03-07T18:37:02.040997
 
 ### ✅ T2.1c: Create memory agent
-- Agent ID: agent-be3810b4-2c46-4c78-9332-e4f2afa6bf5b
-- Timestamp: 2026-03-07T18:18:32.580537
+- Agent ID: agent-1a1b0500-e686-4192-9bbc-2cca9f887299
+- Timestamp: 2026-03-07T18:37:02.328644
+
+### ✅ T2.2a: End session and update memory
+- Memory updated: False
+- Timestamp: 2026-03-07T18:37:02.587875
+
+### ✅ T2.3a: Get student memory
+- Memory blocks retrieved: True
+- Timestamp: 2026-03-07T18:37:02.789827
 
 ### ✅ T3.1: Teacher signup
-- User created: test-teacher-1772936312@example.com
-- Timestamp: 2026-03-07T18:18:32.783017
+- User created: test-teacher-1772937422@example.com
+- Timestamp: 2026-03-07T18:37:03.009108
 
 ### ✅ T5.1: Reject unauthenticated requests
 - Correctly returned 401
-- Timestamp: 2026-03-07T18:18:32.929388
+- Timestamp: 2026-03-07T18:37:03.145805
 
 ### ✅ T5.2: Health check without auth
 - Backend healthy
-- Timestamp: 2026-03-07T18:18:33.067008
+- Timestamp: 2026-03-07T18:37:03.291377
 
 ## Test Data
 
 ```json
 {
-  "student_email": "test-student-1772936311@example.com",
-  "student_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJhdXRoZW50aWNhdGVkIiwiZXhwIjoxNzcyOTM5OTEyLCJpYXQiOjE3NzI5MzYzMTIsInN1YiI6Ijk5Y2ZhMzAxLWRlZTctNDliYy04NWUxLWY0ZjNlOWZhNjk3ZiIsImVtYWlsIjoidGVzdC1zdHVkZW50LTE3NzI5MzYzMTFAZXhhbXBsZS5jb20iLCJwaG9uZSI6IiIsImFwcF9tZXRhZGF0YSI6eyJwcm92aWRlciI6ImVtYWlsIiwicHJvdmlkZXJzIjpbImVtYWlsIl19LCJ1c2VyX21ldGFkYXRhIjp7fSwicm9sZSI6ImF1dGhlbnRpY2F0ZWQiLCJhYWwiOiJhYWwxIiwiYW1yIjpbeyJtZXRob2QiOiJwYXNzd29yZCIsInRpbWVzdGFtcCI6MTc3MjkzNjMxMn1dLCJzZXNzaW9uX2lkIjoiNDgyMTU5NWUtNmViNS00ZTAxLTlmNTAtZTg0ZmU4MzFlOWQzIn0.YeGCSybDp-nHrVycF5rFSjpz3-xkEg6aNG-kRAD20yc",
-  "student_id": "99cfa301-dee7-49bc-85e1-f4f3e9fa697f",
-  "student_agent_id": "agent-be3810b4-2c46-4c78-9332-e4f2afa6bf5b",
-  "teacher_email": "test-teacher-1772936312@example.com",
-  "teacher_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJhdXRoZW50aWNhdGVkIiwiZXhwIjoxNzcyOTM5OTEyLCJpYXQiOjE3NzI5MzYzMTIsInN1YiI6ImIzZjFjMzBiLTA5NDAtNDIzMS05MjBkLWU3NWVlNzhhMTVkYiIsImVtYWlsIjoidGVzdC10ZWFjaGVyLTE3NzI5MzYzMTJAZXhhbXBsZS5jb20iLCJwaG9uZSI6IiIsImFwcF9tZXRhZGF0YSI6eyJwcm92aWRlciI6ImVtYWlsIiwicHJvdmlkZXJzIjpbImVtYWlsIl19LCJ1c2VyX21ldGFkYXRhIjp7fSwicm9sZSI6ImF1dGhlbnRpY2F0ZWQiLCJhYWwiOiJhYWwxIiwiYW1yIjpbeyJtZXRob2QiOiJwYXNzd29yZCIsInRpbWVzdGFtcCI6MTc3MjkzNjMxMn1dLCJzZXNzaW9uX2lkIjoiYzI3NGRkM2UtNjRlZi00NDAzLTk5YjMtMTU0Y2EwN2ZkYWIyIn0.Vy26pUO8tbNG67wRL3wRvPSxkiC-P58xmAngGNM-7B4"
+  "student_email": "test-student-1772937421@example.com",
+  "student_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJhdXRoZW50aWNhdGVkIiwiZXhwIjoxNzcyOTQxMDIxLCJpYXQiOjE3NzI5Mzc0MjEsInN1YiI6IjhkMDIxNGQ3LTE5ZDgtNDJkMS1hMjc5LTRhNGZkNTg0ODlhOSIsImVtYWlsIjoidGVzdC1zdHVkZW50LTE3NzI5Mzc0MjFAZXhhbXBsZS5jb20iLCJwaG9uZSI6IiIsImFwcF9tZXRhZGF0YSI6eyJwcm92aWRlciI6ImVtYWlsIiwicHJvdmlkZXJzIjpbImVtYWlsIl19LCJ1c2VyX21ldGFkYXRhIjp7fSwicm9sZSI6ImF1dGhlbnRpY2F0ZWQiLCJhYWwiOiJhYWwxIiwiYW1yIjpbeyJtZXRob2QiOiJwYXNzd29yZCIsInRpbWVzdGFtcCI6MTc3MjkzNzQyMX1dLCJzZXNzaW9uX2lkIjoiOGYwYzM1M2YtODAzMS00Zjk0LWE4Y2MtOTdlZGU3MDJkMzE3In0.ZmzzzMPoa2dCQ3E5ql8MQZefI-6wN5hqH4LrcioIgk8",
+  "student_id": "8d0214d7-19d8-42d1-a279-4a4fd58489a9",
+  "student_agent_id": "agent-1a1b0500-e686-4192-9bbc-2cca9f887299",
+  "teacher_email": "test-teacher-1772937422@example.com",
+  "teacher_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJhdXRoZW50aWNhdGVkIiwiZXhwIjoxNzcyOTQxMDIzLCJpYXQiOjE3NzI5Mzc0MjMsInN1YiI6Ijk0ZGViMTdiLThkYTQtNDE0Yi04NDlkLWIxZTRkZjAyMzlmZiIsImVtYWlsIjoidGVzdC10ZWFjaGVyLTE3NzI5Mzc0MjJAZXhhbXBsZS5jb20iLCJwaG9uZSI6IiIsImFwcF9tZXRhZGF0YSI6eyJwcm92aWRlciI6ImVtYWlsIiwicHJvdmlkZXJzIjpbImVtYWlsIl19LCJ1c2VyX21ldGFkYXRhIjp7fSwicm9sZSI6ImF1dGhlbnRpY2F0ZWQiLCJhYWwiOiJhYWwxIiwiYW1yIjpbeyJtZXRob2QiOiJwYXNzd29yZCIsInRpbWVzdGFtcCI6MTc3MjkzNzQyM31dLCJzZXNzaW9uX2lkIjoiMjM3NTQxOTgtYTc3MC00YWI4LTk2OGQtNDhiMTI2NmViZTQ5In0.D5quzQuhQyz1s0ubVRe91eYAcmis1kM3K4du0VEihSc"
 }
 ```

@@ -1,6 +1,6 @@
-export const dynamic = 'force-dynamic';
-
 "use client";
+
+export const dynamic = 'force-dynamic';
 
 import { TopicPageLayout } from "@/framework/TopicPageLayout";
 import { ElectricCircuitsSimulation } from "@/components/simulations/ElectricCircuitsSimulation";
