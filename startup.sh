@@ -71,9 +71,9 @@ fi
 
 # Start backend (FastAPI with uvicorn)
 echo "🔧 Starting FastAPI backend..."
-cd "$PROJECT_ROOT/agent"
-source .venv/bin/activate
-uvicorn main:app --host 0.0.0.0 --port $BACKEND_PORT --reload > "$BACKEND_LOG" 2>&1 &
+cd "$PROJECT_ROOT"
+source agent/.venv/bin/activate
+python -m uvicorn agent.main:app --host 0.0.0.0 --port $BACKEND_PORT --reload > "$BACKEND_LOG" 2>&1 &
 BACKEND_PID=$!
 echo "   Backend PID: $BACKEND_PID"
 

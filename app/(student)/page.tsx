@@ -3,13 +3,24 @@
 export const dynamic = 'force-dynamic';
 
 import { motion } from "framer-motion";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 import { TOPICS } from "@/lib/topics";
 import { CompanionHub } from "@/components/home/CompanionHub";
 import { TopicCarousel } from "@/components/home/TopicCarousel";
 import { useLocale } from "@/contexts/LocaleContext";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function HomePage() {
   const { t, locale, setLocale } = useLocale();
+  const { profile, loading } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!loading && profile?.role === "teacher") {
+      router.replace("/teacher/dashboard");
+    }
+  }, [loading, profile, router]);
 
   return (
     <main className="h-screen flex flex-col overflow-hidden">
