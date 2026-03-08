@@ -2,7 +2,20 @@ import { test, expect, Page } from '@playwright/test';
 
 test.describe('Course Builder E2E', () => {
   test.beforeEach(async ({ page }) => {
-    // Navigate to course builder page
+    // Login as teacher first
+    await page.goto('/login');
+    await page.waitForLoadState('networkidle');
+
+    // Click the Teacher demo button
+    await page.getByRole('button', { name: /Teacher/i }).click();
+
+    // Submit login form
+    await page.getByRole('button', { name: /Log in|登录/i }).click();
+
+    // Wait for redirect to complete
+    await page.waitForURL('/', { timeout: 10000 });
+
+    // Now navigate to course builder page
     await page.goto('/teacher/courses/new');
     await page.waitForLoadState('networkidle');
   });
