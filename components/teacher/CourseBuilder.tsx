@@ -389,7 +389,7 @@ function CourseBuilderContent() {
                 <SaveDraftButton
                   title={selectedTemplate?.name || "New Course"}
                   description={selectedTemplate?.description}
-                  format={(selectedTemplate?.format === "lab" || selectedTemplate?.format === "quiz") ? selectedTemplate.format : "lab"}
+                  format={selectedTemplate?.format || "lab"}
                   files={files}
                 />
               </div>

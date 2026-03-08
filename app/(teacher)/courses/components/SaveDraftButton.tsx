@@ -6,7 +6,7 @@ import { saveDraft } from "../actions";
 interface SaveDraftButtonProps {
   title: string;
   description?: string;
-  format: "lab" | "quiz";
+  format: "lab" | "quiz" | "dialogue";
   files: Record<string, string>;
 }
 
