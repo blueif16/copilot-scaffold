@@ -6,7 +6,7 @@ import { revalidatePath } from "next/cache";
 export interface SaveDraftInput {
   title: string;
   description?: string;
-  format: "lab" | "quiz";
+  format: "lab" | "quiz" | "dialogue";
   simulation_jsx?: string;
   interactions_json?: any;
   companion_config?: any;
