@@ -113,12 +113,12 @@ def get_student_memory(agent_id: str) -> dict:
     """
     client = get_letta_client()
 
-    # Get all memory blocks for the agent
-    memory = client.agents.memory.retrieve(agent_id=agent_id)
+    # Get the agent to access its memory
+    agent = client.agents.retrieve(agent_id=agent_id)
 
     # Extract the blocks we care about
     result = {}
-    for block in memory.blocks:
+    for block in agent.memory.blocks:
         if block.label in ["student_profile", "learning_style", "knowledge_state", "interests"]:
             result[block.label] = block.value
 
