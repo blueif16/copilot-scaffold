@@ -22,33 +22,29 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-async function fetchProfile(supabase: ReturnType<typeof createSupabaseBrowser>, userId: string): Promise<Profile | null> {
+async function fetchProfile(userId: string, accessToken: string): Promise<Profile | null> {
   console.log("[slice-8-auth] fetchProfile called for:", userId);
 
-  // Try to refresh the session first
-  try {
-    const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
-    console.log("[slice-8-auth] Refresh result:", refreshError ? "error" : "success", refreshData?.session ? "has session" : "no session");
-  } catch (err) {
-    console.error("[slice-8-auth] Refresh exception:", err);
-  }
+  // Use direct API to avoid Supabase client lock issues
+  const response = await fetch(
+    `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/profiles?id=eq.${userId}&select=*`,
+    {
+      headers: {
+        "apikey": process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        "Authorization": `Bearer ${accessToken}`,
+      },
+    }
+  );
 
-  // Now fetch the profile
-  console.log("[slice-8-auth] Fetching profile...");
-  const { data: profileData, error: profileError } = await supabase
-    .from("profiles")
-    .select("*")
-    .eq("id", userId)
-    .single();
+  const data = await response.json();
+  console.log("[slice-8-auth] Profile result:", data);
 
-  console.log("[slice-8-auth] Profile result:", profileError || profileData);
-
-  if (profileError) {
-    console.error("[slice-8-auth] Profile fetch error:", profileError);
+  if (!data || data.length === 0) {
+    console.error("[slice-8-auth] Profile fetch error: not found");
     return null;
   }
 
-  return profileData;
+  return data[0];
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -57,28 +53,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const supabase = createSupabaseBrowser();
 
-  // Initialize auth
+  // Initialize auth - only use onAuthStateChange to avoid race conditions with login
   useEffect(() => {
-    const initializeAuth = async () => {
-      try {
-        // Get initial session
-        const { data: { session } } = await supabase.auth.getSession();
+    // Check for tokens in sessionStorage (set by login page) and set them in the client
+    const accessToken = sessionStorage.getItem("sb-access-token");
+    const refreshToken = sessionStorage.getItem("sb-refresh-token");
 
-        if (session?.user) {
-          setUser(session.user);
-          const profileData = await fetchProfile(supabase, session.user.id);
-          setProfile(profileData);
-        }
-      } catch (error) {
-        console.error("[slice-8-auth] Init error:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
+    if (accessToken && refreshToken) {
+      console.log("[slice-8-auth] Found tokens in sessionStorage, setting session...");
+      supabase.auth.setSession({
+        access_token: accessToken,
+        refresh_token: refreshToken,
+      }).then(() => {
+        sessionStorage.removeItem("sb-access-token");
+        sessionStorage.removeItem("sb-refresh-token");
+      });
+    }
 
-    initializeAuth();
-
-    // Listen for auth changes
+    // Listen for auth changes - this handles both INITIAL_SESSION and SIGNED_IN
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         console.log("[slice-8-auth] Event:", event, "session:", session ? "yes" : "no");
@@ -87,7 +79,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           console.log("[slice-8-auth] Setting user, fetching profile...");
           setUser(session.user);
           try {
-            const profileData = await fetchProfile(supabase, session.user.id);
+            const profileData = await fetchProfile(session.user.id, session.access_token);
             console.log("[slice-8-auth] Profile fetched:", profileData);
             setProfile(profileData);
           } catch (err) {
