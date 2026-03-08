@@ -17,7 +17,9 @@ export default function HomePage() {
   const router = useRouter();
 
   useEffect(() => {
+    console.log("[home] loading:", loading, "profile:", profile);
     if (!loading && profile?.role === "teacher") {
+      console.log("[home] Redirecting teacher to dashboard");
       router.replace("/teacher/dashboard");
     }
   }, [loading, profile, router]);

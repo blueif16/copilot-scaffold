@@ -1,14 +1,15 @@
 // Course Builder Types
 
-export type CourseFormat = "lab" | "dialogue";
+export type CourseFormat = "lab" | "quiz" | "dialogue";
 
 export interface CourseTemplate {
   id: string;
   name: string;
   format: CourseFormat;
   description: string;
-  color: string;
   icon: string;
+  /** System prompt context injected when this format is selected */
+  systemPromptContext: string;
 }
 
 export interface ChatMessage {
@@ -20,12 +21,16 @@ export interface ChatMessage {
 
 export type BuilderPhase = "landing" | "chat" | "split";
 
+/** Matches CourseBuilderState on the backend (CopilotKitState fields omitted) */
+export interface CourseBuilderAgentState {
+  files: Record<string, string>;
+}
+
 export interface CourseBuilderState {
   phase: BuilderPhase;
   selectedTemplate: CourseTemplate | null;
   messages: ChatMessage[];
   isLoading: boolean;
-  currentFile: string | null;
   files: Record<string, string>;
 }
 

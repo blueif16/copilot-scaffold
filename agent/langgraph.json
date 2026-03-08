@@ -4,7 +4,8 @@
   "package_manager": "uv",
   "graphs": {
     "observation-changing-states": "./main.py:observation_graph",
-    "chat-changing-states": "./main.py:chat_graph"
+    "chat-changing-states": "./main.py:chat_graph",
+    "course-builder": "./main.py:course_builder_graph"
   },
   "env": ".env"
 }

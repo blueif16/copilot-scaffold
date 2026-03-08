@@ -1,0 +1,208 @@
+[    5766ms] [WARNING] @supabase/gotrue-js: Lock "lock:sb-66-auth-token" was not released within 5000ms. This may indicate an orphaned lock from a component unmount (e.g., React Strict Mode). Forcefully acquiring the lock to recover. @ webpack-internal:///(app-pages-browser)/./node_modules/@supabase/auth-js/dist/module/lib/locks.js:190
+[   39773ms] [WARNING] [Fast Refresh] performing full reload
+
+Fast Refresh will perform a full reload when you edit a file that's imported by modules outside of the React rendering tree.
+You might have a file which exports a React component but also exports a value that is imported by a non-React component file.
+Consider migrating the non-React component export to a separate file and importing it into both files.
+
+It is also possible the parent component of the component you edited is a class component, which disables Fast Refresh.
+Fast Refresh requires at least one parent function component in your React tree. @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/components/react-dev-overlay/app/hot-reloader-client.js:112
+[   40304ms] [ERROR] Failed to fetch RSC payload for http://localhost:3000/login. Falling back to browser navigation. TypeError: Failed to fetch
+    at fetchServerResponse (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/components/router-reducer/fetch-server-response.js:58:27)
+    at fastRefreshReducerImpl (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/components/router-reducer/reducers/fast-refresh-reducer.js:33:67)
+    at clientReducer (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/components/router-reducer/router-reducer.js:41:67)
+    at Object.action (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/shared/lib/router/action-queue.js:150:55)
+    at runAction (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/shared/lib/router/action-queue.js:56:38)
+    at dispatchAction (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/shared/lib/router/action-queue.js:113:9)
+    at Object.dispatch (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/shared/lib/router/action-queue.js:145:40)
+    at eval (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/components/use-reducer-with-devtools.js:130:21)
+    at eval (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/components/app-router.js:304:25)
+    at startTransition (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react/cjs/react.development.js:2597:25)
+    at Object.fastRefresh (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/components/app-router.js:303:48)
+    at eval (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/components/react-dev-overlay/app/hot-reloader-client.js:277:28)
+    at startTransition (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react/cjs/react.development.js:2597:25)
+    at processMessage (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/components/react-dev-overlay/app/hot-reloader-client.js:276:44)
+    at WebSocket.handler (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/components/react-dev-overlay/app/hot-reloader-client.js:395:17) @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/app-index.js:32
+[   46403ms] [WARNING] @supabase/gotrue-js: Lock "lock:sb-66-auth-token" was not released within 5000ms. This may indicate an orphaned lock from a component unmount (e.g., React Strict Mode). Forcefully acquiring the lock to recover. @ webpack-internal:///(app-pages-browser)/./node_modules/@supabase/auth-js/dist/module/lib/locks.js:190
+[   46465ms] [ERROR] [slice-8-auth] Init error: AbortError: Lock broken by another request with the 'steal' option. @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/app-index.js:32
+[   46465ms] [ERROR] [slice-8-auth] Init error: AbortError: Lock broken by another request with the 'steal' option. @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/app-index.js:32
+[   46465ms] [ERROR] [slice-8-auth] Refresh exception: AbortError: Lock broken by another request with the 'steal' option. @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/app-index.js:32
+[   46466ms] [ERROR] [slice-8-auth] Refresh exception: AbortError: Lock broken by another request with the 'steal' option. @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/app-index.js:32
+[   46466ms] [ERROR] [slice-8-auth] Refresh exception: AbortError: Lock broken by another request with the 'steal' option. @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/app-index.js:32
+[   46466ms] [ERROR] [slice-8-auth] Profile fetch error: {message: AbortError: Lock broken by another request with the 'steal' option., details: AbortError: Lock broken by another request with the 'steal' option., hint: Request was aborted (timeout or manual cancellation), code: } @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/app-index.js:32
+[   46466ms] [ERROR] [slice-8-auth] Profile fetch error: {message: AbortError: Lock broken by another request with the 'steal' option., details: AbortError: Lock broken by another request with the 'steal' option., hint: Request was aborted (timeout or manual cancellation), code: } @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/app-index.js:32
+[   46466ms] [ERROR] [slice-8-auth] Profile fetch error: {message: AbortError: Lock broken by another request with the 'steal' option., details: AbortError: Lock broken by another request with the 'steal' option., hint: Request was aborted (timeout or manual cancellation), code: } @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/app-index.js:32
+[   46467ms] [ERROR] [slice-8-auth] Refresh exception: AbortError: Lock broken by another request with the 'steal' option. @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/app-index.js:32
+[   46467ms] [ERROR] [slice-8-auth] Profile fetch error: {message: AbortError: Lock broken by another request with the 'steal' option., details: AbortError: Lock broken by another request with the 'steal' option., hint: Request was aborted (timeout or manual cancellation), code: } @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/app-index.js:32
+[   46474ms] Lock broken by another request with the 'steal' option.
+[   46474ms] Lock broken by another request with the 'steal' option.
+[   46474ms] Lock broken by another request with the 'steal' option.
+[   46474ms] Lock broken by another request with the 'steal' option.
+[   46474ms] Lock broken by another request with the 'steal' option.
+[   51493ms] [ERROR] [slice-8-auth] Refresh exception: AbortError: Lock broken by another request with the 'steal' option. @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/app-index.js:32
+[   51493ms] [ERROR] [slice-8-auth] Profile fetch error: {message: AbortError: Lock broken by another request with the 'steal' option., details: AbortError: Lock broken by another request with the 'steal' option., hint: Request was aborted (timeout or manual cancellation), code: } @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/app-index.js:32
+[   54108ms] [ERROR] [slice-8-auth] Refresh exception: AbortError: Lock broken by another request with the 'steal' option. @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/app-index.js:32
+[   54110ms] [ERROR] [slice-8-auth] Profile fetch error: {message: AbortError: Lock broken by another request with the 'steal' option., details: AbortError: Lock broken by another request with the 'steal' option., hint: Request was aborted (timeout or manual cancellation), code: } @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/app-index.js:32
+[   90542ms] [WARNING] [Fast Refresh] performing full reload
+
+Fast Refresh will perform a full reload when you edit a file that's imported by modules outside of the React rendering tree.
+You might have a file which exports a React component but also exports a value that is imported by a non-React component file.
+Consider migrating the non-React component export to a separate file and importing it into both files.
+
+It is also possible the parent component of the component you edited is a class component, which disables Fast Refresh.
+Fast Refresh requires at least one parent function component in your React tree. @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/components/react-dev-overlay/app/hot-reloader-client.js:112
+[   91249ms] [ERROR] Failed to fetch RSC payload for http://localhost:3000/login. Falling back to browser navigation. TypeError: Failed to fetch
+    at fetchServerResponse (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/components/router-reducer/fetch-server-response.js:58:27)
+    at fastRefreshReducerImpl (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/components/router-reducer/reducers/fast-refresh-reducer.js:33:67)
+    at clientReducer (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/components/router-reducer/router-reducer.js:41:67)
+    at Object.action (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/shared/lib/router/action-queue.js:150:55)
+    at runAction (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/shared/lib/router/action-queue.js:56:38)
+    at dispatchAction (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/shared/lib/router/action-queue.js:113:9)
+    at Object.dispatch (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/shared/lib/router/action-queue.js:145:40)
+    at eval (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/components/use-reducer-with-devtools.js:130:21)
+    at eval (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/components/app-router.js:304:25)
+    at startTransition (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react/cjs/react.development.js:2597:25)
+    at Object.fastRefresh (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/components/app-router.js:303:48)
+    at eval (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/components/react-dev-overlay/app/hot-reloader-client.js:277:28)
+    at startTransition (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react/cjs/react.development.js:2597:25)
+    at processMessage (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/components/react-dev-overlay/app/hot-reloader-client.js:276:44)
+    at WebSocket.handler (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/components/react-dev-overlay/app/hot-reloader-client.js:395:17) @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/app-index.js:32
+[   98540ms] [WARNING] @supabase/gotrue-js: Lock "lock:sb-66-auth-token" was not released within 5000ms. This may indicate an orphaned lock from a component unmount (e.g., React Strict Mode). Forcefully acquiring the lock to recover. @ webpack-internal:///(app-pages-browser)/./node_modules/@supabase/auth-js/dist/module/lib/locks.js:190
+[   98722ms] [ERROR] [slice-8-auth] Init error: AbortError: Lock broken by another request with the 'steal' option. @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/app-index.js:32
+[   98722ms] [ERROR] [slice-8-auth] Init error: AbortError: Lock broken by another request with the 'steal' option. @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/app-index.js:32
+[   98722ms] [ERROR] [slice-8-auth] Refresh exception: AbortError: Lock broken by another request with the 'steal' option. @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/app-index.js:32
+[   98723ms] [ERROR] [slice-8-auth] Refresh exception: AbortError: Lock broken by another request with the 'steal' option. @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/app-index.js:32
+[   98723ms] [ERROR] [slice-8-auth] Refresh exception: AbortError: Lock broken by another request with the 'steal' option. @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/app-index.js:32
+[   98724ms] [ERROR] [slice-8-auth] Profile fetch error: {message: AbortError: Lock broken by another request with the 'steal' option., details: AbortError: Lock broken by another request with the 'steal' option., hint: Request was aborted (timeout or manual cancellation), code: } @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/app-index.js:32
+[   98724ms] [ERROR] [slice-8-auth] Profile fetch error: {message: AbortError: Lock broken by another request with the 'steal' option., details: AbortError: Lock broken by another request with the 'steal' option., hint: Request was aborted (timeout or manual cancellation), code: } @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/app-index.js:32
+[   98724ms] [ERROR] [slice-8-auth] Profile fetch error: {message: AbortError: Lock broken by another request with the 'steal' option., details: AbortError: Lock broken by another request with the 'steal' option., hint: Request was aborted (timeout or manual cancellation), code: } @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/app-index.js:32
+[   98725ms] [ERROR] [slice-8-auth] Refresh exception: AbortError: Lock broken by another request with the 'steal' option. @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/app-index.js:32
+[   98725ms] [ERROR] [slice-8-auth] Profile fetch error: {message: AbortError: Lock broken by another request with the 'steal' option., details: AbortError: Lock broken by another request with the 'steal' option., hint: Request was aborted (timeout or manual cancellation), code: } @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/app-index.js:32
+[   98733ms] Lock broken by another request with the 'steal' option.
+[   98733ms] Lock broken by another request with the 'steal' option.
+[   98734ms] Lock broken by another request with the 'steal' option.
+[   98744ms] Lock broken by another request with the 'steal' option.
+[   98744ms] Lock broken by another request with the 'steal' option.
+[   98995ms] [ERROR] [slice-8-auth] Refresh exception: AbortError: Lock broken by another request with the 'steal' option. @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/app-index.js:32
+[   98995ms] [ERROR] [slice-8-auth] Profile fetch error: {message: AbortError: Lock broken by another request with the 'steal' option., details: AbortError: Lock broken by another request with the 'steal' option., hint: Request was aborted (timeout or manual cancellation), code: } @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/app-index.js:32
+[  128910ms] [ERROR] [slice-8-auth] Refresh exception: AbortError: Lock broken by another request with the 'steal' option. @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/app-index.js:32
+[  128911ms] [ERROR] [slice-8-auth] Profile fetch error: {message: AbortError: Lock broken by another request with the 'steal' option., details: AbortError: Lock broken by another request with the 'steal' option., hint: Request was aborted (timeout or manual cancellation), code: } @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/app-index.js:32
+[  168466ms] [WARNING] [Fast Refresh] performing full reload
+
+Fast Refresh will perform a full reload when you edit a file that's imported by modules outside of the React rendering tree.
+You might have a file which exports a React component but also exports a value that is imported by a non-React component file.
+Consider migrating the non-React component export to a separate file and importing it into both files.
+
+It is also possible the parent component of the component you edited is a class component, which disables Fast Refresh.
+Fast Refresh requires at least one parent function component in your React tree. @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/components/react-dev-overlay/app/hot-reloader-client.js:112
+[  169719ms] [ERROR] Failed to fetch RSC payload for http://localhost:3000/login. Falling back to browser navigation. TypeError: Failed to fetch
+    at fetchServerResponse (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/components/router-reducer/fetch-server-response.js:58:27)
+    at fastRefreshReducerImpl (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/components/router-reducer/reducers/fast-refresh-reducer.js:33:67)
+    at clientReducer (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/components/router-reducer/router-reducer.js:41:67)
+    at Object.action (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/shared/lib/router/action-queue.js:150:55)
+    at runAction (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/shared/lib/router/action-queue.js:56:38)
+    at dispatchAction (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/shared/lib/router/action-queue.js:113:9)
+    at Object.dispatch (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/shared/lib/router/action-queue.js:145:40)
+    at eval (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/components/use-reducer-with-devtools.js:130:21)
+    at eval (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/components/app-router.js:304:25)
+    at startTransition (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react/cjs/react.development.js:2597:25)
+    at Object.fastRefresh (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/components/app-router.js:303:48)
+    at eval (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/components/react-dev-overlay/app/hot-reloader-client.js:277:28)
+    at startTransition (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react/cjs/react.development.js:2597:25)
+    at processMessage (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/components/react-dev-overlay/app/hot-reloader-client.js:276:44)
+    at WebSocket.handler (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/components/react-dev-overlay/app/hot-reloader-client.js:395:17) @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/app-index.js:32
+[  176375ms] [WARNING] @supabase/gotrue-js: Lock "lock:sb-66-auth-token" was not released within 5000ms. This may indicate an orphaned lock from a component unmount (e.g., React Strict Mode). Forcefully acquiring the lock to recover. @ webpack-internal:///(app-pages-browser)/./node_modules/@supabase/auth-js/dist/module/lib/locks.js:190
+[  176386ms] [ERROR] [slice-8-auth] Init error: AbortError: Lock broken by another request with the 'steal' option. @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/app-index.js:32
+[  176387ms] [ERROR] [slice-8-auth] Init error: AbortError: Lock broken by another request with the 'steal' option. @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/app-index.js:32
+[  176387ms] [ERROR] [slice-8-auth] Refresh exception: AbortError: Lock broken by another request with the 'steal' option. @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/app-index.js:32
+[  176389ms] [ERROR] [slice-8-auth] Profile fetch error: {message: AbortError: Lock broken by another request with the 'steal' option., details: AbortError: Lock broken by another request with the 'steal' option., hint: Request was aborted (timeout or manual cancellation), code: } @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/app-index.js:32
+[  176390ms] [ERROR] [slice-8-auth] Refresh exception: AbortError: Lock broken by another request with the 'steal' option. @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/app-index.js:32
+[  176390ms] [ERROR] [slice-8-auth] Profile fetch error: {message: AbortError: Lock broken by another request with the 'steal' option., details: AbortError: Lock broken by another request with the 'steal' option., hint: Request was aborted (timeout or manual cancellation), code: } @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/app-index.js:32
+[  176413ms] Lock broken by another request with the 'steal' option.
+[  176413ms] Lock broken by another request with the 'steal' option.
+[  176414ms] Lock broken by another request with the 'steal' option.
+[  176414ms] Lock broken by another request with the 'steal' option.
+[  176523ms] [ERROR] [slice-8-auth] Refresh exception: AbortError: Lock broken by another request with the 'steal' option. @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/app-index.js:32
+[  176524ms] [ERROR] [slice-8-auth] Profile fetch error: {message: AbortError: Lock broken by another request with the 'steal' option., details: AbortError: Lock broken by another request with the 'steal' option., hint: Request was aborted (timeout or manual cancellation), code: } @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/app-index.js:32
+[  176776ms] [ERROR] [slice-8-auth] Refresh exception: AbortError: Lock broken by another request with the 'steal' option. @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/app-index.js:32
+[  176776ms] [ERROR] [slice-8-auth] Profile fetch error: {message: AbortError: Lock broken by another request with the 'steal' option., details: AbortError: Lock broken by another request with the 'steal' option., hint: Request was aborted (timeout or manual cancellation), code: } @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/app-index.js:32
+[  176951ms] [ERROR] [slice-8-auth] Refresh exception: AbortError: Lock broken by another request with the 'steal' option. @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/app-index.js:32
+[  176951ms] [ERROR] [slice-8-auth] Profile fetch error: {message: AbortError: Lock broken by another request with the 'steal' option., details: AbortError: Lock broken by another request with the 'steal' option., hint: Request was aborted (timeout or manual cancellation), code: } @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/app-index.js:32
+[  185658ms] [ERROR] [slice-8-auth] Refresh exception: AbortError: Lock broken by another request with the 'steal' option. @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/app-index.js:32
+[  185663ms] [ERROR] [slice-8-auth] Profile fetch error: {message: AbortError: Lock broken by another request with the 'steal' option., details: AbortError: Lock broken by another request with the 'steal' option., hint: Request was aborted (timeout or manual cancellation), code: } @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/app-index.js:32
+[  191772ms] [ERROR] [slice-8-auth] Refresh exception: AbortError: Lock broken by another request with the 'steal' option. @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/app-index.js:32
+[  191775ms] [ERROR] [slice-8-auth] Profile fetch error: {message: AbortError: Lock broken by another request with the 'steal' option., details: AbortError: Lock broken by another request with the 'steal' option., hint: Request was aborted (timeout or manual cancellation), code: } @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/app-index.js:32
+[  318583ms] [WARNING] [Fast Refresh] performing full reload
+
+Fast Refresh will perform a full reload when you edit a file that's imported by modules outside of the React rendering tree.
+You might have a file which exports a React component but also exports a value that is imported by a non-React component file.
+Consider migrating the non-React component export to a separate file and importing it into both files.
+
+It is also possible the parent component of the component you edited is a class component, which disables Fast Refresh.
+Fast Refresh requires at least one parent function component in your React tree. @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/components/react-dev-overlay/app/hot-reloader-client.js:112
+[  325888ms] [WARNING] [Fast Refresh] performing full reload
+
+Fast Refresh will perform a full reload when you edit a file that's imported by modules outside of the React rendering tree.
+You might have a file which exports a React component but also exports a value that is imported by a non-React component file.
+Consider migrating the non-React component export to a separate file and importing it into both files.
+
+It is also possible the parent component of the component you edited is a class component, which disables Fast Refresh.
+Fast Refresh requires at least one parent function component in your React tree. @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/components/react-dev-overlay/app/hot-reloader-client.js:112
+[  325975ms] [WARNING] @supabase/gotrue-js: Lock "lock:sb-66-auth-token" was not released within 5000ms. This may indicate an orphaned lock from a component unmount (e.g., React Strict Mode). Forcefully acquiring the lock to recover. @ webpack-internal:///(app-pages-browser)/./node_modules/@supabase/auth-js/dist/module/lib/locks.js:190
+[  326438ms] [ERROR] [slice-8-auth] Init error: AbortError: Lock broken by another request with the 'steal' option. @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/app-index.js:32
+[  326438ms] [ERROR] [slice-8-auth] Init error: AbortError: Lock broken by another request with the 'steal' option. @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/app-index.js:32
+[  326439ms] [ERROR] [slice-8-auth] Refresh exception: AbortError: Lock broken by another request with the 'steal' option. @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/app-index.js:32
+[  326443ms] [ERROR] [slice-8-auth] Profile fetch error: {message: AbortError: Lock broken by another request with the 'steal' option., details: AbortError: Lock broken by another request with the 'steal' option., hint: Request was aborted (timeout or manual cancellation), code: } @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/app-index.js:32
+[  326483ms] Lock broken by another request with the 'steal' option.
+[  326483ms] Lock broken by another request with the 'steal' option.
+[  326483ms] Lock broken by another request with the 'steal' option.
+[  326483ms] Lock broken by another request with the 'steal' option.
+[  326449ms] [ERROR] [slice-8-auth] Refresh exception: AbortError: Lock broken by another request with the 'steal' option. @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/app-index.js:32
+[  326449ms] [ERROR] [slice-8-auth] Profile fetch error: {message: AbortError: Lock broken by another request with the 'steal' option., details: AbortError: Lock broken by another request with the 'steal' option., hint: Request was aborted (timeout or manual cancellation), code: } @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/app-index.js:32
+[  326449ms] [ERROR] [slice-8-auth] Refresh exception: AbortError: Lock broken by another request with the 'steal' option. @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/app-index.js:32
+[  326449ms] [ERROR] [slice-8-auth] Profile fetch error: {message: AbortError: Lock broken by another request with the 'steal' option., details: AbortError: Lock broken by another request with the 'steal' option., hint: Request was aborted (timeout or manual cancellation), code: } @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/app-index.js:32
+[  326755ms] [ERROR] [slice-8-auth] Refresh exception: AbortError: Lock broken by another request with the 'steal' option. @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/app-index.js:32
+[  326757ms] [ERROR] [slice-8-auth] Profile fetch error: {message: AbortError: Lock broken by another request with the 'steal' option., details: AbortError: Lock broken by another request with the 'steal' option., hint: Request was aborted (timeout or manual cancellation), code: } @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/app-index.js:32
+[  326799ms] [ERROR] [slice-8-auth] Refresh exception: AbortError: Lock broken by another request with the 'steal' option. @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/app-index.js:32
+[  326799ms] [ERROR] [slice-8-auth] Profile fetch error: {message: AbortError: Lock broken by another request with the 'steal' option., details: AbortError: Lock broken by another request with the 'steal' option., hint: Request was aborted (timeout or manual cancellation), code: } @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/app-index.js:32
+[  334691ms] [WARNING] @supabase/gotrue-js: Lock "lock:sb-66-auth-token" was not released within 5000ms. This may indicate an orphaned lock from a component unmount (e.g., React Strict Mode). Forcefully acquiring the lock to recover. @ webpack-internal:///(app-pages-browser)/./node_modules/@supabase/auth-js/dist/module/lib/locks.js:190
+[  334930ms] [ERROR] [slice-8-auth] Init error: AbortError: Lock broken by another request with the 'steal' option. @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/app-index.js:32
+[  334931ms] [ERROR] [slice-8-auth] Init error: AbortError: Lock broken by another request with the 'steal' option. @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/app-index.js:32
+[  334931ms] [ERROR] [slice-8-auth] Refresh exception: AbortError: Lock broken by another request with the 'steal' option. @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/app-index.js:32
+[  334931ms] [ERROR] [slice-8-auth] Refresh exception: AbortError: Lock broken by another request with the 'steal' option. @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/app-index.js:32
+[  334931ms] [ERROR] [slice-8-auth] Refresh exception: AbortError: Lock broken by another request with the 'steal' option. @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/app-index.js:32
+[  334931ms] [ERROR] [slice-8-auth] Refresh exception: AbortError: Lock broken by another request with the 'steal' option. @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/app-index.js:32
+[  334932ms] [ERROR] [slice-8-auth] Refresh exception: AbortError: Lock broken by another request with the 'steal' option. @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/app-index.js:32
+[  334932ms] [ERROR] [slice-8-auth] Refresh exception: AbortError: Lock broken by another request with the 'steal' option. @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/app-index.js:32
+[  334932ms] [ERROR] [slice-8-auth] Profile fetch error: {message: AbortError: Lock broken by another request with the 'steal' option., details: AbortError: Lock broken by another request with the 'steal' option., hint: Request was aborted (timeout or manual cancellation), code: } @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/app-index.js:32
+[  334932ms] [ERROR] [slice-8-auth] Profile fetch error: {message: AbortError: Lock broken by another request with the 'steal' option., details: AbortError: Lock broken by another request with the 'steal' option., hint: Request was aborted (timeout or manual cancellation), code: } @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/app-index.js:32
+[  334932ms] [ERROR] [slice-8-auth] Profile fetch error: {message: AbortError: Lock broken by another request with the 'steal' option., details: AbortError: Lock broken by another request with the 'steal' option., hint: Request was aborted (timeout or manual cancellation), code: } @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/app-index.js:32
+[  334932ms] [ERROR] [slice-8-auth] Profile fetch error: {message: AbortError: Lock broken by another request with the 'steal' option., details: AbortError: Lock broken by another request with the 'steal' option., hint: Request was aborted (timeout or manual cancellation), code: } @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/app-index.js:32
+[  334932ms] [ERROR] [slice-8-auth] Profile fetch error: {message: AbortError: Lock broken by another request with the 'steal' option., details: AbortError: Lock broken by another request with the 'steal' option., hint: Request was aborted (timeout or manual cancellation), code: } @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/app-index.js:32
+[  334932ms] [ERROR] [slice-8-auth] Profile fetch error: {message: AbortError: Lock broken by another request with the 'steal' option., details: AbortError: Lock broken by another request with the 'steal' option., hint: Request was aborted (timeout or manual cancellation), code: } @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/app-index.js:32
+[  334933ms] [ERROR] [slice-8-auth] Refresh exception: AbortError: Lock broken by another request with the 'steal' option. @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/app-index.js:32
+[  334934ms] [ERROR] [slice-8-auth] Profile fetch error: {message: AbortError: Lock broken by another request with the 'steal' option., details: AbortError: Lock broken by another request with the 'steal' option., hint: Request was aborted (timeout or manual cancellation), code: } @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/app-index.js:32
+[  334950ms] Lock broken by another request with the 'steal' option.
+[  334950ms] Lock broken by another request with the 'steal' option.
+[  334950ms] Lock broken by another request with the 'steal' option.
+[  334950ms] Lock broken by another request with the 'steal' option.
+[  343880ms] [ERROR] [slice-8-auth] Refresh exception: AbortError: Lock broken by another request with the 'steal' option. @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/app-index.js:32
+[  343884ms] [ERROR] [slice-8-auth] Profile fetch error: {message: AbortError: Lock broken by another request with the 'steal' option., details: AbortError: Lock broken by another request with the 'steal' option., hint: Request was aborted (timeout or manual cancellation), code: } @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/app-index.js:32
+[  348374ms] [ERROR] [slice-8-auth] Refresh exception: AbortError: Lock broken by another request with the 'steal' option. @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/app-index.js:32
+[  348374ms] [ERROR] [slice-8-auth] Profile fetch error: {message: AbortError: Lock broken by another request with the 'steal' option., details: AbortError: Lock broken by another request with the 'steal' option., hint: Request was aborted (timeout or manual cancellation), code: } @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/app-index.js:32
+[  386705ms] [ERROR] [slice-8-auth] Refresh exception: AbortError: Lock broken by another request with the 'steal' option. @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/app-index.js:32
+[  386707ms] [ERROR] [slice-8-auth] Profile fetch error: {message: AbortError: Lock broken by another request with the 'steal' option., details: AbortError: Lock broken by another request with the 'steal' option., hint: Request was aborted (timeout or manual cancellation), code: } @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/app-index.js:32
+[  386900ms] [ERROR] [slice-8-auth] Refresh exception: AbortError: Lock broken by another request with the 'steal' option. @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/app-index.js:32
+[  386900ms] [ERROR] [slice-8-auth] Profile fetch error: {message: AbortError: Lock broken by another request with the 'steal' option., details: AbortError: Lock broken by another request with the 'steal' option., hint: Request was aborted (timeout or manual cancellation), code: } @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/app-index.js:32
+[  396258ms] [ERROR] [slice-8-auth] Refresh exception: AbortError: Lock broken by another request with the 'steal' option. @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/app-index.js:32
+[  396258ms] [ERROR] [slice-8-auth] Profile fetch error: {message: AbortError: Lock broken by another request with the 'steal' option., details: AbortError: Lock broken by another request with the 'steal' option., hint: Request was aborted (timeout or manual cancellation), code: } @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/app-index.js:32
+[  400982ms] [ERROR] [slice-8-auth] Refresh exception: AbortError: Lock broken by another request with the 'steal' option. @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/app-index.js:32
+[  400984ms] [ERROR] [slice-8-auth] Profile fetch error: {message: AbortError: Lock broken by another request with the 'steal' option., details: AbortError: Lock broken by another request with the 'steal' option., hint: Request was aborted (timeout or manual cancellation), code: } @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/app-index.js:32
+[  433228ms] [ERROR] [slice-8-auth] Refresh exception: AbortError: Lock broken by another request with the 'steal' option. @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/app-index.js:32
+[  433232ms] [ERROR] [slice-8-auth] Profile fetch error: {message: AbortError: Lock broken by another request with the 'steal' option., details: AbortError: Lock broken by another request with the 'steal' option., hint: Request was aborted (timeout or manual cancellation), code: } @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/app-index.js:32
+[  433482ms] [ERROR] [slice-8-auth] Refresh exception: AbortError: Lock broken by another request with the 'steal' option. @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/app-index.js:32
+[  433483ms] [ERROR] [slice-8-auth] Profile fetch error: {message: AbortError: Lock broken by another request with the 'steal' option., details: AbortError: Lock broken by another request with the 'steal' option., hint: Request was aborted (timeout or manual cancellation), code: } @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/app-index.js:32
+[  434021ms] [ERROR] [slice-8-auth] Refresh exception: AbortError: Lock broken by another request with the 'steal' option. @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/app-index.js:32
+[  434022ms] [ERROR] [slice-8-auth] Profile fetch error: {message: AbortError: Lock broken by another request with the 'steal' option., details: AbortError: Lock broken by another request with the 'steal' option., hint: Request was aborted (timeout or manual cancellation), code: } @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/app-index.js:32
+[  438902ms] [ERROR] [slice-8-auth] Refresh exception: AbortError: Lock broken by another request with the 'steal' option. @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/app-index.js:32
+[  438904ms] [ERROR] [slice-8-auth] Profile fetch error: {message: AbortError: Lock broken by another request with the 'steal' option., details: AbortError: Lock broken by another request with the 'steal' option., hint: Request was aborted (timeout or manual cancellation), code: } @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/app-index.js:32

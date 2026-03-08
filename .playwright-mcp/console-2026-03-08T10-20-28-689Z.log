@@ -1,0 +1,6 @@
+[    1041ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/favicon.ico:0
+[    1252ms] [ERROR] Failed to load resource: the server responded with a status of 401 (Unauthorized) @ http://66.42.117.148:8000/rest/v1/profiles?id=eq.1750ed3d-953f-47ca-b2c8-c962781e892e&select=*:0
+[    1353ms] [ERROR] Failed to load resource: the server responded with a status of 401 (Unauthorized) @ http://66.42.117.148:8000/rest/v1/profiles?id=eq.1750ed3d-953f-47ca-b2c8-c962781e892e&select=*:0
+[   18521ms] [ERROR] [slice-8-auth] Profile fetch error: not found @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/app-index.js:32
+[   19009ms] [ERROR] Failed to load resource: the server responded with a status of 401 (Unauthorized) @ http://66.42.117.148:8000/rest/v1/profiles?id=eq.3af3f473-faeb-4a53-bef6-ad948f995fd5&select=*:0
+[   19102ms] [ERROR] Failed to load resource: the server responded with a status of 401 (Unauthorized) @ http://66.42.117.148:8000/rest/v1/profiles?id=eq.3af3f473-faeb-4a53-bef6-ad948f995fd5&select=*:0

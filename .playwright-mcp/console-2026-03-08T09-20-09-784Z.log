@@ -1,0 +1,7 @@
+[    6197ms] [WARNING] @supabase/gotrue-js: Lock "lock:sb-66-auth-token" was not released within 5000ms. This may indicate an orphaned lock from a component unmount (e.g., React Strict Mode). Forcefully acquiring the lock to recover. @ webpack-internal:///(app-pages-browser)/./node_modules/@supabase/auth-js/dist/module/lib/locks.js:190
+[    6204ms] [ERROR] [slice-8-auth] Profile fetch error: {message: AbortError: Lock broken by another request with the 'steal' option., details: AbortError: Lock broken by another request with the 'steal' option., hint: Request was aborted (timeout or manual cancellation), code: } @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/app-index.js:32
+[    6209ms] Lock broken by another request with the 'steal' option.
+[    6210ms] Lock broken by another request with the 'steal' option.
+[    6210ms] Lock broken by another request with the 'steal' option.
+[    6210ms] Lock broken by another request with the 'steal' option.
+[    6211ms] [ERROR] [slice-8-auth] Profile fetch error: {message: AbortError: Lock broken by another request with the 'steal' option., details: AbortError: Lock broken by another request with the 'steal' option., hint: Request was aborted (timeout or manual cancellation), code: } @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/app-index.js:32
