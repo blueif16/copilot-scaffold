@@ -22,6 +22,20 @@ export default function HomePage() {
     }
   }, [loading, profile, router]);
 
+  // Show loading state while auth is initializing
+  if (loading) {
+    return (
+      <div className="h-screen flex items-center justify-center">
+        <div className="text-lg">Loading...</div>
+      </div>
+    );
+  }
+
+  // Don't render student content if redirecting teacher
+  if (profile?.role === "teacher") {
+    return null;
+  }
+
   return (
     <main className="h-screen flex flex-col overflow-hidden">
       {/* ── Header ── */}
