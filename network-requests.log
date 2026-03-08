@@ -1,0 +1,61 @@
+[GET] http://66.42.117.148:8000/rest/v1/profiles?select=*&id=eq.3af3f473-faeb-4a53-bef6-ad948f995fd5 => [200] OK
+[GET] http://66.42.117.148:8000/rest/v1/profiles?select=*&id=eq.3af3f473-faeb-4a53-bef6-ad948f995fd5 => [200] OK
+[GET] http://66.42.117.148:8000/rest/v1/profiles?select=*&id=eq.3af3f473-faeb-4a53-bef6-ad948f995fd5 => [200] OK
+[POST] http://66.42.117.148:8000/auth/v1/token?grant_type=password => [200] OK
+[GET] http://66.42.117.148:8000/rest/v1/profiles?select=*&id=eq.3af3f473-faeb-4a53-bef6-ad948f995fd5 => [200] OK
+[GET] http://66.42.117.148:8000/rest/v1/profiles?select=*&id=eq.3af3f473-faeb-4a53-bef6-ad948f995fd5 => [200] OK
+[GET] http://66.42.117.148:8000/rest/v1/profiles?select=*&id=eq.3af3f473-faeb-4a53-bef6-ad948f995fd5 => [200] OK
+[GET] http://66.42.117.148:8000/rest/v1/profiles?select=*&id=eq.3af3f473-faeb-4a53-bef6-ad948f995fd5 => [200] OK
+[GET] http://66.42.117.148:8000/rest/v1/profiles?select=*&id=eq.3af3f473-faeb-4a53-bef6-ad948f995fd5 => [200] OK
+[GET] http://localhost:3000/teacher/dashboard?_rsc=2r5gc => [200] OK
+[GET] http://localhost:3000/teacher/dashboard?_rsc=1qa20 => [200] OK
+[GET] http://localhost:3000/teacher/dashboard?_rsc=1qa20 => [200] OK
+[GET] http://66.42.117.148:8000/rest/v1/courses?select=id%2Ctitle%2Cdescription%2Cformat%2Cstatus%2Ccreated_at&teacher_id=eq.3af3f473-faeb-4a53-bef6-ad948f995fd5&order=created_at.desc => [200] OK
+[GET] http://66.42.117.148:8000/rest/v1/courses?select=id%2Ctitle%2Cdescription%2Cformat%2Cstatus%2Ccreated_at&teacher_id=eq.3af3f473-faeb-4a53-bef6-ad948f995fd5&order=created_at.desc => [200] OK
+[GET] http://localhost:3000/teacher/courses/new?_rsc=1izd2 => [200] OK
+[GET] http://localhost:3000/teacher/courses/new?_rsc=dfez0 => [200] OK
+[GET] http://localhost:3000/teacher/courses/new?_rsc=dfez0 => [200] OK
+[POST] http://localhost:3000/api/copilotkit => [200] OK
+[POST] http://localhost:3000/api/copilotkit => [200] OK
+[POST] http://localhost:3000/api/copilotkit => [200] OK
+[POST] http://localhost:3000/api/copilotkit => [200] OK
+[POST] http://localhost:3000/api/copilotkit => [200] OK
+[GET] https://cdn.copilotkit.ai/announcements.json => [200] 
+[POST] http://localhost:3000/api/copilotkit => [200] OK
+[POST] http://localhost:3000/api/copilotkit => [200] OK
+[GET] https://2-19-8-sandpack.codesandbox.io/ => [FAILED] net::ERR_ABORTED
+[GET] https://2-19-8-sandpack.codesandbox.io/ => [FAILED] net::ERR_ABORTED
+[GET] https://2-19-8-sandpack.codesandbox.io/ => [FAILED] net::ERR_ABORTED
+[GET] https://2-19-8-sandpack.codesandbox.io/ => [FAILED] net::ERR_ABORTED
+[GET] https://2-19-8-sandpack.codesandbox.io/ => [FAILED] net::ERR_ABORTED
+[GET] https://2-19-8-sandpack.codesandbox.io/ => [FAILED] net::ERR_ABORTED
+[GET] https://data.jsdelivr.com/v1/package/npm/react => [200] 
+[POST] https://2-19-8-sandpack.codesandbox.io/cdn-cgi/rum? => [204] 
+[POST] https://2-19-8-sandpack.codesandbox.io/cdn-cgi/challenge-platform/h/g/jsd/oneshot/ea2d291c0fdc/0.3570660036224395:1773001247:BlbsgLz4J0ha9Qt48ufz7e84wbEezO5o7BN4yuaUHjg/9d94f7ac9c8c7b82 => [200] 
+[GET] https://data.jsdelivr.com/v1/package/npm/react-dom => [200] 
+[GET] https://data.jsdelivr.com/v1/package/npm/react => [200] 
+[GET] https://data.jsdelivr.com/v1/package/npm/react-dom => [200] 
+[GET] https://data.jsdelivr.com/v1/package/npm/@babel/core => [200] 
+[GET] https://data.jsdelivr.com/v1/package/npm/@babel/runtime => [200] 
+[GET] https://prod-packager-packages.codesandbox.io/v2/packages/node-libs-browser/2.2.1.json => [200] 
+[GET] https://prod-packager-packages.codesandbox.io/v2/packages/babel-runtime/6.26.0.json => [200] 
+[GET] https://prod-packager-packages.codesandbox.io/v2/packages/react-refresh/0.9.0.json => [200] 
+[GET] https://data.jsdelivr.com/v1/package/npm/react-dom => [FAILED] net::ERR_ABORTED
+[GET] https://prod-packager-packages.codesandbox.io/v2/packages/react-dom/19.2.4.json => [200] 
+[GET] https://data.jsdelivr.com/v1/package/npm/react-dom => [FAILED] net::ERR_ABORTED
+[GET] https://prod-packager-packages.codesandbox.io/v2/packages/@babel/core/7.29.0.json => [200] 
+[GET] https://data.jsdelivr.com/v1/package/npm/@babel/core => [FAILED] net::ERR_ABORTED
+[GET] https://prod-packager-packages.codesandbox.io/v2/packages/@babel/runtime/7.28.6.json => [200] 
+[GET] https://data.jsdelivr.com/v1/package/npm/@babel/runtime => [FAILED] net::ERR_ABORTED
+[GET] https://data.jsdelivr.com/v1/package/npm/@babel/runtime => [FAILED] net::ERR_ABORTED
+[GET] https://data.jsdelivr.com/v1/package/npm/@babel/core => [FAILED] net::ERR_ABORTED
+[GET] https://data.jsdelivr.com/v1/package/npm/react-dom => [FAILED] net::ERR_ABORTED
+[GET] https://data.jsdelivr.com/v1/package/npm/react-dom => [FAILED] net::ERR_ABORTED
+[GET] https://prod-packager-packages.codesandbox.io/v2/packages/react/19.2.4.json => [200] 
+[GET] https://data.jsdelivr.com/v1/package/npm/react@19.2.4/flat => [200] 
+[GET] https://cdn.jsdelivr.net/npm/react@19.2.4/jsx-runtime.js => [200] 
+[GET] https://data.jsdelivr.com/v1/package/npm/@babel/runtime@7.28.6/flat => [200] 
+[GET] https://cdn.jsdelivr.net/npm/@babel/runtime@7.28.6/helpers/interopRequireDefault.js => [200] 
+[GET] https://cdn.jsdelivr.net/npm/@babel/runtime@7.28.6/helpers/interopRequireWildcard.js => [200] 
+[GET] https://cdn.jsdelivr.net/npm/@babel/runtime@7.28.6/helpers/typeof.js => [200] 
+[POST] https://col.csbops.io/data/sandpack
