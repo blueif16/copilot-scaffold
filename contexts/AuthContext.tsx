@@ -22,36 +22,54 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+async function fetchProfile(supabase: ReturnType<typeof createSupabaseBrowser>, userId: string): Promise<Profile | null> {
+  // First refresh the session to ensure we have a valid token
+  const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+
+  if (refreshError) {
+    console.error("[slice-8-auth] Refresh error:", refreshError);
+  }
+
+  if (!refreshData.session) {
+    console.log("[slice-8-auth] No session after refresh");
+    return null;
+  }
+
+  // Now fetch the profile
+  const { data: profileData, error: profileError } = await supabase
+    .from("profiles")
+    .select("*")
+    .eq("id", userId)
+    .single();
+
+  if (profileError) {
+    console.error("[slice-8-auth] Profile fetch error:", profileError);
+    return null;
+  }
+
+  return profileData;
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const supabase = createSupabaseBrowser();
 
-  // Normal auth flow
+  // Initialize auth
   useEffect(() => {
-    // Get initial session
     const initializeAuth = async () => {
       try {
-        const { data: { user: currentUser } } = await supabase.auth.getUser();
-        setUser(currentUser);
+        // Get initial session
+        const { data: { session } } = await supabase.auth.getSession();
 
-        if (currentUser) {
-          // Fetch profile data
-          const { data: profileData, error } = await supabase
-            .from("profiles")
-            .select("*")
-            .eq("id", currentUser.id)
-            .single();
-
-          if (error) {
-            console.error("[slice-8-auth] Error fetching profile:", error);
-          } else {
-            setProfile(profileData);
-          }
+        if (session?.user) {
+          setUser(session.user);
+          const profileData = await fetchProfile(supabase, session.user.id);
+          setProfile(profileData);
         }
       } catch (error) {
-        console.error("[slice-8-auth] Error initializing auth:", error);
+        console.error("[slice-8-auth] Init error:", error);
       } finally {
         setLoading(false);
       }
@@ -59,65 +77,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     initializeAuth();
 
-    // Listen to auth state changes
+    // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        const currentUser = session?.user ?? null;
-        setUser(currentUser);
+        console.log("[slice-8-auth] Event:", event, "session:", session ? "yes" : "no");
 
-        if (currentUser) {
-          console.log("[slice-8-auth] Auth state changed, fetching profile for:", currentUser.email);
-
-          // Check cookies
-          const cookies = document.cookie;
-          console.log("[slice-8-auth] Cookies length:", cookies.length);
-          console.log("[slice-8-auth] Cookie value sample:", cookies.substring(0, 200));
-
-          // Wait for cookie to fully propagate
-          await new Promise(r => setTimeout(r, 500));
-
-          // Try to refresh the token explicitly
-          const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
-          console.log("[slice-8-auth] Refresh result:", refreshData?.session ? "success" : "failed", refreshError);
-
-          // Get session again
-          const { data: { session: freshSession } } = await supabase.auth.getSession();
-          console.log("[slice-8-auth] Fresh session:", freshSession ? "valid with user: " + freshSession.user?.email : "null");
-          console.log("[slice-8-auth] Access token first 50 chars:", freshSession?.access_token?.substring(0, 50));
-
-          try {
-            // Fetch profile with timeout
-            const fetchPromise = supabase
-              .from("profiles")
-              .select("*")
-              .eq("id", currentUser.id)
-              .single();
-
-            const timeoutPromise = new Promise((_, reject) =>
-              setTimeout(() => reject(new Error("Profile fetch timeout")), 5000)
-            );
-
-            const result = await Promise.race([fetchPromise, timeoutPromise]) as any;
-            const { data: profileData, error } = result;
-
-            console.log("[slice-8-auth] Profile result:", profileData, error);
-
-            if (error) {
-              console.error("[slice-8-auth] Error fetching profile:", error);
-              setProfile(null);
-            } else if (profileData) {
-              console.log("[slice-8-auth] Profile fetched:", profileData);
-              setProfile(profileData);
-            } else {
-              console.error("[slice-8-auth] No profile data and no error!");
-              setProfile(null);
-            }
-          } catch (err: any) {
-            console.error("[slice-8-auth] Profile fetch failed:", err.message);
-            setProfile(null);
-          }
-        } else {
-          console.log("[slice-8-auth] No user, clearing profile");
+        if (event === "SIGNED_IN" && session?.user) {
+          setUser(session.user);
+          const profileData = await fetchProfile(supabase, session.user.id);
+          setProfile(profileData);
+        } else if (event === "SIGNED_OUT") {
+          setUser(null);
           setProfile(null);
         }
 
@@ -125,9 +95,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     );
 
-    return () => {
-      subscription.unsubscribe();
-    };
+    return () => subscription.unsubscribe();
   }, [supabase]);
 
   const signOut = async () => {
