@@ -51,6 +51,5 @@ next-env.d.ts
 
 # Claude Code
 .claude/
-.tasks/
 .logs/
 agent/.langgraph_api/
