@@ -1,0 +1,28 @@
+Total messages: 26 (Errors: 0, Warnings: 1)
+
+[INFO] %cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom.development.js:38559
+[LOG] [auth] Event: SIGNED_IN session: yes @ webpack-internal:///(app-pages-browser)/./contexts/AuthContext.tsx:57
+[LOG] [auth] Event: INITIAL_SESSION session: yes @ webpack-internal:///(app-pages-browser)/./contexts/AuthContext.tsx:57
+[LOG] [Frontend:useCoAgent] State updated: {fileCount: 0, filePaths: Array(0), totalSize: 0, timestamp: 2026-03-08T21:07:04.068Z} @ webpack-internal:///(app-pages-browser)/./components/teacher/CourseBuilder.tsx:73
+[LOG] [Frontend:useCoAgent] State updated: {fileCount: 0, filePaths: Array(0), totalSize: 0, timestamp: 2026-03-08T21:07:04.076Z} @ webpack-internal:///(app-pages-browser)/./components/teacher/CourseBuilder.tsx:73
+[LOG] [Frontend:useCoAgent] State updated: {fileCount: 0, filePaths: Array(0), totalSize: 0, timestamp: 2026-03-08T21:07:04.095Z} @ webpack-internal:///(app-pages-browser)/./components/teacher/CourseBuilder.tsx:73
+[LOG] [Frontend:useCoAgent] State updated: {fileCount: 0, filePaths: Array(0), totalSize: 0, timestamp: 2026-03-08T21:07:04.106Z} @ webpack-internal:///(app-pages-browser)/./components/teacher/CourseBuilder.tsx:73
+[LOG] [Frontend:useCoAgent] State updated: {fileCount: 0, filePaths: Array(0), totalSize: 0, timestamp: 2026-03-08T21:07:04.832Z} @ webpack-internal:///(app-pages-browser)/./components/teacher/CourseBuilder.tsx:73
+[LOG] [Frontend:useCoAgent] State updated: {fileCount: 0, filePaths: Array(0), totalSize: 0, timestamp: 2026-03-08T21:07:04.836Z} @ webpack-internal:///(app-pages-browser)/./components/teacher/CourseBuilder.tsx:73
+[WARNING] Lit is in dev mode. Not recommended for production! See https://lit.dev/msg/dev-mode for more information. @ webpack-internal:///(app-pages-browser)/./node_modules/@lit/reactive-element/development/reactive-element.js:62
+[LOG] [home] loading: false profile: {id: 3af3f473-faeb-4a53-bef6-ad948f995fd5, role: teacher, display_name: demo-teacher@omniscience.app, avatar_url: null, letta_agent_id: null} @ webpack-internal:///(app-pages-browser)/./app/(student)/page.tsx:32
+[LOG] [home] Redirecting teacher to dashboard @ webpack-internal:///(app-pages-browser)/./app/(student)/page.tsx:34
+[LOG] [home] loading: false profile: {id: 3af3f473-faeb-4a53-bef6-ad948f995fd5, role: teacher, display_name: demo-teacher@omniscience.app, avatar_url: null, letta_agent_id: null} @ webpack-internal:///(app-pages-browser)/./app/(student)/page.tsx:32
+[LOG] [home] Redirecting teacher to dashboard @ webpack-internal:///(app-pages-browser)/./app/(student)/page.tsx:34
+[LOG] [Frontend:useCoAgent] State updated: {fileCount: 0, filePaths: Array(0), totalSize: 0, timestamp: 2026-03-08T21:07:20.253Z} @ webpack-internal:///(app-pages-browser)/./components/teacher/CourseBuilder.tsx:73
+[LOG] [Frontend:useCoAgent] State updated: {fileCount: 0, filePaths: Array(0), totalSize: 0, timestamp: 2026-03-08T21:07:20.257Z} @ webpack-internal:///(app-pages-browser)/./components/teacher/CourseBuilder.tsx:73
+[LOG] [Frontend:useCoAgent] State updated: {fileCount: 0, filePaths: Array(0), totalSize: 0, timestamp: 2026-03-08T21:07:20.263Z} @ webpack-internal:///(app-pages-browser)/./components/teacher/CourseBuilder.tsx:73
+[LOG] [Frontend:useCoAgent] State updated: {fileCount: 0, filePaths: Array(0), totalSize: 0, timestamp: 2026-03-08T21:07:20.271Z} @ webpack-internal:///(app-pages-browser)/./components/teacher/CourseBuilder.tsx:73
+[LOG] [Frontend:useCoAgent] State updated: {fileCount: 0, filePaths: Array(0), totalSize: 0, timestamp: 2026-03-08T21:07:20.278Z} @ webpack-internal:///(app-pages-browser)/./components/teacher/CourseBuilder.tsx:73
+[LOG] [Frontend:useCoAgent] State updated: {fileCount: 0, filePaths: Array(0), totalSize: 0, timestamp: 2026-03-08T21:07:20.558Z} @ webpack-internal:///(app-pages-browser)/./components/teacher/CourseBuilder.tsx:73
+[LOG] [Frontend:useCoAgent] State updated: {fileCount: 0, filePaths: Array(0), totalSize: 0, timestamp: 2026-03-08T21:07:20.568Z} @ webpack-internal:///(app-pages-browser)/./components/teacher/CourseBuilder.tsx:73
+[LOG] [Frontend:useCoAgent] State updated: {fileCount: 0, filePaths: Array(0), totalSize: 0, timestamp: 2026-03-08T21:07:20.571Z} @ webpack-internal:///(app-pages-browser)/./components/teacher/CourseBuilder.tsx:73
+[LOG] [Frontend:handleSend] Sending message: {content: [Format: lab] Create a simple water cycle simulation for 8 year olds, phase: chat, hasTemplate: true, timestamp: 2026-03-08T21:07:36.930Z} @ webpack-internal:///(app-pages-browser)/./components/teacher/CourseBuilder.tsx:138
+[LOG] [Frontend:useCoAgent] State updated: {fileCount: 0, filePaths: Array(0), totalSize: 0, timestamp: 2026-03-08T21:07:36.937Z} @ webpack-internal:///(app-pages-browser)/./components/teacher/CourseBuilder.tsx:73
+[LOG] [Frontend:useCoAgent] State updated: {fileCount: 0, filePaths: Array(0), totalSize: 0, timestamp: 2026-03-08T21:07:39.965Z} @ webpack-internal:///(app-pages-browser)/./components/teacher/CourseBuilder.tsx:73
+[LOG] [Frontend:useCoAgent] State updated: {fileCount: 0, filePaths: Array(0), totalSize: 0, timestamp: 2026-03-08T21:07:39.973Z} @ webpack-internal:///(app-pages-browser)/./components/teacher/CourseBuilder.tsx:73

@@ -13,6 +13,7 @@ from __future__ import annotations
 from typing import Any, Optional, Callable
 
 from copilotkit import CopilotKitState
+from config import get_gemini_model
 from langchain_core.messages import SystemMessage
 from langchain_core.runnables import RunnableConfig
 from langgraph.graph import END, START, StateGraph
@@ -134,7 +135,7 @@ TOPIC KNOWLEDGE:
             print(f"[Chat Agent] User message: {state['messages'][-1].content if state.get('messages') else 'None'}\n")
 
             model = ChatGoogleGenerativeAI(
-                model="gemini-3.1-flash-lite-preview",
+                model=get_gemini_model(),
                 temperature=0.7,
             )
 

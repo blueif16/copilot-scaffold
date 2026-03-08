@@ -18,6 +18,7 @@ from typing import Any, Literal
 
 from copilotkit import CopilotKitState
 from copilotkit.langgraph import copilotkit_emit_state
+from config import get_gemini_model
 from langchain_core.messages import SystemMessage, AIMessage, ToolMessage
 from langchain_core.runnables import RunnableConfig
 from langchain_core.tools import tool
@@ -153,7 +154,7 @@ async def chat_node(state: CourseBuilderState, config: RunnableConfig) -> dict:
     print(f"[Agent:chat_node] Received {len(state['messages'])} messages")
 
     llm = ChatGoogleGenerativeAI(
-        model="gemini-3.1-flash-lite-preview",
+        model=get_gemini_model(),
         temperature=1.0,
         max_retries=2,
     )
