@@ -28,6 +28,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const supabase = createSupabaseBrowser();
 
+  // Normal auth flow
   useEffect(() => {
     // Get initial session
     const initializeAuth = async () => {
@@ -65,20 +66,58 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(currentUser);
 
         if (currentUser) {
-          // Fetch profile on auth state change
-          const { data: profileData, error } = await supabase
-            .from("profiles")
-            .select("*")
-            .eq("id", currentUser.id)
-            .single();
+          console.log("[slice-8-auth] Auth state changed, fetching profile for:", currentUser.email);
 
-          if (error) {
-            console.error("[slice-8-auth] Error fetching profile:", error);
+          // Check cookies
+          const cookies = document.cookie;
+          console.log("[slice-8-auth] Cookies length:", cookies.length);
+          console.log("[slice-8-auth] Cookie value sample:", cookies.substring(0, 200));
+
+          // Wait for cookie to fully propagate
+          await new Promise(r => setTimeout(r, 500));
+
+          // Try to refresh the token explicitly
+          const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+          console.log("[slice-8-auth] Refresh result:", refreshData?.session ? "success" : "failed", refreshError);
+
+          // Get session again
+          const { data: { session: freshSession } } = await supabase.auth.getSession();
+          console.log("[slice-8-auth] Fresh session:", freshSession ? "valid with user: " + freshSession.user?.email : "null");
+          console.log("[slice-8-auth] Access token first 50 chars:", freshSession?.access_token?.substring(0, 50));
+
+          try {
+            // Fetch profile with timeout
+            const fetchPromise = supabase
+              .from("profiles")
+              .select("*")
+              .eq("id", currentUser.id)
+              .single();
+
+            const timeoutPromise = new Promise((_, reject) =>
+              setTimeout(() => reject(new Error("Profile fetch timeout")), 5000)
+            );
+
+            const result = await Promise.race([fetchPromise, timeoutPromise]) as any;
+            const { data: profileData, error } = result;
+
+            console.log("[slice-8-auth] Profile result:", profileData, error);
+
+            if (error) {
+              console.error("[slice-8-auth] Error fetching profile:", error);
+              setProfile(null);
+            } else if (profileData) {
+              console.log("[slice-8-auth] Profile fetched:", profileData);
+              setProfile(profileData);
+            } else {
+              console.error("[slice-8-auth] No profile data and no error!");
+              setProfile(null);
+            }
+          } catch (err: any) {
+            console.error("[slice-8-auth] Profile fetch failed:", err.message);
             setProfile(null);
-          } else {
-            setProfile(profileData);
           }
         } else {
+          console.log("[slice-8-auth] No user, clearing profile");
           setProfile(null);
         }
 
