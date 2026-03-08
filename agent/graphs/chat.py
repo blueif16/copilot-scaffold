@@ -134,7 +134,7 @@ TOPIC KNOWLEDGE:
             print(f"[Chat Agent] User message: {state['messages'][-1].content if state.get('messages') else 'None'}\n")
 
             model = ChatGoogleGenerativeAI(
-                model="gemini-2.5-flash-lite",
+                model="gemini-3.1-flash-lite-preview",
                 temperature=0.7,
             )
 

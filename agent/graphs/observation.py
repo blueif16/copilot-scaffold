@@ -196,7 +196,7 @@ Decide if the companion should react. If yes, call the emit_reaction tool.
 If the moment doesn't warrant a reaction, do nothing."""
 
             tool = make_emit_reaction_tool(all_emotions, all_animations)
-            model = ChatGoogleGenerativeAI(model="gemini-2.5-flash", temperature=0.7)
+            model = ChatGoogleGenerativeAI(model="gemini-3.1-flash-lite-preview", temperature=0.7)
             model_with_tool = model.bind_tools([tool])
 
             response = await model_with_tool.ainvoke(
