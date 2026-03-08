@@ -25,17 +25,12 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 async function fetchProfile(supabase: ReturnType<typeof createSupabaseBrowser>, userId: string): Promise<Profile | null> {
   console.log("[slice-8-auth] fetchProfile called for:", userId);
 
-  // First refresh the session to ensure we have a valid token
-  const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
-  console.log("[slice-8-auth] Refresh result:", refreshError ? "error" : "success", refreshData?.session ? "has session" : "no session");
-
-  if (refreshError) {
-    console.error("[slice-8-auth] Refresh error:", refreshError);
-  }
-
-  if (!refreshData.session) {
-    console.log("[slice-8-auth] No session after refresh");
-    return null;
+  // Try to refresh the session first
+  try {
+    const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+    console.log("[slice-8-auth] Refresh result:", refreshError ? "error" : "success", refreshData?.session ? "has session" : "no session");
+  } catch (err) {
+    console.error("[slice-8-auth] Refresh exception:", err);
   }
 
   // Now fetch the profile
@@ -91,9 +86,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (event === "SIGNED_IN" && session?.user) {
           console.log("[slice-8-auth] Setting user, fetching profile...");
           setUser(session.user);
-          const profileData = await fetchProfile(supabase, session.user.id);
-          console.log("[slice-8-auth] Profile fetched:", profileData);
-          setProfile(profileData);
+          try {
+            const profileData = await fetchProfile(supabase, session.user.id);
+            console.log("[slice-8-auth] Profile fetched:", profileData);
+            setProfile(profileData);
+          } catch (err) {
+            console.error("[slice-8-auth] fetchProfile exception:", err);
+          }
         } else if (event === "SIGNED_OUT") {
           setUser(null);
           setProfile(null);
