@@ -48,7 +48,9 @@ export async function middleware(request: NextRequest) {
       .eq("id", user.id)
       .single();
 
-    const isTeacherRoute = request.nextUrl.pathname.startsWith("/dashboard") ||
+    const isTeacherRoute =
+      request.nextUrl.pathname.startsWith("/teacher/") ||
+      request.nextUrl.pathname.startsWith("/dashboard") ||
       request.nextUrl.pathname.startsWith("/courses/new");
 
     if (isTeacherRoute && profile?.role !== "teacher") {
