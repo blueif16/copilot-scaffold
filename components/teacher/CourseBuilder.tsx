@@ -60,7 +60,7 @@ function CourseBuilderContent() {
   // Convert CopilotKit messages to our ChatMessage format
   const messages: ChatMessage[] = visibleMessages.map((msg) => ({
     id: msg.id,
-    role: msg.role === Role.User ? "user" : "assistant",
+    role: (msg as unknown as Record<string, unknown>).role === Role.User ? "user" : "assistant",
     content: typeof msg.content === "string" ? msg.content : "",
     timestamp: new Date(msg.createdAt || Date.now()),
   }));
