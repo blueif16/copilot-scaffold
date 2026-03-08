@@ -8,7 +8,7 @@ import {
 } from "@codesandbox/sandpack-react";
 import { CopilotKit } from "@copilotkit/react-core";
 import { useCoAgent } from "@copilotkit/react-core";
-import { useCopilotChat } from "@copilotkit/react-core";
+import { useCopilotChatInternal } from "@copilotkit/react-core";
 import { Role, TextMessage } from "@copilotkit/runtime-client-gql";
 import {
   CourseTemplate,
@@ -65,7 +65,7 @@ function CourseBuilderContent() {
   // ── CopilotKit hooks ──────────────────────────────────
 
   // Chat messages (conversational)
-  const { visibleMessages, appendMessage, isLoading } = useCopilotChat();
+  const { messages: visibleMessages, appendMessage, isLoading } = useCopilotChatInternal();
 
   // Agent state (reactive file sync from backend)
   const { state: agentState } = useCoAgent<CourseBuilderAgentState>({
