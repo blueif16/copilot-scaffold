@@ -115,6 +115,9 @@ class CourseBuilderState(CopilotKitState):
     # Files being edited (tracked for frontend sync)
     files: dict[str, str]
 
+    # Required by create_react_agent
+    remaining_steps: int = 25
+
 
 # ── Graph Builder ────────────────────────────────────────
 
@@ -138,7 +141,7 @@ def build_course_builder_graph():
         model=llm,
         tools=tools,
         state_schema=CourseBuilderState,
-        messages_modifier=SystemMessage(content=COURSE_BUILDER_SYSTEM),
+        prompt=COURSE_BUILDER_SYSTEM,
     )
 
     return react_agent
