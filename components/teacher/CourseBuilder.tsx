@@ -64,7 +64,7 @@ function CourseBuilderContent() {
       id: msg.id,
       role: msgAny.role === Role.User ? "user" : "assistant",
       content: typeof msgAny.content === "string" ? msgAny.content : "",
-      timestamp: new Date(msg.createdAt || Date.now()),
+      timestamp: new Date(msgAny.createdAt || Date.now()),
     };
   });
 
@@ -389,7 +389,7 @@ function CourseBuilderContent() {
                 <SaveDraftButton
                   title={selectedTemplate?.name || "New Course"}
                   description={selectedTemplate?.description}
-                  format={selectedTemplate?.format || "lab"}
+                  format={(selectedTemplate?.format === "lab" || selectedTemplate?.format === "quiz") ? selectedTemplate.format : "lab"}
                   files={files}
                 />
               </div>
