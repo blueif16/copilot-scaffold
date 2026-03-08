@@ -264,6 +264,9 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.frontend
+      args:
+        - NEXT_PUBLIC_SUPABASE_URL=${USE_SELFHOSTED_SUPABASE:-false}
+        - NEXT_PUBLIC_SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
     container_name: omniscience-frontend
     ports:
       - "3082:3000"
