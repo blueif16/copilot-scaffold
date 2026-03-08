@@ -148,6 +148,7 @@ class CourseBuilderState(CopilotKitState):
 async def chat_node(state: CourseBuilderState, config: RunnableConfig) -> dict:
     """Main conversational node. Sends messages to LLM with tools bound."""
     from langchain_google_genai import ChatGoogleGenerativeAI
+    from langchain_core.messages import HumanMessage
 
     print(f"[Agent:chat_node] Received {len(state['messages'])} messages")
 
@@ -166,8 +167,18 @@ async def chat_node(state: CourseBuilderState, config: RunnableConfig) -> dict:
 
     system = SystemMessage(content=BASE_SYSTEM + format_prompt)
 
+    # Convert ToolMessages to HumanMessages for Gemini compatibility
+    # Gemini requires conversations to end with user role
+    messages = []
+    for msg in state["messages"]:
+        if isinstance(msg, ToolMessage):
+            # Convert ToolMessage to HumanMessage with tool result content
+            messages.append(HumanMessage(content=f"Tool result: {msg.content}"))
+        else:
+            messages.append(msg)
+
     response = await model_with_tools.ainvoke(
-        [system, *state["messages"]],
+        [system, *messages],
         config,
     )
 
