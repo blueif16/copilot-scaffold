@@ -62,3 +62,8 @@ def get_google_api_key() -> str:
             "Copy .env.example to .env and add your key, or export it."
         )
     return key
+
+
+def get_gemini_model() -> str:
+    """Return the Gemini model name from environment or default."""
+    return os.environ.get("GEMINI_MODEL", "gemini-3.1-flash-lite-preview")
