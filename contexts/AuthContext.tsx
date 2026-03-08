@@ -83,7 +83,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       async (event, session) => {
         console.log("[slice-8-auth] Event:", event, "session:", session ? "yes" : "no");
 
-        if (event === "SIGNED_IN" && session?.user) {
+        if ((event === "SIGNED_IN" || event === "INITIAL_SESSION") && session?.user) {
           console.log("[slice-8-auth] Setting user, fetching profile...");
           setUser(session.user);
           try {
