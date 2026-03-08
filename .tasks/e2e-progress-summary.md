@@ -32,52 +32,54 @@
 - **Fix**: Updated `.env` to use correct demo secret: `super-secret-jwt-token-with-at-least-32-characters-long`
 - Restarted Supabase auth service
 
-## Current Blocker: JWT Token Verification
+## ✅ JWT Token Verification Fixed (Commit 057bfb7)
 
-### Status: ❌ BLOCKED
+**Previous Issue**: Backend `/me` endpoint was failing with JWT signature verification errors.
 
-**Test Results**: 4/5 tests passing
-- ✅ T2.1a: Student signup (users created successfully)
-- ❌ T2.1b: Get user profile (500 Internal Server Error)
+**Solution**: Implemented local JWT verification using PyJWT instead of calling Supabase API.
+
+## ✅ Database Trigger Fixed
+
+### Issue
+- Users were signing up successfully in `auth.users`
+- But profiles were not being created in `public.profiles` table
+- Backend endpoint `/api/students/{user_id}/create-memory-agent` returned 404 "User not found"
+
+### Root Cause
+The database trigger `on_auth_user_created` was missing. The migration file existed but was never applied to the production database.
+
+### Fix
+1. Created the trigger function `handle_new_user()`
+2. Created the trigger `on_auth_user_created` on `auth.users` table
+3. Backfilled profiles for 25 existing users
+
+### Test Results: ✅ ALL PASSING (6/6)
+- ✅ T2.1a: Student signup
+- ✅ T2.1b: Get user profile
+- ✅ T2.1c: Create memory agent
 - ✅ T3.1: Teacher signup
 - ✅ T5.1: Reject unauthenticated requests
 - ✅ T5.2: Health check without auth
 
-### Problem
-Backend `/me` endpoint returns 500 error with message:
-```
-{"detail":"Token verification failed: invalid JWT: unable to parse or verify signature, signature is invalid"}
-```
+## Next Steps
 
-### Investigation
-1. Supabase auth is issuing JWT tokens successfully
-2. Tokens are being passed to backend correctly
-3. Backend has correct `JWT_SECRET=super-secret-jwt-token-with-at-least-32-characters-long`
-4. Supabase auth has matching `GOTRUE_JWT_SECRET`
-5. **But**: `supabase.auth.get_user(token)` in backend is failing to verify signatures
+### Immediate
+All basic E2E tests are passing. The infrastructure is now stable:
+- ✅ Authentication working (JWT verification)
+- ✅ User signup creating profiles automatically
+- ✅ Memory agent creation working
+- ✅ Authorization checks working
 
-### Hypothesis
-The Supabase Python client's `auth.get_user()` method makes an HTTP call to the auth service at `SUPABASE_URL` (http://172.20.0.11:8000) to verify tokens. This might be failing because:
-- The auth endpoint requires additional headers (apikey)
-- The client is not configured correctly for self-hosted Supabase
-- JWT verification should be done locally, not via API call
-
-### Next Steps
-1. Check if `supabase.auth.get_user()` needs the anon key in headers
-2. Consider implementing local JWT verification using PyJWT instead of calling Supabase API
-3. Test auth endpoint directly from backend container to see exact error
-
-## Remaining Tests (Blocked)
-- T2.1c: Create memory agent (requires auth to work)
-- T2.2: Session tracking
-- T2.3: Memory display
-- T3: Teacher flow tests
-- T4: Integration tests
-- T5: Additional error handling tests
-- T6: Compile results
+### Remaining Work
+- Expand test coverage (session tracking, memory display, teacher flows)
+- Integration tests
+- Performance testing
+- Deploy to production
 
 ## Files Modified
 - `docker-compose.yml` - Fixed SUPABASE_URL for backend
 - `.env` - Updated JWT_SECRET to match demo keys
 - Created Kong container manually with correct network and volume mounts
 - Created backend container manually with all required env vars
+- Database: Created trigger `on_auth_user_created` and function `handle_new_user()`
+- Database: Backfilled 25 user profiles
