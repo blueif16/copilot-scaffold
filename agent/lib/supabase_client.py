@@ -23,7 +23,7 @@ def get_supabase_client() -> Client:
     Raises:
         ValueError: If required environment variables are not set
     """
-    url: Optional[str] = os.environ.get("SUPABASE_URL")
+    url: Optional[str] = os.environ.get("SUPABASE_URL", "http://supabase-rest:3000")
     service_role_key: Optional[str] = os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
 
     if not url:

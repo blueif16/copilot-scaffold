@@ -220,7 +220,7 @@ services:
     command: >
       sh -c "pip install --quiet psycopg2-binary &&
              cd /app && alembic upgrade head &&
-             exec letta server"
+             exec letta server --host 0.0.0.0"
     depends_on:
       supabase-db:
         condition: service_healthy
@@ -242,8 +242,9 @@ services:
     environment:
       - GOOGLE_API_KEY=${GOOGLE_API_KEY}
       - LANGSMITH_API_KEY=${LANGSMITH_API_KEY:-}
-      - SUPABASE_URL=${USE_SELFHOSTED_SUPABASE:-false}
+      - SUPABASE_URL=http://kong:8000
       - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
+      - JWT_SECRET=${JWT_SECRET}
       - LETTA_BASE_URL=http://letta:8283
     env_file:
       - .env

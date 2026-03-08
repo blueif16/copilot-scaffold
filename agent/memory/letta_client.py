@@ -58,8 +58,6 @@ def create_student_agent(student_id: str, name: str, age: int) -> str:
 
     agent = client.agents.create(
         name=f"student-{student_id}",
-        model="google/gemini-2.5-flash",  # Cheaper model for memory management
-        embedding="openai/text-embedding-3-small",
         memory_blocks=[
             {
                 "label": "student_profile",
@@ -78,7 +76,17 @@ def create_student_agent(student_id: str, name: str, age: int) -> str:
                 "value": "No known interests yet. Pay attention to what excites the student.",
             },
         ],
-        enable_sleeptime=True,  # Background memory processing
+        llm_config={
+            "model": "gpt-4",
+            "model_endpoint_type": "openai",
+            "context_window": 8192,
+        },
+        embedding_config={
+            "embedding_model": "text-embedding-ada-002",
+            "embedding_endpoint_type": "openai",
+            "embedding_dim": 1536,
+            "embedding_chunk_size": 300,
+        },
         description=f"Memory agent for student {name}",
     )
 
