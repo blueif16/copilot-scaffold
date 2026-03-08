@@ -50,7 +50,9 @@ You may also write "/interactions.json" for event-reaction mappings.
 IMPORTANT: At the start of a conversation, do NOT immediately generate code.
 First understand what the teacher wants. Ask 1-2 clarifying questions if the
 request is vague (age range, specific concepts to cover, interaction style).
-Only generate code once you have enough context."""
+Only generate code once you have enough context.
+
+If the user's message starts with "[Format: lab]", "[Format: quiz]", or "[Format: dialogue]", generate code immediately without asking questions."""
 
 LAB_PROMPT = """
 FORMAT: Interactive Lab Simulation
@@ -153,6 +155,12 @@ async def chat_node(state: CourseBuilderState, config: RunnableConfig) -> dict:
 
     print(f"[Agent:chat_node] Received {len(state['messages'])} messages")
 
+    # Debug: print message contents
+    for i, msg in enumerate(state['messages']):
+        content = getattr(msg, 'content', '')
+        msg_type = type(msg).__name__
+        print(f"[Agent:chat_node] Message {i}: {msg_type}, content: {content[:100]}")
+
     llm = ChatGoogleGenerativeAI(
         model=get_gemini_model(),
         temperature=1.0,
@@ -178,13 +186,23 @@ async def chat_node(state: CourseBuilderState, config: RunnableConfig) -> dict:
         else:
             messages.append(msg)
 
-    response = await model_with_tools.ainvoke(
-        [system, *messages],
-        config,
-    )
+    print(f"[Agent:chat_node] Invoking LLM with {len(messages)} messages + system prompt")
+    try:
+        response = await model_with_tools.ainvoke(
+            [system, *messages],
+            config,
+        )
+        print(f"[Agent:chat_node] LLM invocation successful")
+    except Exception as e:
+        print(f"[Agent:chat_node] LLM invocation failed: {e}")
+        raise
 
     has_tool_calls = hasattr(response, 'tool_calls') and response.tool_calls
-    print(f"[Agent:chat_node] LLM response: tool_calls={has_tool_calls}, content_length={len(getattr(response, 'content', ''))}")
+    response_content = getattr(response, 'content', '')
+    print(f"[Agent:chat_node] LLM response: tool_calls={has_tool_calls}, content_length={len(response_content)}")
+    print(f"[Agent:chat_node] LLM response content: {response_content[:200]}")
+    if has_tool_calls:
+        print(f"[Agent:chat_node] Tool calls: {response.tool_calls}")
 
     return {"messages": [response]}
 

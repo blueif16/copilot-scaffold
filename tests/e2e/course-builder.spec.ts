@@ -104,7 +104,8 @@ test.describe('Course Builder E2E', () => {
       await expect(livePreview).toBeVisible();
 
       // Check for Sandpack preview iframe
-      await expect(page.frameLocator('iframe').first()).toBeVisible({ timeout: 10000 });
+      const iframe = page.locator('iframe').first();
+      await expect(iframe).toBeVisible({ timeout: 10000 });
 
       console.log('✅ Split view successfully rendered');
     } else {
