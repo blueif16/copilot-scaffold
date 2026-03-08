@@ -23,8 +23,11 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 async function fetchProfile(supabase: ReturnType<typeof createSupabaseBrowser>, userId: string): Promise<Profile | null> {
+  console.log("[slice-8-auth] fetchProfile called for:", userId);
+
   // First refresh the session to ensure we have a valid token
   const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+  console.log("[slice-8-auth] Refresh result:", refreshError ? "error" : "success", refreshData?.session ? "has session" : "no session");
 
   if (refreshError) {
     console.error("[slice-8-auth] Refresh error:", refreshError);
@@ -36,11 +39,14 @@ async function fetchProfile(supabase: ReturnType<typeof createSupabaseBrowser>, 
   }
 
   // Now fetch the profile
+  console.log("[slice-8-auth] Fetching profile...");
   const { data: profileData, error: profileError } = await supabase
     .from("profiles")
     .select("*")
     .eq("id", userId)
     .single();
+
+  console.log("[slice-8-auth] Profile result:", profileError || profileData);
 
   if (profileError) {
     console.error("[slice-8-auth] Profile fetch error:", profileError);
@@ -83,8 +89,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.log("[slice-8-auth] Event:", event, "session:", session ? "yes" : "no");
 
         if (event === "SIGNED_IN" && session?.user) {
+          console.log("[slice-8-auth] Setting user, fetching profile...");
           setUser(session.user);
           const profileData = await fetchProfile(supabase, session.user.id);
+          console.log("[slice-8-auth] Profile fetched:", profileData);
           setProfile(profileData);
         } else if (event === "SIGNED_OUT") {
           setUser(null);
