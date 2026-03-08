@@ -21,9 +21,18 @@ export interface ChatMessage {
 
 export type BuilderPhase = "landing" | "chat" | "split";
 
+/** Image uploaded by teacher for context (textbook page, worksheet, diagram) */
+export interface UploadedImage {
+  id: string;
+  base64: string;       // raw base64 (no data: prefix)
+  mimeType: string;     // e.g. "image/jpeg"
+  filename: string;
+}
+
 /** Matches CourseBuilderState on the backend (CopilotKitState fields omitted) */
 export interface CourseBuilderAgentState {
   files: Record<string, string>;
+  uploaded_images: UploadedImage[];
 }
 
 export interface CourseBuilderState {
