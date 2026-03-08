@@ -1,0 +1,7 @@
+[   23478ms] [WARNING] Lit is in dev mode. Not recommended for production! See https://lit.dev/msg/dev-mode for more information. @ webpack-internal:///(app-pages-browser)/./node_modules/@lit/reactive-element/development/reactive-element.js:62
+[   53131ms] [WARNING] Failed to run observation agent: TypeError: Cannot set properties of undefined (setting 'abortController')
+    at runAgent (webpack-internal:///(app-pages-browser)/./node_modules/@ag-ui/client/dist/index.mjs:112:23165)
+    at eventDebounceRef.current._config_eventDebounceMs (webpack-internal:///(app-pages-browser)/./framework/TopicRunner.tsx:194:21) @ webpack-internal:///(app-pages-browser)/./framework/TopicRunner.tsx:195
+[   83288ms] [WARNING] Failed to run observation agent: TypeError: Cannot set properties of undefined (setting 'abortController')
+    at runAgent (webpack-internal:///(app-pages-browser)/./node_modules/@ag-ui/client/dist/index.mjs:112:23165)
+    at eventDebounceRef.current._config_eventDebounceMs (webpack-internal:///(app-pages-browser)/./framework/TopicRunner.tsx:194:21) @ webpack-internal:///(app-pages-browser)/./framework/TopicRunner.tsx:195

@@ -1,0 +1,1 @@
+[   19226ms] [WARNING] @supabase/gotrue-js: Lock "lock:sb-66-auth-token" was not released within 5000ms. This may indicate an orphaned lock from a component unmount (e.g., React Strict Mode). Forcefully acquiring the lock to recover. @ webpack-internal:///(app-pages-browser)/./node_modules/@supabase/auth-js/dist/module/lib/locks.js:190

@@ -33,6 +33,9 @@ const runtime = new CopilotRuntime({
     "chat-genetics-basics": new LangGraphHttpAgent({
       url: `${backendUrl}/agents/chat-genetics-basics`,
     }),
+    "course-builder": new LangGraphHttpAgent({
+      url: `${backendUrl}/agents/course-builder`,
+    }),
   },
 });
 
@@ -40,10 +43,17 @@ const runtime = new CopilotRuntime({
 
 export const POST = async (req: NextRequest) => {
   const body = await req.text();
-  // console.log("[CopilotKit] Request:", {
-  //   url: req.url,
-  //   bodyPreview: body.substring(0, 300),
-  // });
+
+  // Log incoming requests
+  const isAgentRun = body.includes("agent/run");
+  const isStateEmit = body.includes("emit_state");
+  if (isAgentRun || isStateEmit) {
+    console.log("[CopilotKit→Backend]", {
+      type: isAgentRun ? "agent/run" : "emit_state",
+      timestamp: new Date().toISOString(),
+      bodyPreview: body.substring(0, 200),
+    });
+  }
 
   // Create new request since we consumed the body
   const newReq = new NextRequest(req.url, {
@@ -60,17 +70,14 @@ export const POST = async (req: NextRequest) => {
 
   const response = await handleRequest(newReq);
 
-  // console.log("[CopilotKit] Response:", {
-  //   status: response.status,
-  //   contentType: response.headers.get("content-type"),
-  // });
-
-  // Log response body for debugging
-  // if (body.includes("agent/run")) {
-  //   const clone = response.clone();
-  //   const text = await clone.text();
-  //   console.log("[CopilotKit] Response body preview:", text.substring(0, 500));
-  // }
+  // Log responses
+  if (isAgentRun || isStateEmit) {
+    console.log("[Backend→CopilotKit]", {
+      status: response.status,
+      contentType: response.headers.get("content-type"),
+      timestamp: new Date().toISOString(),
+    });
+  }
 
   return response;
 };
