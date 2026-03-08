@@ -242,12 +242,14 @@ services:
     environment:
       - GOOGLE_API_KEY=${GOOGLE_API_KEY}
       - LANGSMITH_API_KEY=${LANGSMITH_API_KEY:-}
-      - SUPABASE_URL=http://supabase-rest:3000
+      - SUPABASE_URL=http://kong:8000
       - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
-      - JWT_SECRET=${JWT_SECRET}
+      - SUPABASE_JWT_SECRET=${JWT_SECRET}
       - LETTA_BASE_URL=http://letta:8283
     env_file:
       - .env
+    extra_hosts:
+      - "kong:172.20.0.11"
     depends_on:
       kong:
         condition: service_healthy
