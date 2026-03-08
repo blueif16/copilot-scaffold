@@ -134,15 +134,10 @@ function CourseBuilderContent() {
     (template: CourseTemplate) => {
       setSelectedTemplate(template);
       setPhase("chat");
-      // Send format context as first assistant message
-      appendMessage(
-        new TextMessage({
-          content: `Great, let's build a **${template.name}** lesson! What subject or topic do you want to teach, and what age group is it for?`,
-          role: Role.Assistant,
-        })
-      );
+      // Don't send assistant message first - Gemini requires user message first
+      // The format will be prepended to the first user message instead
     },
-    [appendMessage]
+    []
   );
 
   const handleSend = useCallback(() => {
