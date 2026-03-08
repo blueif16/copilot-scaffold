@@ -38,6 +38,7 @@ export default function LoginPage() {
       }
 
       if (data.user) {
+        console.log("[login] Login successful, user:", data.user.email);
         // Redirect to home page
         router.push("/");
         router.refresh();
