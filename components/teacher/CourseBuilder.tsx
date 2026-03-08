@@ -58,12 +58,15 @@ function CourseBuilderContent() {
   } = useCopilotChat();
 
   // Convert CopilotKit messages to our ChatMessage format
-  const messages: ChatMessage[] = visibleMessages.map((msg) => ({
-    id: msg.id,
-    role: (msg as unknown as Record<string, unknown>).role === Role.User ? "user" : "assistant",
-    content: typeof msg.content === "string" ? msg.content : "",
-    timestamp: new Date(msg.createdAt || Date.now()),
-  }));
+  const messages: ChatMessage[] = visibleMessages.map((msg) => {
+    const msgAny = msg as any;
+    return {
+      id: msg.id,
+      role: msgAny.role === Role.User ? "user" : "assistant",
+      content: typeof msgAny.content === "string" ? msgAny.content : "",
+      timestamp: new Date(msg.createdAt || Date.now()),
+    };
+  });
 
   // Handle write_file tool calls from agent
   useCopilotAction({
