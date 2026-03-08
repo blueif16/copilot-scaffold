@@ -22,75 +22,55 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-async function fetchProfile(userId: string, accessToken: string): Promise<Profile | null> {
-  console.log("[slice-8-auth] fetchProfile called for:", userId);
-
-  // Use direct API to avoid Supabase client lock issues
-  const response = await fetch(
-    `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/profiles?id=eq.${userId}&select=*`,
-    {
-      headers: {
-        "apikey": process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        "Authorization": `Bearer ${accessToken}`,
-      },
-    }
-  );
-
-  const data = await response.json();
-  console.log("[slice-8-auth] Profile result:", data);
-
-  if (!data || data.length === 0) {
-    console.error("[slice-8-auth] Profile fetch error: not found");
-    return null;
-  }
-
-  return data[0];
-}
-
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const supabase = createSupabaseBrowser();
 
-  // Initialize auth - only use onAuthStateChange to avoid race conditions with login
+  // Fetch profile - separate from auth state change to avoid deadlock
   useEffect(() => {
-    // Check for tokens in sessionStorage (set by login page) and set them in the client
-    const accessToken = sessionStorage.getItem("sb-access-token");
-    const refreshToken = sessionStorage.getItem("sb-refresh-token");
-
-    if (accessToken && refreshToken) {
-      console.log("[slice-8-auth] Found tokens in sessionStorage, setting session...");
-      supabase.auth.setSession({
-        access_token: accessToken,
-        refresh_token: refreshToken,
-      }).then(() => {
-        sessionStorage.removeItem("sb-access-token");
-        sessionStorage.removeItem("sb-refresh-token");
-      });
+    if (user) {
+      fetchProfile(user.id);
+    } else {
+      setProfile(null);
+      setLoading(false);
     }
+  }, [user]);
 
-    // Listen for auth changes - this handles both INITIAL_SESSION and SIGNED_IN
+  const fetchProfile = async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", userId)
+        .single();
+
+      if (error) {
+        console.error("[auth] Profile fetch error:", error);
+        setProfile(null);
+      } else {
+        setProfile(data);
+      }
+    } catch (err) {
+      console.error("[auth] Profile fetch exception:", err);
+      setProfile(null);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    // Get initial session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+    });
+
+    // Listen for auth changes - NO ASYNC OPERATIONS HERE to avoid deadlock
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        console.log("[slice-8-auth] Event:", event, "session:", session ? "yes" : "no");
-
-        if ((event === "SIGNED_IN" || event === "INITIAL_SESSION") && session?.user) {
-          console.log("[slice-8-auth] Setting user, fetching profile...");
-          setUser(session.user);
-          try {
-            const profileData = await fetchProfile(session.user.id, session.access_token);
-            console.log("[slice-8-auth] Profile fetched:", profileData);
-            setProfile(profileData);
-          } catch (err) {
-            console.error("[slice-8-auth] fetchProfile exception:", err);
-          }
-        } else if (event === "SIGNED_OUT") {
-          setUser(null);
-          setProfile(null);
-        }
-
-        setLoading(false);
+      (event, session) => {
+        console.log("[auth] Event:", event, "session:", session ? "yes" : "no");
+        setUser(session?.user ?? null);
       }
     );
 

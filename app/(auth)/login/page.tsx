@@ -3,14 +3,15 @@
 export const dynamic = 'force-dynamic';
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { createSupabaseBrowser } from "@/lib/supabase/client";
 import { useLocale } from "@/contexts/LocaleContext";
+import { createSupabaseBrowser } from "@/lib/supabase/client";
+
+// Create client once at module level to ensure singleton
+const supabase = createSupabaseBrowser();
 
 export default function LoginPage() {
-  const router = useRouter();
   const { t, locale, setLocale } = useLocale();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -22,29 +23,26 @@ export default function LoginPage() {
     setError("");
     setLoading(true);
 
-    const supabase = createSupabaseBrowser();
-
     try {
+      console.log("[login] Starting login for:", email);
+
+      // Use Supabase client - it should handle cookies automatically
       const { data, error: signInError } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
       if (signInError) {
-        console.error("[slice-8-auth] Login error:", signInError);
-        setError(t.loginError);
-        setLoading(false);
-        return;
+        throw signInError;
       }
 
-      if (data.user) {
-        console.log("[login] Login successful, user:", data.user.email);
-        // Redirect to home page
-        window.location.href = "/";
-      }
-    } catch (err) {
-      console.error("[slice-8-auth] Unexpected error:", err);
-      setError(t.loginError);
+      console.log("[login] Login successful:", data.user?.email);
+
+      // Redirect with full page reload
+      window.location.href = "/";
+    } catch (err: any) {
+      console.error("[login] Login error:", err.message || err);
+      setError(err.message || t.loginError);
       setLoading(false);
     }
   };
