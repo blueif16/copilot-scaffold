@@ -112,13 +112,17 @@ def get_student_memory(agent_id: str) -> dict:
         ApiError: If memory retrieval fails
     """
     client = get_letta_client()
-    memory = {}
 
-    for label in ["student_profile", "learning_style", "knowledge_state", "interests"]:
-        block = client.agents.blocks.retrieve(agent_id=agent_id, block_label=label)
-        memory[label] = block.value
+    # Get all memory blocks for the agent
+    memory = client.agents.memory.retrieve(agent_id=agent_id)
 
-    return memory
+    # Extract the blocks we care about
+    result = {}
+    for block in memory.blocks:
+        if block.label in ["student_profile", "learning_style", "knowledge_state", "interests"]:
+            result[block.label] = block.value
+
+    return result
 
 
 def update_student_memory_after_session(
@@ -153,7 +157,7 @@ def update_student_memory_after_session(
         messages=[
             {
                 "role": "user",
-                "content": (
+                "text": (
                     f"SESSION COMPLETE — Topic: {topic}, Duration: {duration_minutes}min\n\n"
                     f"Session Summary:\n{session_summary}\n\n"
                     "Please update the student's memory blocks based on this session. "

@@ -156,6 +156,77 @@ class TestRunner:
         except Exception as e:
             self.test_result("T2.1c", "Create memory agent", False, str(e))
 
+    def run_t2_2_session_tracking(self):
+        """T2.2: Session Tracking Tests"""
+        if "student_id" not in self.test_data or "student_token" not in self.test_data:
+            self.log("Skipping T2.2: No student data available")
+            return
+
+        self.log("\n=== T2.2: Session Tracking Tests ===")
+
+        user_id = self.test_data["student_id"]
+        token = self.test_data["student_token"]
+
+        # T2.2a: End session with memory update
+        try:
+            response = requests.post(
+                f"{BACKEND_URL}/api/sessions/{user_id}/end",
+                headers={
+                    "Authorization": f"Bearer {token}",
+                    "Content-Type": "application/json"
+                },
+                json={
+                    "topic": "Python basics",
+                    "duration_minutes": 15,
+                    "session_summary": "Student learned about variables and data types"
+                }
+            )
+
+            if response.status_code == 200:
+                data = response.json()
+                memory_updated = data.get("memory_updated", False)
+                self.test_result("T2.2a", "End session and update memory", True,
+                               f"Memory updated: {memory_updated}")
+            else:
+                self.test_result("T2.2a", "End session and update memory", False,
+                               f"Status: {response.status_code} - {response.text}")
+        except Exception as e:
+            self.test_result("T2.2a", "End session and update memory", False, str(e))
+
+    def run_t2_3_memory_display(self):
+        """T2.3: Memory Display Tests"""
+        if "student_id" not in self.test_data or "student_token" not in self.test_data:
+            self.log("Skipping T2.3: No student data available")
+            return
+
+        self.log("\n=== T2.3: Memory Display Tests ===")
+
+        user_id = self.test_data["student_id"]
+        token = self.test_data["student_token"]
+
+        # T2.3a: Get student memory
+        try:
+            response = requests.get(
+                f"{BACKEND_URL}/api/students/{user_id}/memory",
+                headers={"Authorization": f"Bearer {token}"}
+            )
+
+            if response.status_code == 200:
+                data = response.json()
+                has_memory = any([
+                    data.get("student_profile"),
+                    data.get("learning_style"),
+                    data.get("knowledge_state"),
+                    data.get("interests")
+                ])
+                self.test_result("T2.3a", "Get student memory", True,
+                               f"Memory blocks retrieved: {has_memory}")
+            else:
+                self.test_result("T2.3a", "Get student memory", False,
+                               f"Status: {response.status_code} - {response.text}")
+        except Exception as e:
+            self.test_result("T2.3a", "Get student memory", False, str(e))
+
     def run_t3_teacher_flow(self):
         """T3: Teacher Flow Tests"""
         self.log("\n=== T3: Teacher Flow Tests ===")
@@ -248,6 +319,8 @@ class TestRunner:
 
         # Run test suites
         self.run_t2_student_flow()
+        self.run_t2_2_session_tracking()
+        self.run_t2_3_memory_display()
         self.run_t3_teacher_flow()
         self.run_t5_error_handling()
 
