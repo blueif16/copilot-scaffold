@@ -153,7 +153,7 @@ async def chat_node(state: CourseBuilderState, config: RunnableConfig) -> dict:
     print(f"[Agent:chat_node] Received {len(state['messages'])} messages")
 
     llm = ChatGoogleGenerativeAI(
-        model="gemini-2.5-flash",
+        model="gemini-3.1-flash-lite-preview",
         temperature=1.0,
         max_retries=2,
     )
