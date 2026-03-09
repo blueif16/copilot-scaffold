@@ -4,7 +4,13 @@
 -- ============================================================================
 -- LANGGRAPH CHECKPOINTING TABLES
 -- ============================================================================
--- Required by PostgresSaver for persistent conversation state
+-- Required by AsyncPostgresSaver for persistent conversation state
+-- Schema matches LangGraph's built-in migrations
+
+-- Migration tracking table
+create table if not exists public.checkpoint_migrations (
+  v integer primary key
+);
 
 -- Checkpoints table: stores graph state snapshots
 create table if not exists public.checkpoints (
@@ -15,8 +21,18 @@ create table if not exists public.checkpoints (
   type text,
   checkpoint jsonb not null,
   metadata jsonb not null default '{}',
-  created_at timestamptz default now(),
   primary key (thread_id, checkpoint_ns, checkpoint_id)
+);
+
+-- Checkpoint blobs table: stores large binary data separately
+create table if not exists public.checkpoint_blobs (
+  thread_id text not null,
+  checkpoint_ns text not null default '',
+  channel text not null,
+  version text not null,
+  type text not null,
+  blob bytea,
+  primary key (thread_id, checkpoint_ns, channel, version)
 );
 
 -- Checkpoint writes table: stores pending writes for interrupts/human-in-the-loop
@@ -28,14 +44,18 @@ create table if not exists public.checkpoint_writes (
   idx integer not null,
   channel text not null,
   type text,
-  value jsonb,
+  blob bytea not null,
+  task_path text not null default '',
   primary key (thread_id, checkpoint_ns, checkpoint_id, task_id, idx)
 );
 
 -- Indexes for LangGraph checkpoint performance
 create index if not exists checkpoints_thread_id_idx on public.checkpoints(thread_id);
-create index if not exists checkpoints_created_at_idx on public.checkpoints(created_at);
+create index if not exists checkpoint_blobs_thread_id_idx on public.checkpoint_blobs(thread_id);
 create index if not exists checkpoint_writes_thread_id_idx on public.checkpoint_writes(thread_id);
+
+-- Mark as migrated to version 9 (latest LangGraph migration)
+insert into public.checkpoint_migrations (v) values (9) on conflict do nothing;
 
 -- ============================================================================
 -- APPLICATION TABLES

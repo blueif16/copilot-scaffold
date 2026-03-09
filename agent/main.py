@@ -125,6 +125,7 @@ chat_graph_genetics = build_chat_graph(
 # Course Builder (Teacher-facing)
 # Note: build_course_builder_graph is async, so we need to initialize it at startup
 course_builder_graph = None
+course_builder_agent = None
 
 # ── Create FastAPI app and register agents ────────────────
 
@@ -150,10 +151,25 @@ app.include_router(sessions_router)
 @app.on_event("startup")
 async def startup_event():
     """Initialize async course builder graph on startup."""
-    global course_builder_graph
+    global course_builder_graph, course_builder_agent
     print("[wt-feat/course-builder-conversation-memory] Initializing course builder graph...")
     course_builder_graph = await build_course_builder_graph()
-    print("[wt-feat/course-builder-conversation-memory] Course builder graph initialized")
+
+    # Create the agent wrapper
+    course_builder_agent = LangGraphAGUIAgent(
+        name="course-builder",
+        description="Helps teachers create interactive science lessons with JSX code generation",
+        graph=course_builder_graph,
+    )
+
+    # Register the endpoint after the graph is ready
+    add_langgraph_fastapi_endpoint(
+        app=app,
+        agent=course_builder_agent,
+        path="/agents/course-builder",
+    )
+
+    print("[wt-feat/course-builder-conversation-memory] Course builder graph initialized and endpoint registered")
 
 # ── Register all agents ────────────────────────────────────
 
@@ -220,16 +236,7 @@ add_langgraph_fastapi_endpoint(
     path="/agents/chat-genetics-basics",
 )
 
-# Course Builder (Teacher-facing)
-add_langgraph_fastapi_endpoint(
-    app=app,
-    agent=LangGraphAGUIAgent(
-        name="course-builder",
-        description="Helps teachers create interactive science lessons with JSX code generation",
-        graph=course_builder_graph,
-    ),
-    path="/agents/course-builder",
-)
+# Course Builder endpoint is registered in startup_event after graph initialization
 
 # Health check endpoint
 @app.get("/health")
