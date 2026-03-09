@@ -41,6 +41,36 @@ if ! grep -q "^GOOGLE_API_KEY=..*" "$PROJECT_ROOT/.env"; then
     exit 1
 fi
 
+# Install/update dependencies
+echo "📦 Checking dependencies..."
+
+# Backend dependencies
+if [ ! -d "$PROJECT_ROOT/agent/.venv" ]; then
+    echo "   Creating Python virtual environment..."
+    cd "$PROJECT_ROOT/agent"
+    python3 -m venv .venv
+fi
+
+echo "   Installing backend dependencies..."
+cd "$PROJECT_ROOT/agent"
+source .venv/bin/activate
+pip install -q -e . > /dev/null 2>&1
+if [ $? -ne 0 ]; then
+    echo "   ⚠️  Backend dependency installation had warnings (non-fatal)"
+fi
+
+# Frontend dependencies
+if [ ! -d "$PROJECT_ROOT/node_modules" ]; then
+    echo "   Installing frontend dependencies..."
+    cd "$PROJECT_ROOT"
+    npm install --silent > /dev/null 2>&1
+else
+    echo "   Frontend dependencies already installed"
+fi
+
+echo "   ✅ Dependencies ready"
+echo ""
+
 # Check if backend port is already in use
 if lsof -Pi :$BACKEND_PORT -sTCP:LISTEN -t >/dev/null 2>&1; then
     EXISTING_PID=$(lsof -Pi :$BACKEND_PORT -sTCP:LISTEN -t)
