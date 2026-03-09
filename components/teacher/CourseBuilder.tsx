@@ -1,16 +1,19 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   SandpackProvider,
   SandpackPreview,
   SandpackCodeEditor,
+  useSandpack,
 } from "@codesandbox/sandpack-react";
 import { CopilotKit } from "@copilotkit/react-core";
 import { useCoAgent } from "@copilotkit/react-core";
 import { useCopilotChatInternal } from "@copilotkit/react-core";
 import { useCopilotReadable } from "@copilotkit/react-core";
+import { useCopilotAction } from "@copilotkit/react-core";
+import type { CatchAllActionRenderProps } from "@copilotkit/react-core";
 import { Role, TextMessage } from "@copilotkit/runtime-client-gql";
 import {
   CourseTemplate,
@@ -18,8 +21,12 @@ import {
   CourseFormat,
   CourseBuilderAgentState,
   UploadedImage,
+  CourseBuilderConversation,
 } from "@/lib/types/course-builder";
+import { createSupabaseBrowser } from "@/lib/supabase/client";
 import SaveDraftButton from "@/components/teacher/SaveDraftButton";
+import { getTemplateFiles } from "@/lib/templates";
+import Markdown from "react-markdown";
 
 // ── Helpers ─────────────────────────────────────────────
 
@@ -152,6 +159,13 @@ const TEMPLATES: CourseTemplate[] = [
 
 function MessageBubble({ message }: { message: ChatMessage }) {
   const isUser = message.role === "user";
+
+  // Extract image indicator from message content
+  const imageMatch = message.content.match(/^\[已上传图片: ([^\]]+)\]\s*/);
+  const hasImage = !!imageMatch;
+  const imageName = imageMatch?.[1];
+  const textContent = hasImage ? message.content.replace(/^\[已上传图片: [^\]]+\]\s*/, "") : message.content;
+
   return (
     <div className={`mb-6 ${isUser ? "flex justify-end" : ""}`}>
       <div
@@ -161,7 +175,69 @@ function MessageBubble({ message }: { message: ChatMessage }) {
             : "text-ink"
         }`}
       >
-        <p className="whitespace-pre-wrap">{message.content}</p>
+        {isUser ? (
+          <p className="whitespace-pre-wrap">{textContent}</p>
+        ) : (
+          <div className="prose prose-sm max-w-none">
+            <Markdown
+              components={{
+                p: ({ children }) => <p className="mb-3 last:mb-0">{children}</p>,
+                code: ({ inline, children, ...props }: any) =>
+                  inline ? (
+                    <code className="px-1.5 py-0.5 rounded bg-ink/[0.06] text-[13px] font-mono" {...props}>
+                      {children}
+                    </code>
+                  ) : (
+                    <code className="block px-3 py-2 rounded bg-ink/[0.06] text-[13px] font-mono overflow-x-auto" {...props}>
+                      {children}
+                    </code>
+                  ),
+                ul: ({ children }) => <ul className="list-disc pl-5 mb-3 space-y-1">{children}</ul>,
+                ol: ({ children }) => <ol className="list-decimal pl-5 mb-3 space-y-1">{children}</ol>,
+                h1: ({ children }) => <h1 className="text-xl font-semibold mb-2 mt-4 first:mt-0">{children}</h1>,
+                h2: ({ children }) => <h2 className="text-lg font-semibold mb-2 mt-3 first:mt-0">{children}</h2>,
+                h3: ({ children }) => <h3 className="text-base font-semibold mb-2 mt-3 first:mt-0">{children}</h3>,
+              }}
+            >
+              {textContent}
+            </Markdown>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ImageMessageBubble({ imageName, imageData }: { imageName: string; imageData?: UploadedImage }) {
+  return (
+    <div className="mb-6 flex justify-end">
+      <div className="max-w-[85%] bg-[#3D3929] text-[#F5F0E8] rounded-2xl rounded-br-sm overflow-hidden">
+        {imageData ? (
+          <div className="flex flex-col">
+            <img
+              src={`data:${imageData.mimeType};base64,${imageData.base64}`}
+              alt={imageName}
+              className="w-full max-w-[320px] h-auto object-contain"
+            />
+            <div className="px-4 py-2 flex items-center gap-2 bg-[#3D3929]/80">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <rect x="3" y="3" width="18" height="18" rx="2" />
+                <circle cx="8.5" cy="8.5" r="1.5" />
+                <path d="M21 15l-5-5L5 21" />
+              </svg>
+              <span className="text-[12px] opacity-75">{imageName}</span>
+            </div>
+          </div>
+        ) : (
+          <div className="px-4 py-3 flex items-center gap-2">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <rect x="3" y="3" width="18" height="18" rx="2" />
+              <circle cx="8.5" cy="8.5" r="1.5" />
+              <path d="M21 15l-5-5L5 21" />
+            </svg>
+            <span className="text-[13px] opacity-90">{imageName}</span>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -175,6 +251,79 @@ function TypingIndicator() {
         <span className="w-[5px] h-[5px] bg-ink/25 rounded-full animate-bounce [animation-delay:150ms]" />
         <span className="w-[5px] h-[5px] bg-ink/25 rounded-full animate-bounce [animation-delay:300ms]" />
       </div>
+    </div>
+  );
+}
+
+// ── Tool Call Names ─────────────────────────────────────
+
+// ── Sandpack Refresh Button (must be inside SandpackProvider) ──
+
+function SandpackRefreshButton() {
+  const { dispatch } = useSandpack();
+  return (
+    <button
+      onClick={() => dispatch({ type: "refresh" })}
+      title="刷新预览"
+      className="w-7 h-7 flex items-center justify-center rounded-md text-ink/30 hover:text-ink/60 hover:bg-ink/[0.05] transition-colors"
+    >
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M21 2v6h-6" />
+        <path d="M3 12a9 9 0 0 1 15-6.7L21 8" />
+        <path d="M3 22v-6h6" />
+        <path d="M21 12a9 9 0 0 1-15 6.7L3 16" />
+      </svg>
+    </button>
+  );
+}
+
+const TOOL_LABELS: Record<string, { label: string; icon: string }> = {
+  read_file:   { label: "读取文件",   icon: "F" },
+  write_file:  { label: "写入文件",   icon: "F" },
+  update_file: { label: "更新文件",   icon: "F" },
+  list_files:  { label: "列出文件",   icon: "☰" },
+  delete_file: { label: "删除文件",   icon: "F" },
+};
+
+function ToolCallBubble({ name, args, status }: { name: string; args: any; status: string }) {
+  const tool = TOOL_LABELS[name] || { label: name, icon: "⚙" };
+  const path = args?.path as string | undefined;
+  const isComplete = status === "complete";
+  const [expanded, setExpanded] = useState(false);
+
+  let summary = tool.label;
+  if (path) summary += ` ${path}`;
+
+  return (
+    <div className="mb-3">
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="flex items-center gap-2 w-full text-left group"
+      >
+        <span className={`w-5 h-5 flex items-center justify-center rounded text-[11px] font-bold flex-shrink-0 ${
+          isComplete
+            ? "bg-ink/[0.06] text-ink/40"
+            : "bg-playful-blue/10 text-playful-blue animate-pulse"
+        }`}>
+          {tool.icon}
+        </span>
+        <span className="text-[13px] font-body text-ink/50 group-hover:text-ink/70 transition-colors">
+          {summary}
+        </span>
+        {isComplete && (
+          <span className="text-[11px] font-body px-1.5 py-0.5 rounded bg-ink/[0.04] text-ink/30">
+            {expanded ? "收起" : "结果"}
+          </span>
+        )}
+        {!isComplete && (
+          <span className="text-[11px] font-body text-ink/25 animate-pulse">...</span>
+        )}
+      </button>
+      {expanded && isComplete && (
+        <div className="mt-1.5 ml-7 px-3 py-2 rounded-lg bg-ink/[0.02] border border-ink/[0.06] text-[12px] font-mono text-ink/40 max-h-[200px] overflow-auto whitespace-pre-wrap">
+          {JSON.stringify(args, null, 2)}
+        </div>
+      )}
     </div>
   );
 }
@@ -193,7 +342,7 @@ function InputBox({
   onImageSelect,
   onImageRemove,
 }: {
-  inputRef: React.RefObject<HTMLTextAreaElement | null>;
+  inputRef: React.RefObject<HTMLTextAreaElement>;
   value: string;
   onChange: (val: string) => void;
   onKeyDown: (e: React.KeyboardEvent) => void;
@@ -323,7 +472,7 @@ function InputBox({
               </div>
             ) : (
               <AnimatePresence>
-                {value.trim() && (
+                {(value.trim() || pendingImage) && (
                   <motion.button
                     initial={{ opacity: 0, scale: 0.8 }}
                     animate={{ opacity: 1, scale: 1 }}
@@ -363,8 +512,23 @@ function CourseBuilderContent() {
   const [pendingImage, setPendingImage] = useState<UploadedImage | null>(null);
   const [imageError, setImageError] = useState<string | null>(null);
 
+  // Conversation history
+  const [showHistory, setShowHistory] = useState(false);
+  const [conversations, setConversations] = useState<CourseBuilderConversation[]>([]);
+  const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
+  const [threadId, setThreadId] = useState<string>(() => {
+    // Try to restore from localStorage
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("course_builder_thread_id");
+      return saved || crypto.randomUUID();
+    }
+    return crypto.randomUUID();
+  });
+  const [isLoadingConversations, setIsLoadingConversations] = useState(false);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const supabase = useMemo(() => createSupabaseBrowser(), []);
 
   // ── CopilotKit ────────────────────────────────────────
 
@@ -399,6 +563,14 @@ function CourseBuilderContent() {
       : null,
   });
 
+  // ── Catch-all tool call renderer (renders inline in chat) ──
+  useCopilotAction({
+    name: "*",
+    render: ({ name, args, status }: CatchAllActionRenderProps<[]>) => (
+      <ToolCallBubble name={name} args={args} status={status} />
+    ),
+  });
+
   const files = agentState?.files || {};
   const hasFiles = Object.keys(files).length > 0;
 
@@ -416,22 +588,200 @@ function CourseBuilderContent() {
       timestamp: new Date(msg.createdAt || Date.now()),
     }));
 
+  // Track uploaded images by message ID for preview
+  const [imageMessageMap, setImageMessageMap] = useState<Record<string, UploadedImage>>({});
+
+  // Separate image messages from text messages
+  const renderMessages = () => {
+    return messages.map((message) => {
+      const imageMatch = message.content.match(/^\[已上传图片: ([^\]]+)\]$/);
+      if (imageMatch && message.role === "user") {
+        const imageData = imageMessageMap[message.id];
+        return <ImageMessageBubble key={message.id} imageName={imageMatch[1]} imageData={imageData} />;
+      }
+      return <MessageBubble key={message.id} message={message} />;
+    });
+  };
+
   // ── Effects ───────────────────────────────────────────
+
+  // Persist thread_id to localStorage
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("course_builder_thread_id", threadId);
+    }
+  }, [threadId]);
+
+  // Load conversations on mount
+  useEffect(() => {
+    loadConversations();
+  }, []);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages.length]);
 
+  // ── Sandpack key — bump when a response cycle ends so preview picks up all edits ──
+  const [sandpackVersion, setSandpackVersion] = useState(0);
+  const wasLoadingRef = useRef(false);
   useEffect(() => {
-    if (hasFiles && !showPreview) setShowPreview(true);
-  }, [hasFiles]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (wasLoadingRef.current && !isLoading) {
+      setSandpackVersion((v) => v + 1);
+    }
+    wasLoadingRef.current = isLoading;
+  }, [isLoading]);
+  const sandpackKey = `${Object.keys(files).sort().join(',')}_v${sandpackVersion}`;
+
+  // Open preview panel after first agent response completes (not on scaffold injection)
+  useEffect(() => {
+    if (sandpackVersion > 0 && hasFiles && !showPreview) setShowPreview(true);
+  }, [sandpackVersion, hasFiles, showPreview]);
+
+  // ── Conversation Management ───────────────────────────
+
+  const loadConversations = async () => {
+    setIsLoadingConversations(true);
+    try {
+      const response = await fetch("/api/course-builder/conversations");
+      if (response.ok) {
+        const data = await response.json();
+        setConversations(data.conversations || []);
+      }
+    } catch (error) {
+      console.error("[CourseBuilder] Failed to load conversations:", error);
+    } finally {
+      setIsLoadingConversations(false);
+    }
+  };
+
+  const createNewConversation = async () => {
+    const newThreadId = crypto.randomUUID();
+    setThreadId(newThreadId);
+    setCurrentConversationId(null);
+    setSelectedTemplate(null);
+    setPhase("landing");
+
+    // Clear CopilotKit messages by resetting state
+    window.location.reload(); // Simple approach to reset CopilotKit state
+  };
+
+  const saveConversation = async (title?: string) => {
+    if (!currentConversationId && messages.length > 0) {
+      // Create new conversation
+      try {
+        const response = await fetch("/api/course-builder/conversations", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            thread_id: threadId,
+            title: title || generateConversationTitle(),
+          }),
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          setCurrentConversationId(data.conversation.id);
+
+          // Save messages
+          await saveMessages(data.conversation.id);
+          await loadConversations();
+        }
+      } catch (error) {
+        console.error("[CourseBuilder] Failed to save conversation:", error);
+      }
+    } else if (currentConversationId) {
+      // Update existing conversation
+      await saveMessages(currentConversationId);
+    }
+  };
+
+  const saveMessages = async (conversationId: string) => {
+    if (messages.length === 0) return;
+
+    try {
+      await fetch(`/api/course-builder/conversations/${conversationId}/messages`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          messages: messages.map(m => ({
+            role: m.role,
+            content: m.content,
+          })),
+        }),
+      });
+    } catch (error) {
+      console.error("[CourseBuilder] Failed to save messages:", error);
+    }
+  };
+
+  const loadConversation = async (conversation: CourseBuilderConversation) => {
+    try {
+      const response = await fetch(`/api/course-builder/conversations/${conversation.id}`);
+      if (response.ok) {
+        const data = await response.json();
+        setThreadId(conversation.thread_id);
+        setCurrentConversationId(conversation.id);
+        setPhase("chat");
+        setShowHistory(false);
+
+        // Note: Loading messages into CopilotKit requires page reload with thread_id
+        // For now, just set the thread_id and let LangGraph restore from checkpoint
+        window.location.reload();
+      }
+    } catch (error) {
+      console.error("[CourseBuilder] Failed to load conversation:", error);
+    }
+  };
+
+  const deleteConversation = async (conversationId: string) => {
+    if (!confirm("确定要删除这个对话吗？")) return;
+
+    try {
+      const response = await fetch(`/api/course-builder/conversations/${conversationId}`, {
+        method: "DELETE",
+      });
+
+      if (response.ok) {
+        await loadConversations();
+        if (currentConversationId === conversationId) {
+          createNewConversation();
+        }
+      }
+    } catch (error) {
+      console.error("[CourseBuilder] Failed to delete conversation:", error);
+    }
+  };
+
+  const generateConversationTitle = () => {
+    const firstUserMessage = messages.find(m => m.role === "user");
+    if (firstUserMessage) {
+      const content = firstUserMessage.content.slice(0, 50);
+      return content.length < firstUserMessage.content.length ? `${content}...` : content;
+    }
+    return selectedTemplate ? `${selectedTemplate.name} 课程` : "新对话";
+  };
+
+  // Auto-save conversation when messages change
+  useEffect(() => {
+    if (messages.length > 0 && phase === "chat") {
+      const timer = setTimeout(() => {
+        saveConversation();
+      }, 2000); // Debounce 2s
+      return () => clearTimeout(timer);
+    }
+  }, [messages.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Handlers ──────────────────────────────────────────
 
   const handleFormatSelect = useCallback((template: CourseTemplate) => {
     setSelectedTemplate(template);
+    // Seed agent state with bare scaffold — agent will write_file to replace it
+    const templateFiles = getTemplateFiles(template.format);
+    setAgentState({ files: templateFiles, uploaded_images: [] });
+    // Don't show preview yet — scaffold is just a placeholder
+    // Preview opens automatically when hasFiles updates after agent writes real content
     setPhase("chat");
-  }, []);
+  }, [setAgentState]);
 
   const handleImageSelect = useCallback(async (file: File) => {
     setImageError(null);
@@ -465,14 +815,27 @@ function CourseBuilderContent() {
         ...agentState,
         uploaded_images: [pendingImage],
       });
+
+      // Send image as separate message and store the image data
+      const imageMessage = new TextMessage({
+        content: `[已上传图片: ${pendingImage.filename}]`,
+        role: Role.User
+      });
+
+      // Store image data mapped to message ID for preview
+      setImageMessageMap(prev => ({
+        ...prev,
+        [imageMessage.id]: pendingImage
+      }));
+
+      appendMessage(imageMessage);
     }
 
-    // Build message text — if image attached, prefix with indicator
-    const messageText = pendingImage
-      ? `[已上传图片: ${pendingImage.filename}] ${text || "请分析这张图片"}`
-      : text;
+    // Send text message if there's text
+    if (text) {
+      appendMessage(new TextMessage({ content: text, role: Role.User }));
+    }
 
-    appendMessage(new TextMessage({ content: messageText, role: Role.User }));
     setInput("");
     setPendingImage(null);
   }, [input, isLoading, phase, appendMessage, pendingImage, agentState, setAgentState]);
@@ -500,81 +863,6 @@ function CourseBuilderContent() {
     onImageRemove: handleImageRemove,
   };
 
-  // ── Artifact Panel ────────────────────────────────────
-
-  const ArtifactPanel = () => (
-    <motion.div
-      initial={{ width: 0, opacity: 0 }}
-      animate={{ width: "55%", opacity: 1 }}
-      exit={{ width: 0, opacity: 0 }}
-      transition={{ type: "spring", stiffness: 300, damping: 30 }}
-      className="flex flex-col border-l border-ink/[0.06] bg-white overflow-hidden"
-    >
-      <div className="shrink-0 flex items-center justify-between pl-1 pr-2 py-1.5 border-b border-ink/[0.06]">
-        <div className="flex items-center">
-          <button
-            onClick={() => setPreviewMode("preview")}
-            className={`px-3.5 py-1.5 text-[12.5px] font-body font-medium rounded-md transition-colors ${
-              previewMode === "preview" ? "text-ink bg-ink/[0.06]" : "text-ink/40 hover:text-ink/60"
-            }`}
-          >
-            预览
-          </button>
-          <button
-            onClick={() => setPreviewMode("code")}
-            className={`px-3.5 py-1.5 text-[12.5px] font-body font-medium rounded-md transition-colors ${
-              previewMode === "code" ? "text-ink bg-ink/[0.06]" : "text-ink/40 hover:text-ink/60"
-            }`}
-          >
-            代码
-          </button>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <SaveDraftButton
-            title={selectedTemplate?.name || "新课程"}
-            description={selectedTemplate?.description}
-            format={selectedTemplate?.format || "lab"}
-            files={files}
-          />
-          <button
-            onClick={() => setShowPreview(false)}
-            className="w-7 h-7 flex items-center justify-center rounded-md text-ink/30 hover:text-ink/60 hover:bg-ink/[0.05] transition-colors"
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-              <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </button>
-        </div>
-      </div>
-      <div className="flex-1 min-h-0 overflow-hidden">
-        {hasFiles ? (
-          <SandpackProvider
-            template="react"
-            files={files}
-            theme="light"
-            options={{
-              externalResources: [
-                "https://cdn.jsdelivr.net/npm/framer-motion@11/dist/framer-motion.js",
-              ],
-            }}
-          >
-            <div className="h-full">
-              {previewMode === "preview" ? (
-                <SandpackPreview showOpenInCodeSandbox={false} showRefreshButton={true} style={{ height: "100%" }} />
-              ) : (
-                <SandpackCodeEditor showTabs showLineNumbers showInlineErrors wrapContent={false} style={{ height: "100%" }} />
-              )}
-            </div>
-          </SandpackProvider>
-        ) : (
-          <div className="flex items-center justify-center h-full text-ink/20 font-body text-sm">
-            代码生成后预览将在这里显示...
-          </div>
-        )}
-      </div>
-    </motion.div>
-  );
-
   // ════════════════════════════════════════════════════════
   // LANDING
   // ════════════════════════════════════════════════════════
@@ -583,12 +871,97 @@ function CourseBuilderContent() {
     return (
       <div className="h-full flex flex-col">
         {/* Top bar — just title, like Claude's breadcrumb */}
-        <div className="shrink-0 h-11 flex items-center px-5">
+        <div className="shrink-0 h-11 flex items-center justify-between px-5">
           <span className="font-body text-[13.5px] text-ink/50">课程生成器</span>
+          <button
+            onClick={() => setShowHistory(!showHistory)}
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-ink/[0.08] hover:border-ink/[0.16] text-ink/45 hover:text-ink/65 transition-all text-[12px] font-body font-medium"
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
+            </svg>
+            历史对话
+          </button>
         </div>
 
-        {/* Centered content */}
-        <div className="flex-1 flex flex-col items-center min-h-0">
+        <div className="flex-1 flex min-h-0">
+          {/* History sidebar */}
+          <AnimatePresence>
+            {showHistory && (
+              <motion.div
+                initial={{ width: 0, opacity: 0 }}
+                animate={{ width: 280, opacity: 1 }}
+                exit={{ width: 0, opacity: 0 }}
+                transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                className="border-r border-ink/[0.06] bg-white overflow-hidden"
+              >
+                <div className="h-full flex flex-col">
+                  <div className="shrink-0 px-4 py-3 border-b border-ink/[0.06]">
+                    <button
+                      onClick={createNewConversation}
+                      className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-ink text-white hover:bg-ink/85 transition-colors text-[13px] font-medium"
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M12 5v14M5 12h14" />
+                      </svg>
+                      新对话
+                    </button>
+                  </div>
+                  <div className="flex-1 overflow-y-auto px-2 py-2">
+                    {isLoadingConversations ? (
+                      <div className="flex items-center justify-center py-8 text-ink/30 text-[13px]">
+                        加载中...
+                      </div>
+                    ) : conversations.length === 0 ? (
+                      <div className="flex items-center justify-center py-8 text-ink/30 text-[13px]">
+                        暂无历史对话
+                      </div>
+                    ) : (
+                      conversations.map((conv) => (
+                        <div
+                          key={conv.id}
+                          className={`group mb-1 px-3 py-2 rounded-lg cursor-pointer transition-colors ${
+                            currentConversationId === conv.id
+                              ? "bg-ink/[0.06]"
+                              : "hover:bg-ink/[0.03]"
+                          }`}
+                          onClick={() => loadConversation(conv)}
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex-1 min-w-0">
+                              <div className="text-[13px] font-medium text-ink truncate">
+                                {conv.title || "未命名对话"}
+                              </div>
+                              <div className="text-[11px] text-ink/40 mt-0.5">
+                                {new Date(conv.updated_at).toLocaleDateString("zh-CN", {
+                                  month: "short",
+                                  day: "numeric",
+                                })}
+                              </div>
+                            </div>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                deleteConversation(conv.id);
+                              }}
+                              className="opacity-0 group-hover:opacity-100 w-6 h-6 flex items-center justify-center rounded text-ink/30 hover:text-ink/60 hover:bg-ink/[0.06] transition-all"
+                            >
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
+                              </svg>
+                            </button>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Centered content */}
+          <div className="flex-1 flex flex-col items-center min-h-0">
           <div className="flex-1 min-h-0" />
 
           {/* Greeting */}
@@ -664,6 +1037,7 @@ function CourseBuilderContent() {
 
           <div className="flex-[1.4] min-h-0" />
         </div>
+        </div>
       </div>
     );
   }
@@ -674,11 +1048,94 @@ function CourseBuilderContent() {
 
   return (
     <div className="h-full flex">
+      {/* History sidebar */}
+      <AnimatePresence>
+        {showHistory && (
+          <motion.div
+            initial={{ width: 0, opacity: 0 }}
+            animate={{ width: 280, opacity: 1 }}
+            exit={{ width: 0, opacity: 0 }}
+            transition={{ type: "spring", stiffness: 300, damping: 30 }}
+            className="border-r border-ink/[0.06] bg-white overflow-hidden"
+          >
+            <div className="h-full flex flex-col">
+              <div className="shrink-0 px-4 py-3 border-b border-ink/[0.06]">
+                <button
+                  onClick={createNewConversation}
+                  className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-ink text-white hover:bg-ink/85 transition-colors text-[13px] font-medium"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M12 5v14M5 12h14" />
+                  </svg>
+                  新对话
+                </button>
+              </div>
+              <div className="flex-1 overflow-y-auto px-2 py-2">
+                {isLoadingConversations ? (
+                  <div className="flex items-center justify-center py-8 text-ink/30 text-[13px]">
+                    加载中...
+                  </div>
+                ) : conversations.length === 0 ? (
+                  <div className="flex items-center justify-center py-8 text-ink/30 text-[13px]">
+                    暂无历史对话
+                  </div>
+                ) : (
+                  conversations.map((conv) => (
+                    <div
+                      key={conv.id}
+                      className={`group mb-1 px-3 py-2 rounded-lg cursor-pointer transition-colors ${
+                        currentConversationId === conv.id
+                          ? "bg-ink/[0.06]"
+                          : "hover:bg-ink/[0.03]"
+                      }`}
+                      onClick={() => loadConversation(conv)}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <div className="text-[13px] font-medium text-ink truncate">
+                            {conv.title || "未命名对话"}
+                          </div>
+                          <div className="text-[11px] text-ink/40 mt-0.5">
+                            {new Date(conv.updated_at).toLocaleDateString("zh-CN", {
+                              month: "short",
+                              day: "numeric",
+                            })}
+                          </div>
+                        </div>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            deleteConversation(conv.id);
+                          }}
+                          className="opacity-0 group-hover:opacity-100 w-6 h-6 flex items-center justify-center rounded text-ink/30 hover:text-ink/60 hover:bg-ink/[0.06] transition-all"
+                        >
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Chat column */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Top bar — breadcrumb title */}
         <div className="shrink-0 h-11 flex items-center justify-between px-5">
           <div className="flex items-center gap-1.5 text-[13.5px] font-body">
+            <button
+              onClick={() => setShowHistory(!showHistory)}
+              className="mr-2 w-6 h-6 flex items-center justify-center rounded text-ink/30 hover:text-ink/60 hover:bg-ink/[0.05] transition-colors"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
+              </svg>
+            </button>
             <span className="text-ink/40">课程生成器</span>
             <span className="text-ink/25">/</span>
             <span className="text-ink/70">
@@ -710,9 +1167,7 @@ function CourseBuilderContent() {
               </div>
             ) : (
               <>
-                {messages.map((message) => (
-                  <MessageBubble key={message.id} message={message} />
-                ))}
+                {renderMessages()}
                 {isLoading && <TypingIndicator />}
                 <div ref={messagesEndRef} />
               </>
@@ -739,7 +1194,92 @@ function CourseBuilderContent() {
 
       {/* Artifact panel */}
       <AnimatePresence>
-        {showPreview && <ArtifactPanel />}
+        {showPreview && (
+          <motion.div
+            initial={{ width: 0, opacity: 0 }}
+            animate={{ width: "55%", opacity: 1 }}
+            exit={{ width: 0, opacity: 0 }}
+            transition={{ type: "spring", stiffness: 300, damping: 30 }}
+            className="flex flex-col border-l border-ink/[0.06] bg-white overflow-hidden"
+          >
+            {hasFiles ? (
+              <div className="flex-1 flex flex-col min-h-0">
+              <SandpackProvider
+                key={sandpackKey}
+                template="react"
+                files={files}
+                theme="light"
+                customSetup={{
+                  dependencies: {
+                    "framer-motion": "^11.0.0",
+                  },
+                }}
+                options={{
+                  activeFile: "/App.js",
+                }}
+              >
+                {/* Toolbar — inside SandpackProvider so refresh button has context */}
+                <div className="shrink-0 flex items-center justify-between pl-1 pr-2 py-1.5 border-b border-ink/[0.06]">
+                  <div className="flex items-center">
+                    <button
+                      onClick={() => setPreviewMode("preview")}
+                      className={`px-3.5 py-1.5 text-[12.5px] font-body font-medium rounded-md transition-colors ${
+                        previewMode === "preview" ? "text-ink bg-ink/[0.06]" : "text-ink/40 hover:text-ink/60"
+                      }`}
+                    >
+                      预览
+                    </button>
+                    <button
+                      onClick={() => setPreviewMode("code")}
+                      className={`px-3.5 py-1.5 text-[12.5px] font-body font-medium rounded-md transition-colors ${
+                        previewMode === "code" ? "text-ink bg-ink/[0.06]" : "text-ink/40 hover:text-ink/60"
+                      }`}
+                    >
+                      代码
+                    </button>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <SandpackRefreshButton />
+                    <SaveDraftButton
+                      title={selectedTemplate?.name || "新课程"}
+                      description={selectedTemplate?.description}
+                      format={selectedTemplate?.format || "lab"}
+                      files={files}
+                    />
+                    <button
+                      onClick={() => setShowPreview(false)}
+                      className="w-7 h-7 flex items-center justify-center rounded-md text-ink/30 hover:text-ink/60 hover:bg-ink/[0.05] transition-colors"
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                        <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+                {/* Content area */}
+                <div className="flex-1 min-h-0" style={{ position: "relative" }}>
+                  <div style={{
+                    position: "absolute", inset: 0,
+                    visibility: previewMode === "preview" ? "visible" : "hidden",
+                  }}>
+                    <SandpackPreview showOpenInCodeSandbox={false} showRefreshButton={false} style={{ height: "100%" }} />
+                  </div>
+                  <div style={{
+                    position: "absolute", inset: 0,
+                    visibility: previewMode === "code" ? "visible" : "hidden",
+                  }}>
+                    <SandpackCodeEditor showTabs showLineNumbers showInlineErrors wrapContent={false} style={{ height: "100%" }} />
+                  </div>
+                </div>
+              </SandpackProvider>
+              </div>
+            ) : (
+              <div className="flex items-center justify-center h-full text-ink/20 font-body text-sm">
+                代码生成后预览将在这里显示...
+              </div>
+            )}
+          </motion.div>
+        )}
       </AnimatePresence>
     </div>
   );
@@ -748,8 +1288,17 @@ function CourseBuilderContent() {
 // ── Wrapper ─────────────────────────────────────────────
 
 export default function CourseBuilder() {
+  const [threadId] = useState(() => {
+    // Restore thread_id from localStorage
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("course_builder_thread_id");
+      return saved || crypto.randomUUID();
+    }
+    return crypto.randomUUID();
+  });
+
   return (
-    <CopilotKit runtimeUrl="/api/copilotkit" agent="course-builder">
+    <CopilotKit runtimeUrl="/api/copilotkit" agent="course-builder" threadId={threadId}>
       <CourseBuilderContent />
     </CopilotKit>
   );
