@@ -51,3 +51,22 @@ export interface TemplateCardProps {
 export interface CourseBuilderProps {
   // No props needed for now - fully self-contained
 }
+
+// ── Conversation History Types ──────────────────────────
+
+export interface CourseBuilderConversation {
+  id: string;
+  user_id: string;
+  thread_id: string;
+  title: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CourseBuilderMessage {
+  id: string;
+  conversation_id: string;
+  role: "user" | "assistant" | "system";
+  content: string;
+  created_at: string;
+}
