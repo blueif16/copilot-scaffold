@@ -123,7 +123,8 @@ chat_graph_genetics = build_chat_graph(
 )
 
 # Course Builder (Teacher-facing)
-course_builder_graph = build_course_builder_graph()
+# Note: build_course_builder_graph is async, so we need to initialize it at startup
+course_builder_graph = None
 
 # ── Create FastAPI app and register agents ────────────────
 
@@ -143,6 +144,16 @@ app.add_middleware(
 
 # Register session routes
 app.include_router(sessions_router)
+
+# ── Startup event to initialize async graph ────────────────
+
+@app.on_event("startup")
+async def startup_event():
+    """Initialize async course builder graph on startup."""
+    global course_builder_graph
+    print("[wt-feat/course-builder-conversation-memory] Initializing course builder graph...")
+    course_builder_graph = await build_course_builder_graph()
+    print("[wt-feat/course-builder-conversation-memory] Course builder graph initialized")
 
 # ── Register all agents ────────────────────────────────────
 

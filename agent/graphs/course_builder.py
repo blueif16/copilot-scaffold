@@ -23,7 +23,7 @@ from langchain_core.messages import SystemMessage, AIMessage, ToolMessage
 from langchain_core.runnables import RunnableConfig
 from langchain_core.tools import tool
 from langgraph.graph import END, START, StateGraph
-from langgraph.checkpoint.memory import MemorySaver
+from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 
 
 # ── System Prompts per Format ────────────────────────────
@@ -62,7 +62,7 @@ BASE_SYSTEM = """你是一位专业的教育互动设计师和React开发者。
 - 文件 > 100 行：必须用 update_file 做局部修改
 - 修改 < 20% 的内容：必须用 update_file
 
-你必须始终写入 "/App.jsx" 作为主组件文件。
+你必须始终写入 "/App.js" 作为主组件文件（注意是 .js 不是 .jsx，Sandpack 默认入口是 /App.js）。
 也可以写入 "/interactions.json" 用于事件-反应映射。
 
 重要：对话开始时，不要立即生成代码。
@@ -72,7 +72,15 @@ BASE_SYSTEM = """你是一位专业的教育互动设计师和React开发者。
 3. 具体知识点（例如：三年级上册「水的三态变化」）
 
 只有在获得足够上下文后才生成代码。
-如果老师已经明确说明了知识点，可以直接开始生成。"""
+如果老师已经明确说明了知识点，可以直接开始生成。
+
+模板工作流程：
+沙盒中通常已有一个格式模板（/App.js），包含该格式的通用骨架代码。
+获得知识点后，你应该：
+1. 先调用 read_file("/App.js") 查看模板内容
+2. 用 update_file 做针对性修改（替换配置数据、标题、可视化内容等）
+3. 不要删除模板再重写 — 用 update_file 保留结构，只替换占位内容
+4. 如果改动超过 50%，才考虑用 write_file 完全重写"""
 
 LAB_PROMPT = """
 格式：交互式实验模拟
@@ -133,7 +141,7 @@ DIALOGUE_PROMPT = """
 def validate_path(path: str) -> tuple[bool, str]:
     """Validate file path for Sandpack virtual filesystem."""
     if not path.startswith('/'):
-        return False, "Path must start with / (e.g., /App.jsx)"
+        return False, "Path must start with / (e.g., /App.js)"
 
     # Sandpack typically uses root-level files
     if path.count('/') > 2:
@@ -155,7 +163,7 @@ def read_file(path: str) -> str:
     ALWAYS call this before update_file to verify the file exists and contains the expected text.
 
     Args:
-        path: File path to read (e.g., /App.jsx)
+        path: File path to read (e.g., /App.js)
 
     Returns:
         File content as string, or error message if file doesn't exist
@@ -180,7 +188,7 @@ def write_file(path: str, content: str) -> str:
     Use this to create or fully replace files.
 
     Args:
-        path: File path starting with / (e.g., /App.jsx, /interactions.json)
+        path: File path starting with / (e.g., /App.js, /interactions.json)
         content: The full file content to write.
     """
     return json.dumps({"action": "write", "path": path, "content": content})
@@ -193,7 +201,7 @@ def update_file(path: str, old_text: str, new_text: str) -> str:
     Use this for targeted edits instead of rewriting the entire file.
 
     Args:
-        path: File path to edit (e.g., /App.jsx)
+        path: File path to edit (e.g., /App.js)
         old_text: The exact text to find and replace (must be unique in file)
         new_text: The replacement text
     """
@@ -258,10 +266,10 @@ async def chat_node(state: CourseBuilderState, config: RunnableConfig) -> dict:
         if files:
             file_list = list(files.keys())
             file_sizes = {path: len(content) for path, content in files.items()}
-            file_context = f"\n\n当前沙盒中的文件：{file_list}\n文件大小：{file_sizes}"
-            print(f"[Agent:chat_node] Injecting file context: {file_list}")
+            file_context = f"\n\n沙盒中已有格式模板文件：{file_list}（大小：{file_sizes}）\n请先调用 read_file 查看模板内容，然后用 update_file 做针对性修改。不要直接重写。"
+            print(f"[Agent:chat_node] Injecting template file context: {file_list}")
         else:
-            file_context = "\n\n沙盒当前为空，没有文件。建议先调用 list_files 确认。"
+            file_context = "\n\n沙盒当前为空，没有文件。获得知识点后直接用 write_file 创建 /App.js。"
             print(f"[Agent:chat_node] No files in sandbox")
         system = SystemMessage(content=BASE_SYSTEM + format_prompt + file_context)
     else:
@@ -358,7 +366,7 @@ async def tool_executor(state: CourseBuilderState, config: RunnableConfig) -> di
 
         try:
             if name == "read_file":
-                path = args.get("path", "/App.jsx")
+                path = args.get("path", "/App.js")
                 if path in files:
                     content = files[path]
                     result = f"✓ Read {path} ({len(content)} chars):\n\n{content}"
@@ -376,7 +384,7 @@ async def tool_executor(state: CourseBuilderState, config: RunnableConfig) -> di
                 print(f"[Agent:tool_executor] list_files: {len(file_list)} files - {file_list}")
 
             elif name == "write_file":
-                path = args.get("path", "/App.jsx")
+                path = args.get("path", "/App.js")
                 content = args.get("content", "")
 
                 # Validate path
@@ -393,7 +401,7 @@ async def tool_executor(state: CourseBuilderState, config: RunnableConfig) -> di
                     print(f"[Agent:tool_executor] write_file: {action} {path} ({len(content)} chars)")
 
             elif name == "update_file":
-                path = args.get("path", "/App.jsx")
+                path = args.get("path", "/App.js")
                 old_text = args.get("old_text", "")
                 new_text = args.get("new_text", "")
 
@@ -501,8 +509,10 @@ def _detect_format_prompt(messages: list, copilotkit_context: list | None = None
 
 # ── Graph Builder ────────────────────────────────────────
 
-def build_course_builder_graph():
-    """Build the course builder StateGraph with ReAct tool loop."""
+async def build_course_builder_graph():
+    """Build the course builder StateGraph with ReAct tool loop and PostgreSQL checkpointing."""
+    import os
+    from psycopg_pool import AsyncConnectionPool
 
     graph = StateGraph(CourseBuilderState)
 
@@ -516,4 +526,30 @@ def build_course_builder_graph():
     })
     graph.add_edge("tool_executor", "chat_node")
 
-    return graph.compile(checkpointer=MemorySaver())
+    # PostgreSQL checkpointer for persistent conversation memory
+    db_uri = os.getenv(
+        "DATABASE_URL",
+        "postgresql://postgres:your-super-secret-and-long-postgres-password@supabase-db:5432/postgres"
+    )
+
+    print(f"[wt-feat/course-builder-conversation-memory] Initializing PostgresSaver with URI: {db_uri.split('@')[1] if '@' in db_uri else 'local'}")
+
+    try:
+        # Create connection pool
+        pool = AsyncConnectionPool(
+            conninfo=db_uri,
+            min_size=1,
+            max_size=10,
+            timeout=30.0,
+        )
+        await pool.open()
+
+        # Initialize checkpointer with pool
+        # Note: Tables already created by migration 20260308184809_course_builder_conversations.sql
+        checkpointer = AsyncPostgresSaver(pool)
+        print(f"[wt-feat/course-builder-conversation-memory] PostgresSaver initialized successfully")
+    except Exception as e:
+        print(f"[wt-feat/course-builder-conversation-memory] ERROR: Failed to initialize PostgresSaver: {e}")
+        raise
+
+    return graph.compile(checkpointer=checkpointer)
