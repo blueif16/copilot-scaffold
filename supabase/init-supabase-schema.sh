@@ -1,21 +1,27 @@
--- Supabase Initialization Script
--- This script runs on first database startup via docker-entrypoint-initdb.d
--- Creates all required Supabase schemas, roles, and application tables
+#!/bin/sh
+set -eu
+
+psql -v ON_ERROR_STOP=1 \
+  --username "$POSTGRES_USER" \
+  --dbname "$POSTGRES_DB" \
+  --set=postgres_password="$POSTGRES_PASSWORD" <<'EOSQL'
+-- Supabase initialization script.
+-- This runs only on first database startup via docker-entrypoint-initdb.d.
+
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
 -- ============================================================================
 -- SUPABASE ROLES AND SCHEMAS
 -- ============================================================================
 
--- Create Supabase system roles
 CREATE ROLE anon NOLOGIN NOINHERIT;
 CREATE ROLE authenticated NOLOGIN NOINHERIT;
 CREATE ROLE service_role NOLOGIN NOINHERIT BYPASSRLS;
-CREATE ROLE supabase_auth_admin LOGIN NOINHERIT CREATEROLE CREATEDB PASSWORD 'your-super-secret-and-long-postgres-password';
-CREATE ROLE supabase_storage_admin LOGIN NOINHERIT CREATEROLE CREATEDB PASSWORD 'your-super-secret-and-long-postgres-password';
-CREATE ROLE supabase_admin NOLOGIN NOINHERIT CREATEROLE CREATEDB;
-CREATE ROLE authenticator NOINHERIT LOGIN PASSWORD 'your-super-secret-and-long-postgres-password';
+CREATE ROLE supabase_auth_admin LOGIN NOINHERIT CREATEROLE CREATEDB PASSWORD :'postgres_password';
+CREATE ROLE supabase_storage_admin LOGIN NOINHERIT CREATEROLE CREATEDB PASSWORD :'postgres_password';
+CREATE ROLE supabase_admin LOGIN NOINHERIT CREATEROLE CREATEDB PASSWORD :'postgres_password';
+CREATE ROLE authenticator NOINHERIT LOGIN PASSWORD :'postgres_password';
 
--- Grant role memberships
 GRANT anon TO authenticator;
 GRANT authenticated TO authenticator;
 GRANT service_role TO authenticator;
@@ -23,15 +29,22 @@ GRANT supabase_auth_admin TO postgres;
 GRANT supabase_storage_admin TO postgres;
 GRANT supabase_admin TO postgres;
 
--- Create Supabase schemas
 CREATE SCHEMA IF NOT EXISTS auth;
 CREATE SCHEMA IF NOT EXISTS storage;
 CREATE SCHEMA IF NOT EXISTS realtime;
 CREATE SCHEMA IF NOT EXISTS _realtime;
 
--- Grant schema permissions
-GRANT USAGE ON SCHEMA auth TO supabase_auth_admin, authenticated, anon, service_role;
-GRANT USAGE ON SCHEMA storage TO supabase_storage_admin, authenticated, anon, service_role;
+ALTER SCHEMA auth OWNER TO supabase_auth_admin;
+ALTER SCHEMA storage OWNER TO supabase_storage_admin;
+ALTER SCHEMA realtime OWNER TO supabase_admin;
+ALTER SCHEMA _realtime OWNER TO supabase_admin;
+
+GRANT ALL ON SCHEMA auth TO supabase_auth_admin;
+GRANT ALL ON SCHEMA storage TO supabase_storage_admin;
+GRANT ALL ON SCHEMA realtime TO supabase_admin;
+GRANT ALL ON SCHEMA _realtime TO supabase_admin;
+GRANT USAGE ON SCHEMA auth TO authenticated, anon, service_role;
+GRANT USAGE ON SCHEMA storage TO authenticated, anon, service_role;
 GRANT USAGE ON SCHEMA realtime TO authenticated, anon, service_role;
 GRANT USAGE ON SCHEMA _realtime TO authenticated, anon, service_role;
 GRANT USAGE ON SCHEMA public TO authenticated, anon, service_role;
@@ -95,23 +108,23 @@ CREATE TABLE auth.sessions (
   not_after timestamptz
 );
 
--- Grant permissions on auth tables
-GRANT ALL ON auth.users TO supabase_auth_admin;
-GRANT ALL ON auth.refresh_tokens TO supabase_auth_admin;
-GRANT ALL ON auth.sessions TO supabase_auth_admin;
+ALTER TABLE auth.users OWNER TO supabase_auth_admin;
+ALTER TABLE auth.refresh_tokens OWNER TO supabase_auth_admin;
+ALTER TABLE auth.sessions OWNER TO supabase_auth_admin;
+ALTER SEQUENCE auth.refresh_tokens_id_seq OWNER TO supabase_auth_admin;
+
+GRANT ALL ON ALL TABLES IN SCHEMA auth TO supabase_auth_admin;
+GRANT ALL ON ALL SEQUENCES IN SCHEMA auth TO supabase_auth_admin;
 GRANT SELECT ON auth.users TO authenticated, service_role;
 
--- ============================================================================
--- STORAGE SCHEMA TABLES
--- ============================================================================
-
+-- The Storage API expects the base tables to exist before it applies the
+-- later tenant migrations that add derived columns and flags.
 CREATE TABLE storage.buckets (
   id text PRIMARY KEY,
   name text UNIQUE NOT NULL,
   owner uuid REFERENCES auth.users(id),
   created_at timestamptz DEFAULT now(),
-  updated_at timestamptz DEFAULT now(),
-  public boolean DEFAULT false
+  updated_at timestamptz DEFAULT now()
 );
 
 CREATE TABLE storage.objects (
@@ -123,21 +136,21 @@ CREATE TABLE storage.objects (
   updated_at timestamptz DEFAULT now(),
   last_accessed_at timestamptz DEFAULT now(),
   metadata jsonb,
-  path_tokens text[] GENERATED ALWAYS AS (string_to_array(name, '/')) STORED,
   UNIQUE(bucket_id, name)
 );
 
--- Grant permissions on storage tables
-GRANT ALL ON storage.buckets TO supabase_storage_admin;
-GRANT ALL ON storage.objects TO supabase_storage_admin;
+ALTER TABLE storage.buckets OWNER TO supabase_storage_admin;
+ALTER TABLE storage.objects OWNER TO supabase_storage_admin;
+
+GRANT ALL ON ALL TABLES IN SCHEMA storage TO supabase_storage_admin;
+GRANT ALL ON ALL SEQUENCES IN SCHEMA storage TO supabase_storage_admin;
 GRANT SELECT ON storage.buckets TO authenticated, anon, service_role;
 GRANT SELECT ON storage.objects TO authenticated, anon, service_role;
 
 -- ============================================================================
--- APPLICATION TABLES (from migrations)
+-- APPLICATION TABLES
 -- ============================================================================
 
--- PROFILES TABLE
 CREATE TABLE public.profiles (
   id uuid REFERENCES auth.users ON DELETE CASCADE PRIMARY KEY,
   role text CHECK (role IN ('student', 'teacher')) NOT NULL DEFAULT 'student',
@@ -157,7 +170,6 @@ CREATE POLICY "Users can update own profile" ON public.profiles
 
 CREATE INDEX profiles_role_idx ON public.profiles(role);
 
--- COURSES TABLE
 CREATE TABLE public.courses (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   teacher_id uuid REFERENCES public.profiles(id) NOT NULL,
@@ -185,7 +197,6 @@ CREATE POLICY "Students can read published courses" ON public.courses
 CREATE INDEX courses_teacher_id_idx ON public.courses(teacher_id);
 CREATE INDEX courses_status_idx ON public.courses(status);
 
--- STUDENT_PROGRESS TABLE
 CREATE TABLE public.student_progress (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   student_id uuid REFERENCES public.profiles(id) NOT NULL,
@@ -210,7 +221,6 @@ CREATE INDEX student_progress_last_active_idx ON public.student_progress(last_ac
 -- FUNCTIONS AND TRIGGERS
 -- ============================================================================
 
--- Function to auto-create profile on signup
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -228,7 +238,6 @@ CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE PROCEDURE public.handle_new_user();
 
--- Function to update updated_at timestamp
 CREATE OR REPLACE FUNCTION public.handle_updated_at()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -244,9 +253,9 @@ CREATE TRIGGER on_course_updated
 -- ============================================================================
 -- HELPER FUNCTION: auth.uid()
 -- ============================================================================
--- Returns the current authenticated user's ID from JWT
 
 CREATE OR REPLACE FUNCTION auth.uid()
 RETURNS uuid AS $$
   SELECT NULLIF(current_setting('request.jwt.claims', true)::json->>'sub', '')::uuid;
 $$ LANGUAGE sql STABLE;
+EOSQL
