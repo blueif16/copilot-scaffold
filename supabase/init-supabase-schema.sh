@@ -218,6 +218,110 @@ CREATE INDEX student_progress_course_id_idx ON public.student_progress(course_id
 CREATE INDEX student_progress_last_active_idx ON public.student_progress(last_active);
 
 -- ============================================================================
+-- COURSE BUILDER + LANGGRAPH TABLES
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS public.checkpoint_migrations (
+  v integer PRIMARY KEY
+);
+
+CREATE TABLE IF NOT EXISTS public.checkpoints (
+  thread_id text NOT NULL,
+  checkpoint_ns text NOT NULL DEFAULT '',
+  checkpoint_id text NOT NULL,
+  parent_checkpoint_id text,
+  type text,
+  checkpoint jsonb NOT NULL,
+  metadata jsonb NOT NULL DEFAULT '{}',
+  PRIMARY KEY (thread_id, checkpoint_ns, checkpoint_id)
+);
+
+CREATE TABLE IF NOT EXISTS public.checkpoint_blobs (
+  thread_id text NOT NULL,
+  checkpoint_ns text NOT NULL DEFAULT '',
+  channel text NOT NULL,
+  version text NOT NULL,
+  type text NOT NULL,
+  blob bytea,
+  PRIMARY KEY (thread_id, checkpoint_ns, channel, version)
+);
+
+CREATE TABLE IF NOT EXISTS public.checkpoint_writes (
+  thread_id text NOT NULL,
+  checkpoint_ns text NOT NULL DEFAULT '',
+  checkpoint_id text NOT NULL,
+  task_id text NOT NULL,
+  idx integer NOT NULL,
+  channel text NOT NULL,
+  type text,
+  blob bytea NOT NULL,
+  task_path text NOT NULL DEFAULT '',
+  PRIMARY KEY (thread_id, checkpoint_ns, checkpoint_id, task_id, idx)
+);
+
+CREATE INDEX IF NOT EXISTS checkpoints_thread_id_idx ON public.checkpoints(thread_id);
+CREATE INDEX IF NOT EXISTS checkpoint_blobs_thread_id_idx ON public.checkpoint_blobs(thread_id);
+CREATE INDEX IF NOT EXISTS checkpoint_writes_thread_id_idx ON public.checkpoint_writes(thread_id);
+
+INSERT INTO public.checkpoint_migrations (v) VALUES (9) ON CONFLICT DO NOTHING;
+
+CREATE TABLE IF NOT EXISTS public.course_builder_conversations (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid REFERENCES public.profiles(id) NOT NULL,
+  thread_id text NOT NULL UNIQUE,
+  title text,
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS public.course_builder_messages (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  conversation_id uuid REFERENCES public.course_builder_conversations(id) ON DELETE CASCADE NOT NULL,
+  role text CHECK (role IN ('user', 'assistant', 'system')) NOT NULL,
+  content text NOT NULL,
+  created_at timestamptz DEFAULT now()
+);
+
+ALTER TABLE public.course_builder_conversations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.course_builder_messages ENABLE ROW LEVEL SECURITY;
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.course_builder_conversations TO authenticated, service_role;
+GRANT SELECT, INSERT, DELETE ON public.course_builder_messages TO authenticated, service_role;
+
+CREATE POLICY "Users can CRUD own conversations" ON public.course_builder_conversations
+  FOR ALL USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can read messages from own conversations" ON public.course_builder_messages
+  FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM public.course_builder_conversations
+      WHERE id = conversation_id AND user_id = auth.uid()
+    )
+  );
+
+CREATE POLICY "Users can insert messages to own conversations" ON public.course_builder_messages
+  FOR INSERT WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM public.course_builder_conversations
+      WHERE id = conversation_id AND user_id = auth.uid()
+    )
+  );
+
+CREATE POLICY "Users can delete messages from own conversations" ON public.course_builder_messages
+  FOR DELETE USING (
+    EXISTS (
+      SELECT 1 FROM public.course_builder_conversations
+      WHERE id = conversation_id AND user_id = auth.uid()
+    )
+  );
+
+CREATE INDEX IF NOT EXISTS course_builder_conversations_user_id_idx ON public.course_builder_conversations(user_id);
+CREATE INDEX IF NOT EXISTS course_builder_conversations_thread_id_idx ON public.course_builder_conversations(thread_id);
+CREATE INDEX IF NOT EXISTS course_builder_conversations_created_at_idx ON public.course_builder_conversations(created_at);
+CREATE INDEX IF NOT EXISTS course_builder_messages_conversation_id_idx ON public.course_builder_messages(conversation_id);
+CREATE INDEX IF NOT EXISTS course_builder_messages_created_at_idx ON public.course_builder_messages(created_at);
+
+-- ============================================================================
 -- FUNCTIONS AND TRIGGERS
 -- ============================================================================
 
@@ -248,6 +352,10 @@ $$ LANGUAGE plpgsql;
 
 CREATE TRIGGER on_course_updated
   BEFORE UPDATE ON public.courses
+  FOR EACH ROW EXECUTE PROCEDURE public.handle_updated_at();
+
+CREATE TRIGGER on_course_builder_conversation_updated
+  BEFORE UPDATE ON public.course_builder_conversations
   FOR EACH ROW EXECUTE PROCEDURE public.handle_updated_at();
 
 -- ============================================================================
