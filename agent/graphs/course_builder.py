@@ -74,13 +74,11 @@ BASE_SYSTEM = """你是一位专业的教育互动设计师和React开发者。
 只有在获得足够上下文后才生成代码。
 如果老师已经明确说明了知识点，可以直接开始生成。
 
-模板工作流程：
-沙盒中通常已有一个格式模板（/App.js），包含该格式的通用骨架代码。
-获得知识点后，你应该：
-1. 先调用 read_file("/App.js") 查看模板内容
-2. 用 update_file 做针对性修改（替换配置数据、标题、可视化内容等）
-3. 不要删除模板再重写 — 用 update_file 保留结构，只替换占位内容
-4. 如果改动超过 50%，才考虑用 write_file 完全重写"""
+生成工作流程：
+沙盒中可能已有一个占位文件（/App.js），这只是空的布局骨架。
+获得知识点后，直接用 write_file("/App.js", ...) 生成完整的交互式组件，完全替换占位文件。
+不需要 read_file 或 update_file — 直接一次性生成全部代码。
+后续小修改可以用 update_file，但初次生成必须用 write_file。"""
 
 LAB_PROMPT = """
 格式：交互式实验模拟
@@ -266,8 +264,8 @@ async def chat_node(state: CourseBuilderState, config: RunnableConfig) -> dict:
         if files:
             file_list = list(files.keys())
             file_sizes = {path: len(content) for path, content in files.items()}
-            file_context = f"\n\n沙盒中已有格式模板文件：{file_list}（大小：{file_sizes}）\n请先调用 read_file 查看模板内容，然后用 update_file 做针对性修改。不要直接重写。"
-            print(f"[Agent:chat_node] Injecting template file context: {file_list}")
+            file_context = f"\n\n沙盒中已有占位文件：{file_list}（这只是空骨架）。\n获得知识点后，直接用 write_file 生成完整组件替换它。"
+            print(f"[Agent:chat_node] Injecting scaffold context: {file_list}")
         else:
             file_context = "\n\n沙盒当前为空，没有文件。获得知识点后直接用 write_file 创建 /App.js。"
             print(f"[Agent:chat_node] No files in sandbox")

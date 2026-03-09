@@ -8,7 +8,6 @@ export default function TemplateCard({ template, onClick }: TemplateCardProps) {
     <motion.button
       onClick={() => onClick(template)}
       className="card-chunky p-6 text-left hover:scale-105 transition-transform"
-      style={{ backgroundColor: template.color }}
       whileHover={{ scale: 1.05 }}
       whileTap={{ scale: 0.98 }}
       initial={{ opacity: 0, y: 20 }}
