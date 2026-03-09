@@ -82,6 +82,46 @@ describe('CourseBuilder Conversation Integration', () => {
       expect(isValid).toBe(false);
     });
 
+    it('should reuse an existing conversation for the same thread_id', async () => {
+      const existingConversation = {
+        id: mockConversationId,
+        user_id: mockUserId,
+        thread_id: mockThreadId,
+        title: 'Existing Conversation',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+
+      const mockMaybeSingle = jest.fn().mockResolvedValue({
+        data: existingConversation,
+        error: null,
+      });
+      const mockInsert = jest.fn();
+
+      mockSupabase.from.mockReturnValue({
+        select: jest.fn().mockReturnValue({
+          eq: jest.fn().mockReturnValue({
+            eq: jest.fn().mockReturnValue({
+              maybeSingle: mockMaybeSingle,
+            }),
+          }),
+        }),
+        insert: mockInsert,
+      });
+
+      const { data: { user } } = await mockSupabase.auth.getUser();
+
+      const { data: conversation } = await mockSupabase
+        .from('course_builder_conversations')
+        .select('*')
+        .eq('user_id', user!.id)
+        .eq('thread_id', mockThreadId)
+        .maybeSingle();
+
+      expect(conversation).toEqual(existingConversation);
+      expect(mockInsert).not.toHaveBeenCalled();
+    });
+
     it('should reject unauthenticated requests', async () => {
       mockSupabase.auth.getUser.mockResolvedValue({
         data: { user: null },

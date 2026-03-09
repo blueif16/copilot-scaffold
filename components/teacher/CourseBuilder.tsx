@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback, useMemo } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   SandpackProvider,
@@ -18,12 +18,10 @@ import { Role, TextMessage } from "@copilotkit/runtime-client-gql";
 import {
   CourseTemplate,
   ChatMessage,
-  CourseFormat,
   CourseBuilderAgentState,
   UploadedImage,
   CourseBuilderConversation,
 } from "@/lib/types/course-builder";
-import { createSupabaseBrowser } from "@/lib/supabase/client";
 import SaveDraftButton from "@/components/teacher/SaveDraftButton";
 import { getTemplateFiles } from "@/lib/templates";
 import Markdown from "react-markdown";
@@ -497,8 +495,108 @@ function InputBox({
 
 // ── Inner Content (inside CopilotKit provider) ──────────
 
-function CourseBuilderContent() {
-  const [phase, setPhase] = useState<"landing" | "chat">("landing");
+type CourseBuilderPhase = "landing" | "chat";
+
+interface CourseBuilderContentProps {
+  threadId: string;
+  currentConversationId: string | null;
+  initialPhase: CourseBuilderPhase;
+  onSessionStart: (session: {
+    threadId: string;
+    conversationId: string | null;
+    phase: CourseBuilderPhase;
+  }) => void;
+  onConversationChange: (conversationId: string | null) => void;
+}
+
+function ConversationSidebar({
+  isLoading,
+  conversations,
+  currentConversationId,
+  onCreateConversation,
+  onLoadConversation,
+  onDeleteConversation,
+}: {
+  isLoading: boolean;
+  conversations: CourseBuilderConversation[];
+  currentConversationId: string | null;
+  onCreateConversation: () => void | Promise<void>;
+  onLoadConversation: (conversation: CourseBuilderConversation) => void | Promise<void>;
+  onDeleteConversation: (conversationId: string) => void | Promise<void>;
+}) {
+  return (
+    <div className="h-full flex flex-col">
+      <div className="shrink-0 px-4 py-3 border-b border-ink/[0.06]">
+        <button
+          onClick={onCreateConversation}
+          className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-ink text-white hover:bg-ink/85 transition-colors text-[13px] font-medium"
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M12 5v14M5 12h14" />
+          </svg>
+          新对话
+        </button>
+      </div>
+      <div className="flex-1 overflow-y-auto px-2 py-2">
+        {isLoading ? (
+          <div className="flex items-center justify-center py-8 text-ink/30 text-[13px]">
+            加载中...
+          </div>
+        ) : conversations.length === 0 ? (
+          <div className="flex items-center justify-center py-8 text-ink/30 text-[13px]">
+            暂无历史对话
+          </div>
+        ) : (
+          conversations.map((conv) => (
+            <div
+              key={conv.id}
+              className={`group mb-1 px-3 py-2 rounded-lg cursor-pointer transition-colors ${
+                currentConversationId === conv.id
+                  ? "bg-ink/[0.06]"
+                  : "hover:bg-ink/[0.03]"
+              }`}
+              onClick={() => onLoadConversation(conv)}
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex-1 min-w-0">
+                  <div className="text-[13px] font-medium text-ink truncate">
+                    {conv.title || "未命名对话"}
+                  </div>
+                  <div className="text-[11px] text-ink/40 mt-0.5">
+                    {new Date(conv.updated_at).toLocaleDateString("zh-CN", {
+                      month: "short",
+                      day: "numeric",
+                    })}
+                  </div>
+                </div>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    void onDeleteConversation(conv.id);
+                  }}
+                  className="opacity-0 group-hover:opacity-100 w-6 h-6 flex items-center justify-center rounded text-ink/30 hover:text-ink/60 hover:bg-ink/[0.06] transition-all"
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
+
+function CourseBuilderContent({
+  threadId,
+  currentConversationId,
+  initialPhase,
+  onSessionStart,
+  onConversationChange,
+}: CourseBuilderContentProps) {
+  const [phase, setPhase] = useState<CourseBuilderPhase>(initialPhase);
   const [selectedTemplate, setSelectedTemplate] =
     useState<CourseTemplate | null>(null);
   const [input, setInput] = useState("");
@@ -515,20 +613,11 @@ function CourseBuilderContent() {
   // Conversation history
   const [showHistory, setShowHistory] = useState(false);
   const [conversations, setConversations] = useState<CourseBuilderConversation[]>([]);
-  const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
-  const [threadId, setThreadId] = useState<string>(() => {
-    // Try to restore from localStorage
-    if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("course_builder_thread_id");
-      return saved || crypto.randomUUID();
-    }
-    return crypto.randomUUID();
-  });
+  const createConversationPromiseRef = useRef<Promise<string | null> | null>(null);
   const [isLoadingConversations, setIsLoadingConversations] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
-  const supabase = useMemo(() => createSupabaseBrowser(), []);
 
   // ── CopilotKit ────────────────────────────────────────
 
@@ -605,13 +694,6 @@ function CourseBuilderContent() {
 
   // ── Effects ───────────────────────────────────────────
 
-  // Persist thread_id to localStorage
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      localStorage.setItem("course_builder_thread_id", threadId);
-    }
-  }, [threadId]);
-
   // Load conversations on mount
   useEffect(() => {
     loadConversations();
@@ -643,10 +725,14 @@ function CourseBuilderContent() {
     setIsLoadingConversations(true);
     try {
       const response = await fetch("/api/course-builder/conversations");
-      if (response.ok) {
-        const data = await response.json();
-        setConversations(data.conversations || []);
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("[CourseBuilder] Failed to load conversations:", response.status, errorText);
+        return;
       }
+
+      const data = await response.json();
+      setConversations(data.conversations || []);
     } catch (error) {
       console.error("[CourseBuilder] Failed to load conversations:", error);
     } finally {
@@ -655,43 +741,83 @@ function CourseBuilderContent() {
   };
 
   const createNewConversation = async () => {
-    const newThreadId = crypto.randomUUID();
-    setThreadId(newThreadId);
-    setCurrentConversationId(null);
-    setSelectedTemplate(null);
-    setPhase("landing");
+    try {
+      const response = await fetch("/api/course-builder/conversations/new", {
+        method: "POST",
+      });
 
-    // Clear CopilotKit messages by resetting state
-    window.location.reload(); // Simple approach to reset CopilotKit state
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("[CourseBuilder] Failed to start new conversation:", response.status, errorText);
+        return;
+      }
+
+      const data = await response.json();
+      const newThreadId = data.thread_id;
+
+      if (!newThreadId) {
+        console.error("[CourseBuilder] Failed to start new conversation: missing thread_id");
+        return;
+      }
+
+      onConversationChange(null);
+      onSessionStart({
+        threadId: newThreadId,
+        conversationId: null,
+        phase: "landing",
+      });
+    } catch (error) {
+      console.error("[CourseBuilder] Failed to start new conversation:", error);
+    }
   };
 
   const saveConversation = async (title?: string) => {
-    if (!currentConversationId && messages.length > 0) {
-      // Create new conversation
+    if (messages.length === 0) return;
+
+    let conversationId = currentConversationId;
+
+    if (!conversationId) {
       try {
-        const response = await fetch("/api/course-builder/conversations", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            thread_id: threadId,
-            title: title || generateConversationTitle(),
-          }),
-        });
+        if (!createConversationPromiseRef.current) {
+          createConversationPromiseRef.current = (async () => {
+            const response = await fetch("/api/course-builder/conversations", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                thread_id: threadId,
+                title: title || generateConversationTitle(),
+              }),
+            });
 
-        if (response.ok) {
-          const data = await response.json();
-          setCurrentConversationId(data.conversation.id);
+            if (!response.ok) {
+              const errorText = await response.text();
+              console.error("[CourseBuilder] Failed to create conversation:", response.status, errorText);
+              return null;
+            }
 
-          // Save messages
-          await saveMessages(data.conversation.id);
-          await loadConversations();
+            const data = await response.json();
+            const newConversationId = data.conversation?.id ?? null;
+
+            if (newConversationId) {
+              onConversationChange(newConversationId);
+              await loadConversations();
+            }
+
+            return newConversationId;
+          })().finally(() => {
+            createConversationPromiseRef.current = null;
+          });
         }
+
+        conversationId = await createConversationPromiseRef.current;
       } catch (error) {
         console.error("[CourseBuilder] Failed to save conversation:", error);
+        return;
       }
-    } else if (currentConversationId) {
-      // Update existing conversation
-      await saveMessages(currentConversationId);
+    }
+
+    if (conversationId) {
+      await saveMessages(conversationId);
     }
   };
 
@@ -699,7 +825,7 @@ function CourseBuilderContent() {
     if (messages.length === 0) return;
 
     try {
-      await fetch(`/api/course-builder/conversations/${conversationId}/messages`, {
+      const response = await fetch(`/api/course-builder/conversations/${conversationId}/messages`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -709,28 +835,23 @@ function CourseBuilderContent() {
           })),
         }),
       });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("[CourseBuilder] Failed to save messages:", response.status, errorText);
+      }
     } catch (error) {
       console.error("[CourseBuilder] Failed to save messages:", error);
     }
   };
 
   const loadConversation = async (conversation: CourseBuilderConversation) => {
-    try {
-      const response = await fetch(`/api/course-builder/conversations/${conversation.id}`);
-      if (response.ok) {
-        const data = await response.json();
-        setThreadId(conversation.thread_id);
-        setCurrentConversationId(conversation.id);
-        setPhase("chat");
-        setShowHistory(false);
-
-        // Note: Loading messages into CopilotKit requires page reload with thread_id
-        // For now, just set the thread_id and let LangGraph restore from checkpoint
-        window.location.reload();
-      }
-    } catch (error) {
-      console.error("[CourseBuilder] Failed to load conversation:", error);
-    }
+    onConversationChange(conversation.id);
+    onSessionStart({
+      threadId: conversation.thread_id,
+      conversationId: conversation.id,
+      phase: "chat",
+    });
   };
 
   const deleteConversation = async (conversationId: string) => {
@@ -744,8 +865,11 @@ function CourseBuilderContent() {
       if (response.ok) {
         await loadConversations();
         if (currentConversationId === conversationId) {
-          createNewConversation();
+          await createNewConversation();
         }
+      } else {
+        const errorText = await response.text();
+        console.error("[CourseBuilder] Failed to delete conversation:", response.status, errorText);
       }
     } catch (error) {
       console.error("[CourseBuilder] Failed to delete conversation:", error);
@@ -895,67 +1019,14 @@ function CourseBuilderContent() {
                 transition={{ type: "spring", stiffness: 300, damping: 30 }}
                 className="border-r border-ink/[0.06] bg-white overflow-hidden"
               >
-                <div className="h-full flex flex-col">
-                  <div className="shrink-0 px-4 py-3 border-b border-ink/[0.06]">
-                    <button
-                      onClick={createNewConversation}
-                      className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-ink text-white hover:bg-ink/85 transition-colors text-[13px] font-medium"
-                    >
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="M12 5v14M5 12h14" />
-                      </svg>
-                      新对话
-                    </button>
-                  </div>
-                  <div className="flex-1 overflow-y-auto px-2 py-2">
-                    {isLoadingConversations ? (
-                      <div className="flex items-center justify-center py-8 text-ink/30 text-[13px]">
-                        加载中...
-                      </div>
-                    ) : conversations.length === 0 ? (
-                      <div className="flex items-center justify-center py-8 text-ink/30 text-[13px]">
-                        暂无历史对话
-                      </div>
-                    ) : (
-                      conversations.map((conv) => (
-                        <div
-                          key={conv.id}
-                          className={`group mb-1 px-3 py-2 rounded-lg cursor-pointer transition-colors ${
-                            currentConversationId === conv.id
-                              ? "bg-ink/[0.06]"
-                              : "hover:bg-ink/[0.03]"
-                          }`}
-                          onClick={() => loadConversation(conv)}
-                        >
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="flex-1 min-w-0">
-                              <div className="text-[13px] font-medium text-ink truncate">
-                                {conv.title || "未命名对话"}
-                              </div>
-                              <div className="text-[11px] text-ink/40 mt-0.5">
-                                {new Date(conv.updated_at).toLocaleDateString("zh-CN", {
-                                  month: "short",
-                                  day: "numeric",
-                                })}
-                              </div>
-                            </div>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                deleteConversation(conv.id);
-                              }}
-                              className="opacity-0 group-hover:opacity-100 w-6 h-6 flex items-center justify-center rounded text-ink/30 hover:text-ink/60 hover:bg-ink/[0.06] transition-all"
-                            >
-                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
-                              </svg>
-                            </button>
-                          </div>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </div>
+                <ConversationSidebar
+                  isLoading={isLoadingConversations}
+                  conversations={conversations}
+                  currentConversationId={currentConversationId}
+                  onCreateConversation={createNewConversation}
+                  onLoadConversation={loadConversation}
+                  onDeleteConversation={deleteConversation}
+                />
               </motion.div>
             )}
           </AnimatePresence>
@@ -1058,67 +1129,14 @@ function CourseBuilderContent() {
             transition={{ type: "spring", stiffness: 300, damping: 30 }}
             className="border-r border-ink/[0.06] bg-white overflow-hidden"
           >
-            <div className="h-full flex flex-col">
-              <div className="shrink-0 px-4 py-3 border-b border-ink/[0.06]">
-                <button
-                  onClick={createNewConversation}
-                  className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-ink text-white hover:bg-ink/85 transition-colors text-[13px] font-medium"
-                >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M12 5v14M5 12h14" />
-                  </svg>
-                  新对话
-                </button>
-              </div>
-              <div className="flex-1 overflow-y-auto px-2 py-2">
-                {isLoadingConversations ? (
-                  <div className="flex items-center justify-center py-8 text-ink/30 text-[13px]">
-                    加载中...
-                  </div>
-                ) : conversations.length === 0 ? (
-                  <div className="flex items-center justify-center py-8 text-ink/30 text-[13px]">
-                    暂无历史对话
-                  </div>
-                ) : (
-                  conversations.map((conv) => (
-                    <div
-                      key={conv.id}
-                      className={`group mb-1 px-3 py-2 rounded-lg cursor-pointer transition-colors ${
-                        currentConversationId === conv.id
-                          ? "bg-ink/[0.06]"
-                          : "hover:bg-ink/[0.03]"
-                      }`}
-                      onClick={() => loadConversation(conv)}
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex-1 min-w-0">
-                          <div className="text-[13px] font-medium text-ink truncate">
-                            {conv.title || "未命名对话"}
-                          </div>
-                          <div className="text-[11px] text-ink/40 mt-0.5">
-                            {new Date(conv.updated_at).toLocaleDateString("zh-CN", {
-                              month: "short",
-                              day: "numeric",
-                            })}
-                          </div>
-                        </div>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            deleteConversation(conv.id);
-                          }}
-                          className="opacity-0 group-hover:opacity-100 w-6 h-6 flex items-center justify-center rounded text-ink/30 hover:text-ink/60 hover:bg-ink/[0.06] transition-all"
-                        >
-                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
-                          </svg>
-                        </button>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
+            <ConversationSidebar
+              isLoading={isLoadingConversations}
+              conversations={conversations}
+              currentConversationId={currentConversationId}
+              onCreateConversation={createNewConversation}
+              onLoadConversation={loadConversation}
+              onDeleteConversation={deleteConversation}
+            />
           </motion.div>
         )}
       </AnimatePresence>
@@ -1288,18 +1306,64 @@ function CourseBuilderContent() {
 // ── Wrapper ─────────────────────────────────────────────
 
 export default function CourseBuilder() {
-  const [threadId] = useState(() => {
-    // Restore thread_id from localStorage
-    if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("course_builder_thread_id");
-      return saved || crypto.randomUUID();
-    }
-    return crypto.randomUUID();
+  const [session, setSession] = useState<{
+    threadId: string;
+    conversationId: string | null;
+    phase: CourseBuilderPhase;
+  }>(() => {
+    const savedThreadId =
+      typeof window !== "undefined"
+        ? localStorage.getItem("course_builder_thread_id")
+        : null;
+
+    return {
+      threadId: savedThreadId || crypto.randomUUID(),
+      conversationId: null,
+      phase: "landing",
+    };
   });
+  const [sessionKey, setSessionKey] = useState(0);
+
+  const handleSessionStart = useCallback((nextSession: {
+    threadId: string;
+    conversationId: string | null;
+    phase: CourseBuilderPhase;
+  }) => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("course_builder_thread_id", nextSession.threadId);
+    }
+
+    setSession(nextSession);
+    setSessionKey((value) => value + 1);
+  }, []);
+
+  const handleConversationChange = useCallback((conversationId: string | null) => {
+    setSession((prev) => {
+      if (prev.conversationId === conversationId) {
+        return prev;
+      }
+
+      return {
+        ...prev,
+        conversationId,
+      };
+    });
+  }, []);
 
   return (
-    <CopilotKit runtimeUrl="/api/copilotkit" agent="course-builder" threadId={threadId}>
-      <CourseBuilderContent />
+    <CopilotKit
+      key={`${session.threadId}:${sessionKey}`}
+      runtimeUrl="/api/copilotkit"
+      agent="course-builder"
+      threadId={session.threadId}
+    >
+      <CourseBuilderContent
+        threadId={session.threadId}
+        currentConversationId={session.conversationId}
+        initialPhase={session.phase}
+        onSessionStart={handleSessionStart}
+        onConversationChange={handleConversationChange}
+      />
     </CopilotKit>
   );
 }

@@ -49,6 +49,22 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "thread_id is required" }, { status: 400 });
     }
 
+    const { data: existingConversation, error: existingError } = await supabase
+      .from("course_builder_conversations")
+      .select("*")
+      .eq("user_id", user.id)
+      .eq("thread_id", thread_id)
+      .maybeSingle();
+
+    if (existingError) {
+      console.error("[course-builder] Failed to check for existing conversation:", existingError);
+      return NextResponse.json({ error: existingError.message }, { status: 500 });
+    }
+
+    if (existingConversation) {
+      return NextResponse.json({ conversation: existingConversation });
+    }
+
     // Create conversation
     const { data: conversation, error } = await supabase
       .from("course_builder_conversations")
@@ -61,11 +77,29 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (error) {
+      if (error.code === "23505") {
+        const { data: racedConversation, error: raceLookupError } = await supabase
+          .from("course_builder_conversations")
+          .select("*")
+          .eq("user_id", user.id)
+          .eq("thread_id", thread_id)
+          .maybeSingle();
+
+        if (raceLookupError) {
+          console.error("[course-builder] Failed to load conversation after unique conflict:", raceLookupError);
+          return NextResponse.json({ error: raceLookupError.message }, { status: 500 });
+        }
+
+        if (racedConversation) {
+          return NextResponse.json({ conversation: racedConversation });
+        }
+      }
+
       console.error("[course-builder] Failed to create conversation:", error);
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json({ conversation });
+    return NextResponse.json({ conversation }, { status: 201 });
   } catch (error: any) {
     console.error("[course-builder] POST /conversations error:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
