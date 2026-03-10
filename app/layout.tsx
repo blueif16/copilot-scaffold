@@ -1,10 +1,5 @@
-"use client";
-
 import { Fraunces, Space_Grotesk } from "next/font/google";
-import { GrainOverlay } from "@/components/ui/GrainOverlay";
-import { ErrorBoundary } from "@/components/ErrorBoundary";
-import { LocaleProvider } from "@/contexts/LocaleContext";
-import { AuthProvider } from "@/contexts/AuthContext";
+import { Providers } from "@/components/Providers";
 import "./globals.css";
 
 const fraunces = Fraunces({
@@ -30,12 +25,7 @@ export default function RootLayout({
       className={`${fraunces.variable} ${spaceGrotesk.variable}`}
     >
       <body className="min-h-screen bg-paper text-ink font-body antialiased">
-        <GrainOverlay />
-        <AuthProvider>
-          <LocaleProvider>
-            <ErrorBoundary>{children}</ErrorBoundary>
-          </LocaleProvider>
-        </AuthProvider>
+        <Providers>{children}</Providers>
       </body>
     </html>
   );
