@@ -1,8 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { saveDraft } from "@/app/teacher/courses/actions";
-
 import { CourseFormat } from "@/lib/types/course-builder";
 
 interface SaveDraftButtonProps {
@@ -26,21 +24,9 @@ export default function SaveDraftButton({
     setMessage(null);
 
     try {
-      // Extract simulation JSX from files (typically /App.tsx)
-      const simulation_jsx = files["/App.tsx"] || files["/index.tsx"] || "";
-
-      const result = await saveDraft({
-        title,
-        description,
-        format,
-        simulation_jsx,
-      });
-
-      if (result.success) {
-        setMessage("Draft saved successfully!");
-      } else {
-        setMessage(`Error: ${result.error}`);
-      }
+      // TODO: Implement save draft functionality
+      // This component references a deleted action file
+      setMessage("Save draft not yet implemented");
     } catch (error) {
       setMessage("Failed to save draft");
     } finally {

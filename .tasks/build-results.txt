@@ -1,0 +1,54 @@
+
+> omniscience@0.1.0 build
+> next build
+
+  ▲ Next.js 14.2.29
+  - Environments: .env.local, .env
+
+   Creating an optimized production build ...
+(node:67226) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ Compiled successfully
+   Linting and checking validity of types ...
+   Collecting page data ...
+   Generating static pages (0/20) ...
+   Generating static pages (5/20) 
+   Generating static pages (10/20) 
+   Generating static pages (15/20) 
+ ✓ Generating static pages (20/20)
+   Finalizing page optimization ...
+   Collecting build traces ...
+
+Route (app)                                          Size     First Load JS
+┌ ○ /                                                62.7 kB         257 kB
+├ ○ /_not-found                                      156 B          92.7 kB
+├ ƒ /api/auth/callback                               0 B                0 B
+├ ƒ /api/copilotkit                                  0 B                0 B
+├ ƒ /api/course-builder                              0 B                0 B
+├ ƒ /api/course-builder/conversations                0 B                0 B
+├ ƒ /api/course-builder/conversations/[id]           0 B                0 B
+├ ƒ /api/course-builder/conversations/[id]/messages  0 B                0 B
+├ ƒ /api/course-builder/conversations/new            0 B                0 B
+├ ƒ /api/profile                                     0 B                0 B
+├ ƒ /api/voice                                       0 B                0 B
+├ ○ /login                                           4.33 kB         199 kB
+├ ○ /profile                                         1.57 kB         151 kB
+├ ○ /signup                                          4.5 kB          199 kB
+├ ƒ /teacher/chat/[conversationId]                   158 B           532 kB
+├ ƒ /teacher/chat/new                                158 B           532 kB
+├ ƒ /teacher/courses/new                             156 B          92.7 kB
+├ ○ /teacher/dashboard                               3.17 kB         153 kB
+├ ○ /topics/changing-states                          7.01 kB         605 kB
+├ ○ /topics/electric-circuits                        5.43 kB         603 kB
+└ ○ /topics/genetics-basics                          5.91 kB         604 kB
++ First Load JS shared by all                        92.6 kB
+  ├ chunks/2117-0ded64dd1afdc067.js                  31.8 kB
+  ├ chunks/fd9d1056-b53d5f44457efa29.js              53.6 kB
+  └ other shared chunks (total)                      7.2 kB
+
+
+ƒ Middleware                                         73.3 kB
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+

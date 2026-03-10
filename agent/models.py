@@ -213,6 +213,11 @@ class TopicConfig:
     extra_emotions: list[str] = field(default_factory=list)
     extra_animations: list[str] = field(default_factory=list)
 
+    # Populated by promotion pipeline from state.json — enables runtime event validation.
+    # Hand-crafted topics leave these as None (validation skipped).
+    state_schema: Optional[dict[str, Any]] = None
+    event_schema: Optional[dict[str, Any]] = None
+
 
 # ── AI Tool Factory ─────────────────────────────────────
 

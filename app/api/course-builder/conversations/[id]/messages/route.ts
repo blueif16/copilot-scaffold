@@ -62,6 +62,17 @@ export async function POST(
       return NextResponse.json({ error: insertError.message }, { status: 500 });
     }
 
+    const { error: updateConversationError } = await supabase
+      .from("course_builder_conversations")
+      .update({ updated_at: new Date().toISOString() })
+      .eq("id", id)
+      .eq("user_id", user.id);
+
+    if (updateConversationError) {
+      console.error("[course-builder] Failed to update conversation timestamp:", updateConversationError);
+      return NextResponse.json({ error: updateConversationError.message }, { status: 500 });
+    }
+
     return NextResponse.json({ success: true });
   } catch (error: any) {
     console.error("[course-builder] POST /conversations/[id]/messages error:", error);

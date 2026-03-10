@@ -8,16 +8,23 @@
 #
 #   No CopilotKit actions needed. Pure state sync.
 #
+# Multi-file convention:
+#   /App.js          → Sandpack host (throwaway — not promoted)
+#   /Simulation.js   → becomes TopicNameSimulation.tsx
+#   /state.json      → becomes TS types + Python state schema
+#   /data.json       → becomes config.py + reactions.py
+#
 # Graph: chat_node ←→ tool_executor (ReAct loop)
 # ═══════════════════════════════════════════════════════════
 
 from __future__ import annotations
 
 import json
+import os
 from typing import Any, Literal
 
 from copilotkit import CopilotKitState
-from copilotkit.langgraph import copilotkit_emit_state
+from copilotkit.langgraph import copilotkit_emit_state, copilotkit_customize_config
 from config import get_gemini_model
 from langchain_core.messages import SystemMessage, AIMessage, ToolMessage
 from langchain_core.runnables import RunnableConfig
@@ -26,112 +33,238 @@ from langgraph.graph import END, START, StateGraph
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 
 
-# ── System Prompts per Format ────────────────────────────
+# ── Component Library ────────────────────────────────────
+
+COMPONENT_LIBRARY_DIR = os.path.join(os.path.dirname(__file__), "..", "component_library")
+
+
+def _load_component_index() -> list[dict]:
+    """Load the component library index."""
+    index_path = os.path.join(COMPONENT_LIBRARY_DIR, "index.json")
+    if not os.path.exists(index_path):
+        return []
+    with open(index_path, "r") as f:
+        return json.load(f)
+
+
+def _load_component_source(name: str) -> str | None:
+    """Load a component's source code by name."""
+    path = os.path.join(COMPONENT_LIBRARY_DIR, "components", f"{name}.js")
+    if not os.path.exists(path):
+        return None
+    with open(path, "r") as f:
+        return f.read()
+
+
+def _search_component_library(query: str) -> str:
+    """Search component metadata without emitting nested LangGraph tool events."""
+    index = _load_component_index()
+    if not index:
+        return json.dumps({"results": [], "message": "Component library is empty. Build the component from scratch."})
+
+    query_lower = query.lower()
+    query_terms = query_lower.split()
+
+    matches = []
+    for comp in index:
+        score = 0
+        searchable = f"{comp['name']} {comp['description']} {' '.join(comp.get('tags', []))}".lower()
+        for term in query_terms:
+            if term in searchable:
+                score += 1
+            if term in comp["name"].lower():
+                score += 2
+        if score > 0:
+            matches.append({**comp, "_score": score})
+
+    matches.sort(key=lambda x: x["_score"], reverse=True)
+
+    results = [{k: v for k, v in match.items() if k != "_score"} for match in matches[:5]]
+    if not results:
+        return json.dumps({"results": [], "message": f"No components match '{query}'. Build it from scratch in /Simulation.js."})
+
+    return json.dumps({"results": results})
+
+
+def _get_component_payload(name: str) -> str:
+    """Load a component payload without invoking a LangChain tool inside the graph."""
+    source = _load_component_source(name)
+    if source is None:
+        return json.dumps({"error": f"Component '{name}' not found. Check the name matches search results exactly."})
+    return json.dumps({"name": name, "source": source})
+
+
+# ── System Prompts ───────────────────────────────────────
 
 BASE_SYSTEM = """你是一位专业的教育互动设计师和React开发者。
 你帮助老师为中国小学生创建互动科学课程。
 
 你必须始终使用中文回复。
 
-规则：
-- JSX 必须在 Sandpack 中运行，可用 React + framer-motion
-- 只使用内联样式 — 不能导入 CSS，不能用 Tailwind（Sandpack 没有）
-- 所有状态使用本地管理（useState, useRef, useEffect）
-- 触控友好：所有交互元素最小 48px 点击区域
-- 代码整洁，注释清晰，视觉效果适合儿童
-- 使用明亮、活泼的颜色
-- 所有界面文字必须使用中文
+═══ 多文件结构（必须遵守）═══
 
-工具使用规则（严格遵守）：
-1. 会话开始时，先调用 list_files 了解现有文件
-2. 使用 update_file 之前，必须先调用 read_file 验证：
-   - 文件是否存在
-   - old_text 是否在文件中（必须完全匹配，包括空格和换行）
-3. 如果不确定文件内容，使用 write_file 完全重写
-4. 小改动用 update_file，大改动用 write_file
+每个课程由 4 个文件组成：
 
-工具选择指南：
-- read_file：验证文件内容、检查修改前状态
-- list_files：了解文件结构、确认文件存在
-- write_file：创建新文件、完全重写、结构性变更
-- update_file：修改特定函数、更新样式、调整文本
-- delete_file：删除不需要的文件
+1. /Simulation.js — 交互式模拟组件（核心代码）
+   - 必须接收 props: { state, onStateChange, onEvent }
+   - state: 当前模拟状态（由 /state.json 定义）
+   - onStateChange(patch): 合并局部状态更新
+   - onEvent({ type, data }): 发射有意义的事件（类型由 /state.json 定义）
+   - 只用内联样式，不能导入 CSS 或 Tailwind
+   - 触控友好：所有交互元素最小 48px
+   - 使用明亮活泼的颜色，适合儿童
+
+2. /state.json — 状态和事件定义（纯 JSON，不是代码）
+   格式：
+   {
+     "state": {
+       "字段名": {
+         "type": "number" | "string" | "boolean" | "enum" | "object" | "array",
+         "initial": 默认值,
+         "description": "字段用途描述"
+         // 可选字段：
+         // "min", "max" — 数值范围
+         // "values" — enum 可选值列表
+         // "derived": true — 计算字段，不写入 agent 状态
+         // "internal": true — 仅 UI 用，agent 不可见
+       }
+     },
+     "events": {
+       "事件名": {
+         "description": "事件描述",
+         "data": { "字段": "类型" }
+       }
+     }
+   }
+
+3. /data.json — 课题配置和反应注册表（纯 JSON）
+   格式：
+   {
+     "topic": {
+       "id": "topic-slug",
+       "level": 1,
+       "ageRange": [6, 8],
+       "pedagogicalPrompt": "观察 agent 的系统提示...",
+       "knowledgeContext": "知识背景...",
+       "chatSystemPrompt": "聊天 agent 的系统提示...",
+       "suggestedQuestions": { "状态或阶段": ["问题1?"] },
+       "spotlight": { "id": "...", "trigger": "..." } // 或 null
+     },
+     "reactions": [
+       {
+         "id": "reaction-id",
+         "event": "事件名",
+         "conditions": { "field": "value", "field__gte": 3 },
+         "response": {
+           "message": "同伴说的话",
+           "emotion": "excited|curious|impressed|celebrating|thinking|encouraging|watching|idle",
+           "animation": "bounce|nod|tilt_head|confetti|wave|point|none",
+           "sound": "gentle_chime|discovery_chime|achievement",
+           "type": "observation|suggestion|milestone|prompt",
+           "priority": 15,
+           "autoExpireMs": 5000,
+           "suggestions": ["建议问题?"],
+           "unlockSpotlight": false,
+           "progressUpdate": {}
+         },
+         "oneShot": true,
+         "escalateToAi": false,
+         "aiHint": "",
+         "cooldownSeconds": null
+       }
+     ]
+   }
+
+4. /App.js — Sandpack 预览宿主（自动生成，不要修改）
+
+═══ 工作流程 ═══
+
+1. 对话开始时，先用 list_files 了解已有文件
+2. 了解老师需求后，按顺序生成：
+   a. /state.json — 先定义状态和事件
+   b. /data.json — 定义配置、反应
+   c. /Simulation.js — 用 write_file 生成完整组件
+3. 生成 /Simulation.js 前，先用 search_components 搜索可复用组件
+4. 如果找到合适组件，用 get_component 获取源码并集成
+5. 没有匹配时直接自己写
+
+═══ 工具使用规则 ═══
+
+- write_file：创建新文件或完全重写（初次生成用这个）
+- update_file：修改特定部分（先 read_file 验证 old_text 存在）
+- search_components：搜索可复用 UI 组件库
+- get_component：获取组件完整源码
 
 效率规则：
-- 文件 < 100 行：可以用 write_file 重写
-- 文件 > 100 行：必须用 update_file 做局部修改
-- 修改 < 20% 的内容：必须用 update_file
+- 文件 < 100 行：可以 write_file 重写
+- 文件 > 100 行：必须 update_file 局部修改
+- 修改 < 20% 内容：必须 update_file
 
-你必须始终写入 "/App.js" 作为主组件文件（注意是 .js 不是 .jsx，Sandpack 默认入口是 /App.js）。
-也可以写入 "/interactions.json" 用于事件-反应映射。
+═══ 输出规则 ═══
 
-重要：对话开始时，不要立即生成代码。
-先了解老师的需求。如果请求模糊，请询问以下关键信息：
+工具执行结果会自动显示在界面中，不要在回复里重复工具输出内容。
+不要写 "已成功写入"、"文件已创建" 之类的确认。
+直接说明你做了什么设计决策、为什么这样设计。
+
+═══ 事件设计原则 ═══
+
+在 /state.json 的 events 和 /Simulation.js 的 onEvent 调用之间保持一致：
+- 每个 onEvent({ type, data }) 的 type 必须在 /state.json events 中声明
+- 在有意义的交互时刻调用 onEvent（状态变化、里程碑、超时等）
+- 不要在每帧调用 — 只在离散的教学时刻
+
+═══ 对话开始 ═══
+
+不要立即生成代码。先了解老师的需求：
 1. 教材版本（人教版、苏教版、北师大版等）
 2. 年级（一年级到六年级）
 3. 具体知识点（例如：三年级上册「水的三态变化」）
 
-只有在获得足够上下文后才生成代码。
-如果老师已经明确说明了知识点，可以直接开始生成。
-
-生成工作流程：
-沙盒中可能已有一个占位文件（/App.js），这只是空的布局骨架。
-获得知识点后，直接用 write_file("/App.js", ...) 生成完整的交互式组件，完全替换占位文件。
-不需要 read_file 或 update_file — 直接一次性生成全部代码。
-后续小修改可以用 update_file，但初次生成必须用 write_file。"""
+如果老师已经明确说明了知识点，可以直接开始生成。"""
 
 LAB_PROMPT = """
 格式：交互式实验模拟
 
 你正在构建一个交互式实验/模拟，学生可以操控变量并观察可视化结果。
-包括：滑块、拖放操作、动画状态变化。
 
-组件接收一个 prop：`onEvent` — 用于有意义的交互回调。
-在以下时刻调用 onEvent({ type, data })：
-- phase_change, milestone, dwell_timeout, first_interaction, experiment_complete
-
-结构：
-- 可视化模拟区域（"实验台"）占约 60% 空间
-- 控制面板：滑块、按钮、开关
-- 状态/信息面板显示当前状态
+/Simulation.js 布局模式：
+- 顶部标题栏（实验名称 + 简短描述）
+- 可视化模拟区域（占约 60% 空间）— 动画、粒子、图表等
+- 控制面板 — 滑块、按钮、开关
 
 使用 requestAnimationFrame 或 useEffect 定时器制作动画。
-使用鲜艳的渐变和圆角形状 — 让它感觉像一个真正的儿童科学应用。
-所有界面文字必须使用中文。"""
+使用鲜艳的渐变和圆角形状。
+所有界面文字使用中文。"""
 
 QUIZ_PROMPT = """
 格式：交互式测验
 
 你正在构建一个测验/评估，学生回答问题并获得即时反馈。
-包括：选择题、拖拽匹配、填空题。
 
-结构：
-- 题目显示区域，文字大且清晰
-- 答案选项为大号可点击按钮（最小 48px 高度）
-- 进度指示器（例如"第 3 题 / 共 10 题"）
-- 得分追踪
-- 正确/错误时的反馈动画（正确时彩花，错误时轻微抖动）
-- 结束时的总结界面，显示分数和鼓励语
+/Simulation.js 布局模式：
+- 顶部进度栏（题号 + 得分）
+- 题目区域，文字大且清晰
+- 答案选项为大号可点击按钮（最小 48px）
+- 正确/错误反馈动画
+- 结束时的总结界面
 
-至少包含 5 道题，每题 3-4 个选项。
-错误反馈要有教育意义，不要惩罚性的 — 解释为什么正确答案是对的。
-所有题目和选项必须使用中文。"""
+至少 5 道题，每题 3-4 个选项。
+错误反馈要有教育意义。
+所有题目和选项使用中文。"""
 
 DIALOGUE_PROMPT = """
 格式：交互式对话/故事
 
-你正在构建一个对话/叙事体验，学生与角色互动并做出影响故事的选择。
+你正在构建一个对话/叙事体验，学生与角色互动并做选择。
 
-结构：
-- 角色显示区域，带简单头像/插图（使用 emoji 或 CSS 艺术）
-- 角色对话的气泡框
-- 学生回应的选择按钮（每轮 2-3 个选项）
-- 基于选择的分支路径
-- 进度/章节指示器
+/Simulation.js 布局模式：
+- 角色显示区域（使用 emoji 或 CSS 艺术）
+- 对话气泡框
+- 选择按钮（每轮 2-3 个选项）
+- 进度指示器
 
-角色要温暖、鼓励。使用讲故事的方式教授概念。
-每个对话分支应教授关于该主题的不同内容。
-所有对话和选项必须使用中文。"""
+角色要温暖、鼓励。用讲故事的方式教授概念。
+所有对话和选项使用中文。"""
 
 
 # ── Path Validation ──────────────────────────────────────
@@ -141,11 +274,9 @@ def validate_path(path: str) -> tuple[bool, str]:
     if not path.startswith('/'):
         return False, "Path must start with / (e.g., /App.js)"
 
-    # Sandpack typically uses root-level files
     if path.count('/') > 2:
         return False, "Sandpack works best with shallow file structures"
 
-    # Validate extensions
     allowed_extensions = ['.jsx', '.js', '.tsx', '.ts', '.json', '.css']
     if not any(path.endswith(ext) for ext in allowed_extensions):
         return False, f"File extension not supported. Use: {', '.join(allowed_extensions)}"
@@ -186,7 +317,7 @@ def write_file(path: str, content: str) -> str:
     Use this to create or fully replace files.
 
     Args:
-        path: File path starting with / (e.g., /App.js, /interactions.json)
+        path: File path starting with / (e.g., /App.js, /state.json, /data.json, /Simulation.js)
         content: The full file content to write.
     """
     return json.dumps({"action": "write", "path": path, "content": content})
@@ -199,7 +330,7 @@ def update_file(path: str, old_text: str, new_text: str) -> str:
     Use this for targeted edits instead of rewriting the entire file.
 
     Args:
-        path: File path to edit (e.g., /App.js)
+        path: File path to edit (e.g., /Simulation.js)
         old_text: The exact text to find and replace (must be unique in file)
         new_text: The replacement text
     """
@@ -216,7 +347,37 @@ def delete_file(path: str) -> str:
     return json.dumps({"action": "delete", "path": path})
 
 
-TOOLS = [read_file, list_files, write_file, update_file, delete_file]
+@tool
+def search_components(query: str) -> str:
+    """Search the reusable UI component library for components matching a query.
+    Call this BEFORE building controls for /Simulation.js to check if a
+    ready-made component exists (sliders, drag-drop, timers, grids, etc).
+
+    Args:
+        query: Search terms (e.g., "slider", "drag drop", "timer", "grid", "balance")
+
+    Returns:
+        Matching components with name, description, and prop interface.
+        Use get_component(name) to get the full source code.
+    """
+    return _search_component_library(query)
+
+
+@tool
+def get_component(name: str) -> str:
+    """Get the full source code of a reusable component from the library.
+    Inline it into /Simulation.js or import it as a separate file.
+
+    Args:
+        name: Exact component name from search_components results (e.g., "ValueSlider")
+
+    Returns:
+        Full JSX source code of the component, or error if not found.
+    """
+    return _get_component_payload(name)
+
+
+TOOLS = [read_file, list_files, write_file, update_file, delete_file, search_components, get_component]
 
 
 # ── Agent State ──────────────────────────────────────────
@@ -227,6 +388,8 @@ class CourseBuilderState(CopilotKitState):
     """
     files: dict[str, str]
     uploaded_images: list[dict[str, str]]  # [{id, base64, mimeType, filename}]
+    _tool_results_cache: dict[str, str] = {}  # tool_call_id → full result (NOT synced to frontend)
+    _active_tools: list[dict[str, str]] = []   # [{name, detail}] → pushed to frontend for inline rendering
 
 
 # ── Graph Nodes ──────────────────────────────────────────
@@ -238,7 +401,6 @@ async def chat_node(state: CourseBuilderState, config: RunnableConfig) -> dict:
 
     print(f"[Agent:chat_node] Received {len(state['messages'])} messages")
 
-    # Debug: print message contents
     for i, msg in enumerate(state['messages']):
         content = getattr(msg, 'content', '')
         msg_type = type(msg).__name__
@@ -252,7 +414,7 @@ async def chat_node(state: CourseBuilderState, config: RunnableConfig) -> dict:
 
     model_with_tools = llm.bind_tools(TOOLS)
 
-    # Detect format from CopilotKit context (useCopilotReadable) or message keywords
+    # Detect format from CopilotKit context or message keywords
     copilotkit_context = state.get("copilotkit", {}).get("context", [])
     format_prompt = _detect_format_prompt(state["messages"], copilotkit_context)
     detected_format = "lab" if "实验" in format_prompt or "lab" in format_prompt.lower() else "quiz" if "测验" in format_prompt or "quiz" in format_prompt.lower() else "dialogue"
@@ -260,14 +422,13 @@ async def chat_node(state: CourseBuilderState, config: RunnableConfig) -> dict:
 
     # Inject file context on first user message
     files = state.get('files', {})
-    if len(state['messages']) <= 2:  # First user message (or early in conversation)
+    if len(state['messages']) <= 2:
         if files:
             file_list = list(files.keys())
-            file_sizes = {path: len(content) for path, content in files.items()}
-            file_context = f"\n\n沙盒中已有占位文件：{file_list}（这只是空骨架）。\n获得知识点后，直接用 write_file 生成完整组件替换它。"
+            file_context = f"\n\n沙盒中已有占位文件：{file_list}。获得知识点后，用 write_file 依次生成 /state.json、/data.json、/Simulation.js（完全替换占位内容）。/App.js 不需要修改。"
             print(f"[Agent:chat_node] Injecting scaffold context: {file_list}")
         else:
-            file_context = "\n\n沙盒当前为空，没有文件。获得知识点后直接用 write_file 创建 /App.js。"
+            file_context = "\n\n沙盒当前为空。获得知识点后依次用 write_file 创建 /state.json → /data.json → /Simulation.js。"
             print(f"[Agent:chat_node] No files in sandbox")
         system = SystemMessage(content=BASE_SYSTEM + format_prompt + file_context)
     else:
@@ -279,13 +440,16 @@ async def chat_node(state: CourseBuilderState, config: RunnableConfig) -> dict:
     if has_images:
         print(f"[Agent:chat_node] Found {len(uploaded_images)} uploaded image(s): {[img.get('filename', '?') for img in uploaded_images]}")
 
-    # Convert ToolMessages to HumanMessages for Gemini compatibility
-    # Gemini requires conversations to end with user role
+    # Convert ToolMessages to HumanMessages for Gemini compatibility.
+    # ToolMessages have short summaries (to avoid frontend leak). Full results
+    # are stored in _tool_results_cache, keyed by tool_call_id.
+    tool_cache = state.get("_tool_results_cache") or {}
     messages = []
     for msg in state["messages"]:
         if isinstance(msg, ToolMessage):
-            # Convert ToolMessage to HumanMessage with tool result content
-            messages.append(HumanMessage(content=f"Tool result: {msg.content}"))
+            # Prefer full result from cache; fall back to ToolMessage content
+            full_result = tool_cache.get(msg.tool_call_id, msg.content)
+            messages.append(HumanMessage(content=f"Tool result: {full_result}"))
         else:
             messages.append(msg)
 
@@ -300,7 +464,6 @@ async def chat_node(state: CourseBuilderState, config: RunnableConfig) -> dict:
         if last_human_idx is not None:
             original_text = messages[last_human_idx].content
             if isinstance(original_text, str):
-                # Build multipart content: text + image(s)
                 multipart_content: list[dict] = [
                     {"type": "text", "text": original_text + "\n\n请仔细分析上传的图片内容，提取所有文字（包括OCR），理解图表/图片布局，并根据内容进行设计。"}
                 ]
@@ -332,12 +495,22 @@ async def chat_node(state: CourseBuilderState, config: RunnableConfig) -> dict:
     if has_tool_calls:
         print(f"[Agent:chat_node] Tool calls: {response.tool_calls}")
 
-    # Clear uploaded images after processing so they don't persist in state
+    # Clear transient state after processing
     result: dict = {"messages": [response]}
+
+    # Clear image uploads
     if has_images:
         result["uploaded_images"] = []
         await copilotkit_emit_state(config, {"uploaded_images": []})
         print(f"[Agent:chat_node] Cleared uploaded images from state")
+
+    # Clear tool results cache when this is the final response (no more tool
+    # calls). If the LLM is making more tool calls, keep the cache alive for
+    # the next tool_executor → chat_node cycle.
+    if tool_cache and not has_tool_calls:
+        result["_tool_results_cache"] = {}
+        result["_active_tools"] = []
+        print(f"[Agent:chat_node] Cleared tool results cache ({len(tool_cache)} entries) and active tools")
 
     return result
 
@@ -346,15 +519,31 @@ async def tool_executor(state: CourseBuilderState, config: RunnableConfig) -> di
     """Execute tool calls with comprehensive error handling and logging."""
     import time
 
+    # Suppress ToolMessage text from streaming to frontend.
+    # Full tool results live in _tool_results_cache for chat_node's LLM context.
+    # Tool call indicators come from ActionExecutionMessage (emit_tool_calls=True in chat_node).
+    config = copilotkit_customize_config(config, emit_messages=False)
+
     last_message = state["messages"][-1]
     if not isinstance(last_message, AIMessage) or not last_message.tool_calls:
         return {}
 
     print(f"[Agent:tool_executor] Executing {len(last_message.tool_calls)} tool calls")
 
+    # Emit tool indicators immediately so frontend can show them while executing
+    active_tools = []
+    for tc in last_message.tool_calls:
+        name = tc["name"]
+        args = tc["args"]
+        detail = args.get("path") or args.get("query") or args.get("name") or ""
+        active_tools.append({"name": name, "detail": detail})
+    await copilotkit_emit_state(config, {"_active_tools": active_tools})
+    print(f"[Agent:tool_executor] Emitted active tools: {[t['name'] for t in active_tools]}")
+
     files = dict(state.get("files") or {})
     tool_results = []
     errors = []
+    full_results_cache: dict[str, str] = dict(state.get("_tool_results_cache") or {})
 
     for tc in last_message.tool_calls:
         start_time = time.time()
@@ -385,7 +574,6 @@ async def tool_executor(state: CourseBuilderState, config: RunnableConfig) -> di
                 path = args.get("path", "/App.js")
                 content = args.get("content", "")
 
-                # Validate path
                 valid, error_msg = validate_path(path)
                 if not valid:
                     result = f"Error: {error_msg}"
@@ -415,7 +603,6 @@ async def tool_executor(state: CourseBuilderState, config: RunnableConfig) -> di
                         result = f"✓ Updated {path} (replaced {len(old_text)} → {len(new_text)} chars)"
                         print(f"[Agent:tool_executor] update_file: {path} success (replaced {len(old_text)} → {len(new_text)} chars)")
                     else:
-                        # Provide helpful context with preview
                         preview_len = 300
                         file_preview = current[:preview_len] + ("..." if len(current) > preview_len else "")
                         result = f"Error: Could not find the specified text in {path}.\n\nExpected to find:\n{old_text[:200]}...\n\nFile preview ({len(current)} chars total):\n{file_preview}\n\nSuggestion: Call read_file('{path}') first to see current content, then use exact text (including whitespace) for old_text parameter."
@@ -435,6 +622,18 @@ async def tool_executor(state: CourseBuilderState, config: RunnableConfig) -> di
                     errors.append(f"delete_file failed: {path} not found")
                     print(f"[Agent:tool_executor] delete_file ERROR: {path} not found")
 
+            elif name == "search_components":
+                query = args.get("query", "")
+                search_result = _search_component_library(query)
+                result = f"✓ Component search results:\n\n{search_result}"
+                print(f"[Agent:tool_executor] search_components: query='{query}'")
+
+            elif name == "get_component":
+                comp_name = args.get("name", "")
+                get_result = _get_component_payload(comp_name)
+                result = f"✓ Component source:\n\n{get_result}"
+                print(f"[Agent:tool_executor] get_component: name='{comp_name}'")
+
             else:
                 result = f"Error: Unknown tool '{name}'"
                 errors.append(f"Unknown tool: {name}")
@@ -448,21 +647,32 @@ async def tool_executor(state: CourseBuilderState, config: RunnableConfig) -> di
         duration_ms = (time.time() - start_time) * 1000
         print(f"[Agent:tool_executor] Tool {name} completed in {duration_ms:.2f}ms")
 
+        # Store full result in cache for chat_node's LLM context.
+        # ToolMessage gets empty content — AG-UI streams ToolMessage
+        # content as text, so anything here leaks into the chat UI.
+        # Empty string is filtered out by frontend's trim() !== "" check.
+        full_results_cache[tool_call_id] = result
         tool_results.append(
-            ToolMessage(content=result, tool_call_id=tool_call_id)
+            ToolMessage(content="", tool_call_id=tool_call_id)
         )
 
-    # Emit state with verification
+    # Emit file changes to frontend
     total_size = sum(len(c) for c in files.values())
     print(f"[Agent:tool_executor] Emitting state: {len(files)} files, total size: {total_size} chars")
     if errors:
         print(f"[Agent:tool_executor] Errors encountered: {errors}")
 
+    # Don't clear _active_tools here — keep them visible until chat_node
+    # produces the final response, so frontend can show "complete" status.
     await copilotkit_emit_state(config, {"files": files})
     print(f"[Agent:tool_executor] State emitted successfully")
     print(f"[Agent:tool_executor] Current files in state: {list(files.keys())}")
 
-    return {"files": files, "messages": tool_results}
+    return {
+        "files": files,
+        "_tool_results_cache": full_results_cache,
+        "messages": tool_results,
+    }
 
 
 def should_continue(state: CourseBuilderState) -> str:
@@ -477,7 +687,6 @@ def should_continue(state: CourseBuilderState) -> str:
 
 def _detect_format_prompt(messages: list, copilotkit_context: list | None = None) -> str:
     """Detect format from CopilotKit readable context or message keywords."""
-    # First check CopilotKit context (from useCopilotReadable on frontend)
     if copilotkit_context:
         for ctx in copilotkit_context:
             desc = ctx.get("description", "") if isinstance(ctx, dict) else ""
@@ -491,7 +700,6 @@ def _detect_format_prompt(messages: list, copilotkit_context: list | None = None
                 elif "lab" in val_str or "实验" in val_str:
                     return LAB_PROMPT
 
-    # Fallback: scan message content
     text = " ".join(
         getattr(m, "content", "") for m in messages
         if hasattr(m, "content") and isinstance(getattr(m, "content", ""), str)
@@ -499,7 +707,7 @@ def _detect_format_prompt(messages: list, copilotkit_context: list | None = None
 
     if "quiz" in text or "测验" in text or "练习" in text or "考试" in text:
         return QUIZ_PROMPT
-    elif "dialogue" in text or "对话" in text or "故事" in text or "叙事" in text:
+    elif "dialogue" in text or "story" in text or "对话" in text or "故事" in text or "叙事" in text:
         return DIALOGUE_PROMPT
     else:
         return LAB_PROMPT
@@ -509,8 +717,6 @@ def _detect_format_prompt(messages: list, copilotkit_context: list | None = None
 
 async def build_course_builder_graph():
     """Build the course builder StateGraph with ReAct tool loop and PostgreSQL checkpointing."""
-    import os
-    from psycopg_pool import AsyncConnectionPool
 
     graph = StateGraph(CourseBuilderState)
 
@@ -533,7 +739,8 @@ async def build_course_builder_graph():
     print(f"[wt-feat/course-builder-conversation-memory] Initializing PostgresSaver with URI: {db_uri.split('@')[1] if '@' in db_uri else 'local'}")
 
     try:
-        # Create connection pool
+        from psycopg_pool import AsyncConnectionPool
+
         pool = AsyncConnectionPool(
             conninfo=db_uri,
             min_size=1,
@@ -542,8 +749,6 @@ async def build_course_builder_graph():
         )
         await pool.open()
 
-        # Initialize checkpointer with pool
-        # Note: Tables already created by migration 20260308184809_course_builder_conversations.sql
         checkpointer = AsyncPostgresSaver(pool)
         print(f"[wt-feat/course-builder-conversation-memory] PostgresSaver initialized successfully")
     except Exception as e:

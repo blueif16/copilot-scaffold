@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from "react";
 import { User } from "@supabase/supabase-js";
 import { createSupabaseBrowser } from "@/lib/supabase/client";
 
@@ -27,6 +27,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const supabase = createSupabaseBrowser();
+
+  // Deduplicate setUser — Supabase fires multiple events (SIGNED_IN,
+  // INITIAL_SESSION) with different object refs for the same user.
+  // Comparing IDs prevents cascading re-renders and duplicate profile fetches.
+  const setUserDeduped = useCallback(
+    (incoming: User | null) =>
+      setUser((prev) => {
+        if (prev?.id === incoming?.id) return prev; // same user, keep ref stable
+        return incoming;
+      }),
+    [],
+  );
 
   // Fetch profile - separate from auth state change to avoid deadlock
   useEffect(() => {
@@ -61,21 +73,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-    });
-
-    // Listen for auth changes - NO ASYNC OPERATIONS HERE to avoid deadlock
+    // onAuthStateChange fires INITIAL_SESSION on mount — no need for
+    // a separate getSession() call (Supabase v2 best practice).
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         console.log("[auth] Event:", event, "session:", session ? "yes" : "no");
-        setUser(session?.user ?? null);
+        setUserDeduped(session?.user ?? null);
       }
     );
 
     return () => subscription.unsubscribe();
-  }, [supabase]);
+  }, [supabase, setUserDeduped]);
 
   const signOut = async () => {
     await supabase.auth.signOut();
