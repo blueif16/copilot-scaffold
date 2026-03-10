@@ -518,31 +518,6 @@ function CourseBuilderContent({
     initialState: { files: {}, uploaded_images: [], _active_tools: [] },
   });
 
-  // Track file changes for debugging
-  useEffect(() => {
-    const fileCount = Object.keys(agentState?.files || {}).length;
-    const fileList = Object.keys(agentState?.files || {});
-    const totalSize = Object.values(agentState?.files || {}).reduce((sum, content) => sum + content.length, 0);
-    console.log('[CourseBuilder] Agent state files updated:', {
-      fileCount,
-      files: fileList,
-      totalSize,
-      hasUploads: (agentState?.uploaded_images || []).length,
-    });
-  }, [agentState?.files, agentState?.uploaded_images]);
-
-  // Track visible messages for debugging
-  useEffect(() => {
-    const summary = (visibleMessages || []).map((m: any, i: number) => {
-      if (!m) return `${i}: null`;
-      const hasGUI = typeof m.generativeUI === 'function';
-      const hasTC = !!m.toolCalls;
-      const content = typeof m.content === 'string' ? m.content.slice(0, 50) : '';
-      return `${i}: role=${m.role} gui=${hasGUI} tc=${hasTC} ${content ? `"${content}${content.length >= 50 ? '...' : ''}"` : '(empty)'}`;
-    });
-    console.log('[CourseBuilder] messages:', summary);
-  }, [visibleMessages]);
-
   useCopilotReadable({
     description: "Selected course format",
     value: selectedTemplate
@@ -745,7 +720,6 @@ function CourseBuilderContent({
   useEffect(() => {
     // Only auto-open once. Real agent-written files will be much bigger than scaffolds.
     if (hasFiles && totalFileSize > 2000 && !showPreview) {
-      console.log('[CourseBuilder] Agent wrote real files, opening preview. totalSize:', totalFileSize);
       setShowPreview(true);
     }
   }, [hasFiles, totalFileSize, showPreview]);
