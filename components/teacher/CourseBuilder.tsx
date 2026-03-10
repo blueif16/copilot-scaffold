@@ -1,30 +1,37 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
+import dynamic from "next/dynamic";
 import { motion, AnimatePresence } from "framer-motion";
-import {
-  SandpackProvider,
-  SandpackPreview,
-  SandpackCodeEditor,
-  useSandpack,
-} from "@codesandbox/sandpack-react";
 import { CopilotKit } from "@copilotkit/react-core";
 import { useCoAgent } from "@copilotkit/react-core";
 import { useCopilotChatInternal } from "@copilotkit/react-core";
 import { useCopilotReadable } from "@copilotkit/react-core";
 import { useCopilotAction } from "@copilotkit/react-core";
-import type { CatchAllActionRenderProps } from "@copilotkit/react-core";
 import { Role, TextMessage } from "@copilotkit/runtime-client-gql";
 import {
   CourseTemplate,
   ChatMessage,
   CourseBuilderAgentState,
   UploadedImage,
-  CourseBuilderConversation,
 } from "@/lib/types/course-builder";
 import SaveDraftButton from "@/components/teacher/SaveDraftButton";
+import MessageActions from "@/components/teacher/MessageActions";
 import { getTemplateFiles } from "@/lib/templates";
 import Markdown from "react-markdown";
+
+// Dynamic import for Sandpack (only loads when preview pane opens)
+const SandpackEditor = dynamic(
+  () => import("@/components/teacher/SandpackEditor").then((mod) => ({ default: mod.SandpackEditor })),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex-1 flex items-center justify-center">
+        <div className="animate-pulse bg-ink/5 h-full w-full" />
+      </div>
+    ),
+  }
+);
 
 // ── Helpers ─────────────────────────────────────────────
 
@@ -161,46 +168,45 @@ function MessageBubble({ message }: { message: ChatMessage }) {
   // Extract image indicator from message content
   const imageMatch = message.content.match(/^\[已上传图片: ([^\]]+)\]\s*/);
   const hasImage = !!imageMatch;
-  const imageName = imageMatch?.[1];
   const textContent = hasImage ? message.content.replace(/^\[已上传图片: [^\]]+\]\s*/, "") : message.content;
 
   return (
     <div className={`mb-6 ${isUser ? "flex justify-end" : ""}`}>
-      <div
-        className={`text-[15px] leading-[1.72] font-body ${
-          isUser
-            ? "max-w-[85%] px-4 py-3 bg-[#3D3929] text-[#F5F0E8] rounded-2xl rounded-br-sm"
-            : "text-ink"
-        }`}
-      >
-        {isUser ? (
-          <p className="whitespace-pre-wrap">{textContent}</p>
-        ) : (
-          <div className="prose prose-sm max-w-none">
-            <Markdown
-              components={{
-                p: ({ children }) => <p className="mb-3 last:mb-0">{children}</p>,
-                code: ({ inline, children, ...props }: any) =>
-                  inline ? (
-                    <code className="px-1.5 py-0.5 rounded bg-ink/[0.06] text-[13px] font-mono" {...props}>
-                      {children}
-                    </code>
-                  ) : (
-                    <code className="block px-3 py-2 rounded bg-ink/[0.06] text-[13px] font-mono overflow-x-auto" {...props}>
-                      {children}
-                    </code>
+      <div className="flex flex-col gap-2 max-w-[85%]">
+        <div
+          className={`text-[15px] leading-[1.72] font-body ${
+            isUser
+              ? "px-4 py-3 bg-[#3D3929] text-[#F5F0E8] rounded-2xl rounded-br-sm"
+              : "text-ink"
+          }`}
+        >
+          {isUser ? (
+            <p className="whitespace-pre-wrap">{textContent}</p>
+          ) : (
+            <div className="prose prose-sm max-w-none [overflow-wrap:anywhere]">
+              <Markdown
+                components={{
+                  p: ({ children }) => <p className="mb-3 last:mb-0">{children}</p>,
+                  pre: ({ children }) => (
+                    <pre className="px-3 py-2 rounded-lg bg-ink/[0.04] text-[13px] font-mono overflow-x-auto whitespace-pre-wrap break-words mb-3">{children}</pre>
                   ),
-                ul: ({ children }) => <ul className="list-disc pl-5 mb-3 space-y-1">{children}</ul>,
-                ol: ({ children }) => <ol className="list-decimal pl-5 mb-3 space-y-1">{children}</ol>,
-                h1: ({ children }) => <h1 className="text-xl font-semibold mb-2 mt-4 first:mt-0">{children}</h1>,
-                h2: ({ children }) => <h2 className="text-lg font-semibold mb-2 mt-3 first:mt-0">{children}</h2>,
-                h3: ({ children }) => <h3 className="text-base font-semibold mb-2 mt-3 first:mt-0">{children}</h3>,
-              }}
-            >
-              {textContent}
-            </Markdown>
-          </div>
-        )}
+                  code: ({ children, className, ...props }: any) => (
+                    <code className={className ? "font-mono" : "px-1 py-0.5 rounded bg-ink/[0.06] text-[13px] font-mono"} {...props}>{children}</code>
+                  ),
+                  ul: ({ children }) => <ul className="list-disc pl-5 mb-3 space-y-1">{children}</ul>,
+                  ol: ({ children }) => <ol className="list-decimal pl-5 mb-3 space-y-1">{children}</ol>,
+                  h1: ({ children }) => <h1 className="text-xl font-semibold mb-2 mt-4 first:mt-0">{children}</h1>,
+                  h2: ({ children }) => <h2 className="text-lg font-semibold mb-2 mt-3 first:mt-0">{children}</h2>,
+                  h3: ({ children }) => <h3 className="text-base font-semibold mb-2 mt-3 first:mt-0">{children}</h3>,
+                }}
+              >
+                {textContent}
+              </Markdown>
+            </div>
+          )}
+        </div>
+
+        {!isUser && <MessageActions content={textContent} />}
       </div>
     </div>
   );
@@ -255,72 +261,42 @@ function TypingIndicator() {
 
 // ── Tool Call Names ─────────────────────────────────────
 
-// ── Sandpack Refresh Button (must be inside SandpackProvider) ──
-
-function SandpackRefreshButton() {
-  const { dispatch } = useSandpack();
-  return (
-    <button
-      onClick={() => dispatch({ type: "refresh" })}
-      title="刷新预览"
-      className="w-7 h-7 flex items-center justify-center rounded-md text-ink/30 hover:text-ink/60 hover:bg-ink/[0.05] transition-colors"
-    >
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M21 2v6h-6" />
-        <path d="M3 12a9 9 0 0 1 15-6.7L21 8" />
-        <path d="M3 22v-6h6" />
-        <path d="M21 12a9 9 0 0 1-15 6.7L3 16" />
-      </svg>
-    </button>
-  );
-}
-
 const TOOL_LABELS: Record<string, { label: string; icon: string }> = {
-  read_file:   { label: "读取文件",   icon: "F" },
-  write_file:  { label: "写入文件",   icon: "F" },
-  update_file: { label: "更新文件",   icon: "F" },
-  list_files:  { label: "列出文件",   icon: "☰" },
-  delete_file: { label: "删除文件",   icon: "F" },
+  read_file:          { label: "读取文件",   icon: "F" },
+  write_file:         { label: "写入文件",   icon: "F" },
+  update_file:        { label: "更新文件",   icon: "F" },
+  list_files:         { label: "列出文件",   icon: "☰" },
+  delete_file:        { label: "删除文件",   icon: "F" },
+  search_components:  { label: "搜索组件",   icon: "⚡" },
+  get_component:      { label: "获取组件",   icon: "⚡" },
 };
 
 function ToolCallBubble({ name, args, status }: { name: string; args: any; status: string }) {
   const tool = TOOL_LABELS[name] || { label: name, icon: "⚙" };
-  const path = args?.path as string | undefined;
   const isComplete = status === "complete";
-  const [expanded, setExpanded] = useState(false);
 
-  let summary = tool.label;
-  if (path) summary += ` ${path}`;
+  // Extract a short detail string from args
+  let detail = "";
+  if (args) {
+    detail = args.path || args.query || args.filename || args.name || "";
+    // For write_file/update_file, show path only (content is too long)
+    if (typeof detail === "string" && detail.length > 60) detail = detail.slice(0, 60) + "…";
+  }
 
   return (
-    <div className="mb-3">
-      <button
-        onClick={() => setExpanded(!expanded)}
-        className="flex items-center gap-2 w-full text-left group"
-      >
-        <span className={`w-5 h-5 flex items-center justify-center rounded text-[11px] font-bold flex-shrink-0 ${
-          isComplete
-            ? "bg-ink/[0.06] text-ink/40"
-            : "bg-playful-blue/10 text-playful-blue animate-pulse"
-        }`}>
-          {tool.icon}
-        </span>
-        <span className="text-[13px] font-body text-ink/50 group-hover:text-ink/70 transition-colors">
-          {summary}
-        </span>
-        {isComplete && (
-          <span className="text-[11px] font-body px-1.5 py-0.5 rounded bg-ink/[0.04] text-ink/30">
-            {expanded ? "收起" : "结果"}
-          </span>
-        )}
-        {!isComplete && (
-          <span className="text-[11px] font-body text-ink/25 animate-pulse">...</span>
-        )}
-      </button>
-      {expanded && isComplete && (
-        <div className="mt-1.5 ml-7 px-3 py-2 rounded-lg bg-ink/[0.02] border border-ink/[0.06] text-[12px] font-mono text-ink/40 max-h-[200px] overflow-auto whitespace-pre-wrap">
-          {JSON.stringify(args, null, 2)}
-        </div>
+    <div className="flex items-center gap-2 py-0.5">
+      <span className={`w-5 h-5 flex items-center justify-center rounded text-[11px] font-bold flex-shrink-0 ${
+        isComplete
+          ? "bg-ink/[0.06] text-ink/40"
+          : "bg-playful-blue/10 text-playful-blue animate-pulse"
+      }`}>
+        {tool.icon}
+      </span>
+      <span className="text-[13px] font-body text-ink/50">
+        {tool.label}{detail ? ` ${detail}` : ""}
+      </span>
+      {!isComplete && (
+        <span className="text-[11px] font-body text-ink/25 animate-pulse">...</span>
       )}
     </div>
   );
@@ -501,99 +477,13 @@ interface CourseBuilderContentProps {
   threadId: string;
   currentConversationId: string | null;
   initialPhase: CourseBuilderPhase;
-  onSessionStart: (session: {
-    threadId: string;
-    conversationId: string | null;
-    phase: CourseBuilderPhase;
-  }) => void;
   onConversationChange: (conversationId: string | null) => void;
-}
-
-function ConversationSidebar({
-  isLoading,
-  conversations,
-  currentConversationId,
-  onCreateConversation,
-  onLoadConversation,
-  onDeleteConversation,
-}: {
-  isLoading: boolean;
-  conversations: CourseBuilderConversation[];
-  currentConversationId: string | null;
-  onCreateConversation: () => void | Promise<void>;
-  onLoadConversation: (conversation: CourseBuilderConversation) => void | Promise<void>;
-  onDeleteConversation: (conversationId: string) => void | Promise<void>;
-}) {
-  return (
-    <div className="h-full flex flex-col">
-      <div className="shrink-0 px-4 py-3 border-b border-ink/[0.06]">
-        <button
-          onClick={onCreateConversation}
-          className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-ink text-white hover:bg-ink/85 transition-colors text-[13px] font-medium"
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M12 5v14M5 12h14" />
-          </svg>
-          新对话
-        </button>
-      </div>
-      <div className="flex-1 overflow-y-auto px-2 py-2">
-        {isLoading ? (
-          <div className="flex items-center justify-center py-8 text-ink/30 text-[13px]">
-            加载中...
-          </div>
-        ) : conversations.length === 0 ? (
-          <div className="flex items-center justify-center py-8 text-ink/30 text-[13px]">
-            暂无历史对话
-          </div>
-        ) : (
-          conversations.map((conv) => (
-            <div
-              key={conv.id}
-              className={`group mb-1 px-3 py-2 rounded-lg cursor-pointer transition-colors ${
-                currentConversationId === conv.id
-                  ? "bg-ink/[0.06]"
-                  : "hover:bg-ink/[0.03]"
-              }`}
-              onClick={() => onLoadConversation(conv)}
-            >
-              <div className="flex items-start justify-between gap-2">
-                <div className="flex-1 min-w-0">
-                  <div className="text-[13px] font-medium text-ink truncate">
-                    {conv.title || "未命名对话"}
-                  </div>
-                  <div className="text-[11px] text-ink/40 mt-0.5">
-                    {new Date(conv.updated_at).toLocaleDateString("zh-CN", {
-                      month: "short",
-                      day: "numeric",
-                    })}
-                  </div>
-                </div>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    void onDeleteConversation(conv.id);
-                  }}
-                  className="opacity-0 group-hover:opacity-100 w-6 h-6 flex items-center justify-center rounded text-ink/30 hover:text-ink/60 hover:bg-ink/[0.06] transition-all"
-                >
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
-                  </svg>
-                </button>
-              </div>
-            </div>
-          ))
-        )}
-      </div>
-    </div>
-  );
 }
 
 function CourseBuilderContent({
   threadId,
   currentConversationId,
   initialPhase,
-  onSessionStart,
   onConversationChange,
 }: CourseBuilderContentProps) {
   const [phase, setPhase] = useState<CourseBuilderPhase>(initialPhase);
@@ -610,23 +500,22 @@ function CourseBuilderContent({
   const [pendingImage, setPendingImage] = useState<UploadedImage | null>(null);
   const [imageError, setImageError] = useState<string | null>(null);
 
-  // Conversation history
-  const [showHistory, setShowHistory] = useState(false);
-  const [conversations, setConversations] = useState<CourseBuilderConversation[]>([]);
   const createConversationPromiseRef = useRef<Promise<string | null> | null>(null);
-  const [isLoadingConversations, setIsLoadingConversations] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   // ── CopilotKit ────────────────────────────────────────
 
+  // BUG in CopilotKit 1.52.1: useCopilotChat() returns visibleMessages as undefined.
+  // Must use useCopilotChatInternal() and destructure `messages` instead.
+  // See: code-failures/bugs/copilotkit-useCopilotChat-undefined-messages.md
   const { messages: visibleMessages, appendMessage, isLoading } =
     useCopilotChatInternal();
 
   const { state: agentState, setState: setAgentState } = useCoAgent<CourseBuilderAgentState>({
     name: "course-builder",
-    initialState: { files: {}, uploaded_images: [] },
+    initialState: { files: {}, uploaded_images: [], _active_tools: [] },
   });
 
   // Track file changes for debugging
@@ -634,12 +523,25 @@ function CourseBuilderContent({
     const fileCount = Object.keys(agentState?.files || {}).length;
     const fileList = Object.keys(agentState?.files || {});
     const totalSize = Object.values(agentState?.files || {}).reduce((sum, content) => sum + content.length, 0);
-    console.log('[CourseBuilder] Agent state updated:', {
+    console.log('[CourseBuilder] Agent state files updated:', {
       fileCount,
       files: fileList,
-      totalSize
+      totalSize,
+      hasUploads: (agentState?.uploaded_images || []).length,
     });
-  }, [agentState?.files]);
+  }, [agentState?.files, agentState?.uploaded_images]);
+
+  // Track visible messages for debugging
+  useEffect(() => {
+    const summary = (visibleMessages || []).map((m: any, i: number) => {
+      if (!m) return `${i}: null`;
+      const hasGUI = typeof m.generativeUI === 'function';
+      const hasTC = !!m.toolCalls;
+      const content = typeof m.content === 'string' ? m.content.slice(0, 50) : '';
+      return `${i}: role=${m.role} gui=${hasGUI} tc=${hasTC} ${content ? `"${content}${content.length >= 50 ? '...' : ''}"` : '(empty)'}`;
+    });
+    console.log('[CourseBuilder] messages:', summary);
+  }, [visibleMessages]);
 
   useCopilotReadable({
     description: "Selected course format",
@@ -652,184 +554,277 @@ function CourseBuilderContent({
       : null,
   });
 
-  // ── Catch-all tool call renderer (renders inline in chat) ──
+  // ── Catch-all tool render (CopilotKit canonical pattern) ──
+  // This populates `generativeUI` on messages so our headless chat
+  // can render tool call indicators with CopilotKit-managed status.
   useCopilotAction({
     name: "*",
-    render: ({ name, args, status }: CatchAllActionRenderProps<[]>) => (
-      <ToolCallBubble name={name} args={args} status={status} />
-    ),
+    // @ts-expect-error — catch-all render receives { name, args, status }
+    render: ({ name: toolName, args, status }: { name: string; args: any; status: string }) => {
+      const tool = TOOL_LABELS[toolName] || { label: toolName, icon: "⚙" };
+      let detail = "";
+      if (args) {
+        detail = args.path || args.query || args.filename || args.name || "";
+        if (typeof detail === "string" && detail.length > 60) detail = detail.slice(0, 60) + "…";
+      }
+      return (
+        <div className="flex items-center gap-2 py-0.5">
+          <span className={`w-5 h-5 flex items-center justify-center rounded text-[11px] font-bold flex-shrink-0 ${
+            status === "complete"
+              ? "bg-ink/[0.06] text-ink/40"
+              : "bg-playful-blue/10 text-playful-blue animate-pulse"
+          }`}>
+            {tool.icon}
+          </span>
+          <span className="text-[13px] font-body text-ink/50">
+            {tool.label}{detail ? ` ${detail}` : ""}
+          </span>
+          {status !== "complete" && (
+            <span className="text-[11px] font-body text-ink/25 animate-pulse">...</span>
+          )}
+        </div>
+      );
+    },
+    followUp: false,
   });
 
   const files = agentState?.files || {};
   const hasFiles = Object.keys(files).length > 0;
 
-  const messages: ChatMessage[] = (visibleMessages || [])
-    .filter(
-      (msg: any) =>
-        msg &&
-        typeof (msg as any).content === "string" &&
-        (msg as any).content.trim() !== ""
-    )
-    .map((msg: any) => ({
-      id: msg.id,
-      role: msg.role === Role.User ? ("user" as const) : ("assistant" as const),
-      content: msg.content,
-      timestamp: new Date(msg.createdAt || Date.now()),
-    }));
+  // ── Classify visible messages ──────────────────────────
+  // AG-UI sends plain objects (not class instances).
+  // We use CopilotKit's recommended headless pattern:
+  //   - generativeUI on messages (populated by catch-all useCopilotAction)
+  //   - toolCalls property for shape-based fallback
+  //   - role === "tool" for results (skipped)
+  type ClassifiedMessage =
+    | { kind: "text"; msg: ChatMessage }
+    | { kind: "generative_ui"; id: string; render: () => React.ReactNode }
+    | { kind: "tool_call"; id: string; calls: Array<{ name: string; args: any; callId: string }> }
+    | { kind: "tool_result" };
+
+  const classified: ClassifiedMessage[] = (visibleMessages || [])
+    .filter((m: any) => !!m)
+    .map((msg: any): ClassifiedMessage | null => {
+      // Tool result: role === "tool" → skip rendering
+      if (msg.role === "tool") {
+        return { kind: "tool_result" };
+      }
+
+      // Assistant message with toolCalls + generativeUI (from catch-all useCopilotAction)
+      // Only use generativeUI for messages that actually bear tool calls.
+      // Messages with generativeUI but no toolCalls are agent state renders — skip those.
+      if (msg.role === "assistant" && msg.toolCalls && typeof msg.generativeUI === "function") {
+        return {
+          kind: "generative_ui",
+          id: msg.id,
+          render: msg.generativeUI,
+        };
+      }
+
+      // Fallback: assistant message with toolCalls but no generativeUI
+      if (msg.role === "assistant" && msg.toolCalls) {
+        let calls: any[] = [];
+        try {
+          calls = typeof msg.toolCalls === "string" ? JSON.parse(msg.toolCalls) : msg.toolCalls;
+        } catch { /* malformed */ }
+        if (calls.length > 0) {
+          return {
+            kind: "tool_call",
+            id: msg.id,
+            calls: calls.map((c: any) => ({
+              name: c.function?.name || c.name || "unknown",
+              args: typeof c.function?.arguments === "string"
+                ? (() => { try { return JSON.parse(c.function.arguments); } catch { return {}; } })()
+                : c.function?.arguments || c.arguments || {},
+              callId: c.id || msg.id,
+            })),
+          };
+        }
+      }
+
+      // Text message — must have non-empty content
+      const content = msg.content;
+      const contentStr = typeof content === "string"
+        ? content
+        : Array.isArray(content) && content[0]?.text
+          ? content[0].text
+          : null;
+      if (!contentStr || contentStr.trim() === "") return null;
+      return {
+        kind: "text",
+        msg: {
+          id: msg.id,
+          role: msg.role === "user" || msg.role === Role.User ? ("user" as const) : ("assistant" as const),
+          content: contentStr,
+          timestamp: new Date(msg.createdAt || Date.now()),
+        },
+      };
+    })
+    .filter((c): c is ClassifiedMessage => c !== null);
+
+  // Flat list of text-only messages (for save, signature, empty-state check)
+  const messages: ChatMessage[] = classified
+    .filter((c): c is ClassifiedMessage & { kind: "text" } => c.kind === "text")
+    .map((c) => c.msg);
 
   // Track uploaded images by message ID for preview
   const [imageMessageMap, setImageMessageMap] = useState<Record<string, UploadedImage>>({});
 
-  // Separate image messages from text messages
+  // Render classified messages in order
   const renderMessages = () => {
-    return messages.map((message) => {
-      const imageMatch = message.content.match(/^\[已上传图片: ([^\]]+)\]$/);
+    const elements: JSX.Element[] = [];
+
+    for (const item of classified) {
+      // Tool results: skip (status shown on the tool_call/generative_ui row)
+      if (item.kind === "tool_result") continue;
+
+      // CopilotKit generativeUI (from catch-all useCopilotAction render)
+      if (item.kind === "generative_ui") {
+        try {
+          const rendered = item.render();
+          if (rendered) {
+            elements.push(
+              <div key={`gui-${item.id}`} className="mb-4 space-y-1">
+                {rendered}
+              </div>
+            );
+          }
+        } catch (err) {
+          console.warn("[CourseBuilder] generativeUI render error:", err);
+        }
+        continue;
+      }
+
+      // Fallback tool call rendering (shape-based, when generativeUI unavailable)
+      if (item.kind === "tool_call") {
+        elements.push(
+          <div key={item.id} className="mb-4 space-y-1">
+            {item.calls.map((call) => (
+              <ToolCallBubble
+                key={call.callId}
+                name={call.name}
+                args={call.args}
+                status="complete"
+              />
+            ))}
+          </div>
+        );
+        continue;
+      }
+
+      // Text message
+      const message = item.msg;
+
+      // Image-only user messages
+      const imageMatch = message.content?.match?.(/^\[已上传图片: ([^\]]+)\]$/);
       if (imageMatch && message.role === "user") {
         const imageData = imageMessageMap[message.id];
-        return <ImageMessageBubble key={message.id} imageName={imageMatch[1]} imageData={imageData} />;
+        elements.push(<ImageMessageBubble key={message.id} imageName={imageMatch[1]} imageData={imageData} />);
+        continue;
       }
-      return <MessageBubble key={message.id} message={message} />;
-    });
+
+      elements.push(<MessageBubble key={message.id} message={message} />);
+    }
+
+    return elements;
   };
 
-  // ── Effects ───────────────────────────────────────────
+  const textMessages = messages.filter((m) => m.role === "user" || m.role === "assistant");
+  const messageSignature = textMessages
+    .map((message) => `${message.id}:${message.role}:${message.content}`)
+    .join("\u001f");
 
-  // Load conversations on mount
-  useEffect(() => {
-    loadConversations();
-  }, []);
+  // ── Effects ───────────────────────────────────────────
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages.length]);
 
-  // ── Sandpack key — bump when a response cycle ends so preview picks up all edits ──
-  const [sandpackVersion, setSandpackVersion] = useState(0);
-  const wasLoadingRef = useRef(false);
+  // ── Auto-open preview when agent writes real files ──
+  // Track total file content size — scaffold is ~small, real content is >2KB
+  const totalFileSize = Object.values(files).reduce((sum, c) => sum + c.length, 0);
   useEffect(() => {
-    if (wasLoadingRef.current && !isLoading) {
-      setSandpackVersion((v) => v + 1);
+    // Only auto-open once. Real agent-written files will be much bigger than scaffolds.
+    if (hasFiles && totalFileSize > 2000 && !showPreview) {
+      console.log('[CourseBuilder] Agent wrote real files, opening preview. totalSize:', totalFileSize);
+      setShowPreview(true);
     }
-    wasLoadingRef.current = isLoading;
-  }, [isLoading]);
-  const sandpackKey = `${Object.keys(files).sort().join(',')}_v${sandpackVersion}`;
-
-  // Open preview panel after first agent response completes (not on scaffold injection)
-  useEffect(() => {
-    if (sandpackVersion > 0 && hasFiles && !showPreview) setShowPreview(true);
-  }, [sandpackVersion, hasFiles, showPreview]);
+  }, [hasFiles, totalFileSize, showPreview]);
 
   // ── Conversation Management ───────────────────────────
 
-  const loadConversations = async () => {
-    setIsLoadingConversations(true);
-    try {
-      const response = await fetch("/api/course-builder/conversations");
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error("[CourseBuilder] Failed to load conversations:", response.status, errorText);
-        return;
-      }
-
-      const data = await response.json();
-      setConversations(data.conversations || []);
-    } catch (error) {
-      console.error("[CourseBuilder] Failed to load conversations:", error);
-    } finally {
-      setIsLoadingConversations(false);
+  const ensureConversation = async (title?: string) => {
+    if (currentConversationId) {
+      return currentConversationId;
     }
-  };
 
-  const createNewConversation = async () => {
     try {
-      const response = await fetch("/api/course-builder/conversations/new", {
-        method: "POST",
-      });
+      if (!createConversationPromiseRef.current) {
+        createConversationPromiseRef.current = (async () => {
+          const response = await fetch("/api/course-builder/conversations", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              thread_id: threadId,
+              title: title || generateConversationTitle(),
+            }),
+          });
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error("[CourseBuilder] Failed to start new conversation:", response.status, errorText);
-        return;
+          if (!response.ok) {
+            const errorText = await response.text();
+            console.error("[CourseBuilder] Failed to create conversation:", response.status, errorText);
+            return null;
+          }
+
+          const data = await response.json();
+          const createdConversation = data.conversation ?? null;
+          const newConversationId = createdConversation?.id ?? null;
+
+          if (createdConversation && newConversationId) {
+            onConversationChange(newConversationId);
+            // Use history.replaceState instead of router.replace to avoid
+            // full page re-render (the [conversationId] route is a server
+            // component that would unmount+remount CopilotKit and wipe state)
+            window.history.replaceState(null, '', `/teacher/chat/${newConversationId}`);
+            window.dispatchEvent(
+              new CustomEvent("course-builder:conversation-created", {
+                detail: createdConversation,
+              })
+            );
+          }
+
+          return newConversationId;
+        })().finally(() => {
+          createConversationPromiseRef.current = null;
+        });
       }
 
-      const data = await response.json();
-      const newThreadId = data.thread_id;
-
-      if (!newThreadId) {
-        console.error("[CourseBuilder] Failed to start new conversation: missing thread_id");
-        return;
-      }
-
-      onConversationChange(null);
-      onSessionStart({
-        threadId: newThreadId,
-        conversationId: null,
-        phase: "landing",
-      });
+      return await createConversationPromiseRef.current;
     } catch (error) {
-      console.error("[CourseBuilder] Failed to start new conversation:", error);
+      console.error("[CourseBuilder] Failed to save conversation:", error);
+      return null;
     }
   };
 
   const saveConversation = async (title?: string) => {
-    if (messages.length === 0) return;
+    if (textMessages.length === 0) return;
 
-    let conversationId = currentConversationId;
-
-    if (!conversationId) {
-      try {
-        if (!createConversationPromiseRef.current) {
-          createConversationPromiseRef.current = (async () => {
-            const response = await fetch("/api/course-builder/conversations", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                thread_id: threadId,
-                title: title || generateConversationTitle(),
-              }),
-            });
-
-            if (!response.ok) {
-              const errorText = await response.text();
-              console.error("[CourseBuilder] Failed to create conversation:", response.status, errorText);
-              return null;
-            }
-
-            const data = await response.json();
-            const newConversationId = data.conversation?.id ?? null;
-
-            if (newConversationId) {
-              onConversationChange(newConversationId);
-              await loadConversations();
-            }
-
-            return newConversationId;
-          })().finally(() => {
-            createConversationPromiseRef.current = null;
-          });
-        }
-
-        conversationId = await createConversationPromiseRef.current;
-      } catch (error) {
-        console.error("[CourseBuilder] Failed to save conversation:", error);
-        return;
-      }
-    }
-
+    const conversationId = await ensureConversation(title);
     if (conversationId) {
       await saveMessages(conversationId);
     }
   };
 
   const saveMessages = async (conversationId: string) => {
-    if (messages.length === 0) return;
+    if (textMessages.length === 0) return;
 
     try {
       const response = await fetch(`/api/course-builder/conversations/${conversationId}/messages`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          messages: messages.map(m => ({
+          messages: textMessages.map(m => ({
             role: m.role,
             content: m.content,
           })),
@@ -839,45 +834,17 @@ function CourseBuilderContent({
       if (!response.ok) {
         const errorText = await response.text();
         console.error("[CourseBuilder] Failed to save messages:", response.status, errorText);
+        return;
       }
+
+      window.dispatchEvent(new CustomEvent("course-builder:conversation-updated"));
     } catch (error) {
       console.error("[CourseBuilder] Failed to save messages:", error);
     }
   };
 
-  const loadConversation = async (conversation: CourseBuilderConversation) => {
-    onConversationChange(conversation.id);
-    onSessionStart({
-      threadId: conversation.thread_id,
-      conversationId: conversation.id,
-      phase: "chat",
-    });
-  };
-
-  const deleteConversation = async (conversationId: string) => {
-    if (!confirm("确定要删除这个对话吗？")) return;
-
-    try {
-      const response = await fetch(`/api/course-builder/conversations/${conversationId}`, {
-        method: "DELETE",
-      });
-
-      if (response.ok) {
-        await loadConversations();
-        if (currentConversationId === conversationId) {
-          await createNewConversation();
-        }
-      } else {
-        const errorText = await response.text();
-        console.error("[CourseBuilder] Failed to delete conversation:", response.status, errorText);
-      }
-    } catch (error) {
-      console.error("[CourseBuilder] Failed to delete conversation:", error);
-    }
-  };
-
   const generateConversationTitle = () => {
-    const firstUserMessage = messages.find(m => m.role === "user");
+    const firstUserMessage = textMessages.find(m => m.role === "user");
     if (firstUserMessage) {
       const content = firstUserMessage.content.slice(0, 50);
       return content.length < firstUserMessage.content.length ? `${content}...` : content;
@@ -885,15 +852,25 @@ function CourseBuilderContent({
     return selectedTemplate ? `${selectedTemplate.name} 课程` : "新对话";
   };
 
-  // Auto-save conversation when messages change
+  const buildTitleFromDraft = (text: string) => {
+    const trimmed = text.trim();
+    if (!trimmed) {
+      return selectedTemplate ? `${selectedTemplate.name} 课程` : "新对话";
+    }
+
+    const content = trimmed.slice(0, 50);
+    return content.length < trimmed.length ? `${content}...` : content;
+  };
+
+  // Auto-save conversation when text messages change
   useEffect(() => {
-    if (messages.length > 0 && phase === "chat") {
+    if (textMessages.length > 0 && phase === "chat") {
       const timer = setTimeout(() => {
         saveConversation();
       }, 2000); // Debounce 2s
       return () => clearTimeout(timer);
     }
-  }, [messages.length]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [messageSignature, phase]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Handlers ──────────────────────────────────────────
 
@@ -901,7 +878,7 @@ function CourseBuilderContent({
     setSelectedTemplate(template);
     // Seed agent state with bare scaffold — agent will write_file to replace it
     const templateFiles = getTemplateFiles(template.format);
-    setAgentState({ files: templateFiles, uploaded_images: [] });
+    setAgentState({ files: templateFiles, uploaded_images: [], _active_tools: [] });
     // Don't show preview yet — scaffold is just a placeholder
     // Preview opens automatically when hasFiles updates after agent writes real content
     setPhase("chat");
@@ -933,6 +910,10 @@ function CourseBuilderContent({
     if (isLoading) return;
     if (phase === "landing") setPhase("chat");
 
+    if (!currentConversationId) {
+      void ensureConversation(buildTitleFromDraft(text));
+    }
+
     // If there's a pending image, push it into agent state
     if (pendingImage) {
       setAgentState({
@@ -962,7 +943,7 @@ function CourseBuilderContent({
 
     setInput("");
     setPendingImage(null);
-  }, [input, isLoading, phase, appendMessage, pendingImage, agentState, setAgentState]);
+  }, [input, isLoading, phase, currentConversationId, appendMessage, pendingImage, agentState, setAgentState, ensureConversation, buildTitleFromDraft]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -995,119 +976,87 @@ function CourseBuilderContent({
     return (
       <div className="h-full flex flex-col">
         {/* Top bar — just title, like Claude's breadcrumb */}
-        <div className="shrink-0 h-11 flex items-center justify-between px-5">
+        <div className="shrink-0 h-11 flex items-center px-5">
           <span className="font-body text-[13.5px] text-ink/50">课程生成器</span>
-          <button
-            onClick={() => setShowHistory(!showHistory)}
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-ink/[0.08] hover:border-ink/[0.16] text-ink/45 hover:text-ink/65 transition-all text-[12px] font-body font-medium"
-          >
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
-            </svg>
-            历史对话
-          </button>
         </div>
 
         <div className="flex-1 flex min-h-0">
-          {/* History sidebar */}
-          <AnimatePresence>
-            {showHistory && (
-              <motion.div
-                initial={{ width: 0, opacity: 0 }}
-                animate={{ width: 280, opacity: 1 }}
-                exit={{ width: 0, opacity: 0 }}
-                transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                className="border-r border-ink/[0.06] bg-white overflow-hidden"
-              >
-                <ConversationSidebar
-                  isLoading={isLoadingConversations}
-                  conversations={conversations}
-                  currentConversationId={currentConversationId}
-                  onCreateConversation={createNewConversation}
-                  onLoadConversation={loadConversation}
-                  onDeleteConversation={deleteConversation}
-                />
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {/* Centered content */}
           <div className="flex-1 flex flex-col items-center min-h-0">
-          <div className="flex-1 min-h-0" />
+            <div className="flex-1 min-h-0" />
 
-          {/* Greeting */}
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4 }}
-            className="flex items-center gap-3 mb-8"
-          >
-            <svg width="32" height="32" viewBox="0 0 36 36" fill="none">
-              <circle cx="18" cy="18" r="2.5" fill="#C4704B" />
-              {[0, 45, 90, 135, 180, 225, 270, 315].map((angle) => (
-                <line
-                  key={angle}
-                  x1="18" y1="18"
-                  x2={18 + 13 * Math.cos((angle * Math.PI) / 180)}
-                  y2={18 + 13 * Math.sin((angle * Math.PI) / 180)}
-                  stroke="#C4704B" strokeWidth="1.8" strokeLinecap="round"
-                />
-              ))}
-            </svg>
-            <h1 className="font-display text-[28px] font-normal text-ink tracking-[-0.01em]">
-              {greeting}，老师
-            </h1>
-          </motion.div>
+            {/* Greeting */}
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4 }}
+              className="flex items-center gap-3 mb-8"
+            >
+              <svg width="32" height="32" viewBox="0 0 36 36" fill="none">
+                <circle cx="18" cy="18" r="2.5" fill="#C4704B" />
+                {[0, 45, 90, 135, 180, 225, 270, 315].map((angle) => (
+                  <line
+                    key={angle}
+                    x1="18" y1="18"
+                    x2={18 + 13 * Math.cos((angle * Math.PI) / 180)}
+                    y2={18 + 13 * Math.sin((angle * Math.PI) / 180)}
+                    stroke="#C4704B" strokeWidth="1.8" strokeLinecap="round"
+                  />
+                ))}
+              </svg>
+              <h1 className="font-display text-[28px] font-normal text-ink tracking-[-0.01em]">
+                {greeting}，老师
+              </h1>
+            </motion.div>
 
-          {/* Input */}
-          <motion.div
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.08, duration: 0.35 }}
-            className="w-full px-6 mb-8"
-          >
-            <InputBox {...inputProps} />
-          </motion.div>
+            {/* Input */}
+            <motion.div
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.08, duration: 0.35 }}
+              className="w-full px-6 mb-8"
+            >
+              <InputBox {...inputProps} />
+            </motion.div>
 
-          {/* Format cards */}
-          <motion.div
-            initial={{ opacity: 0, y: 4 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.16, duration: 0.35 }}
-            className="w-full max-w-[680px] mx-auto px-6"
-          >
-            <p className="font-body text-[13px] text-ink/40 mb-3.5">
-              选择格式，快速开始
-            </p>
-            <div className="flex gap-3">
-              {TEMPLATES.map((t, i) => {
-                const Icon = FORMAT_ICONS[t.format];
-                return (
-                  <motion.button
-                    key={t.id}
-                    initial={{ opacity: 0, y: 4 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.22 + i * 0.05, duration: 0.3 }}
-                    onClick={() => handleFormatSelect(t)}
-                    className="flex-1 text-left px-4 pt-4 pb-3.5 rounded-xl border border-ink/[0.09] hover:border-ink/[0.18] hover:shadow-[0_1px_6px_rgba(0,0,0,0.04)] transition-all duration-200 group"
-                  >
-                    <div className="text-ink/35 group-hover:text-ink/55 transition-colors mb-2.5">
-                      <Icon />
-                    </div>
-                    <div className="font-body font-medium text-[13.5px] text-ink mb-0.5">
-                      {t.name}
-                    </div>
-                    <div className="font-body text-[12px] text-ink/40 leading-snug">
-                      {t.description}
-                    </div>
-                  </motion.button>
-                );
-              })}
-            </div>
-          </motion.div>
+            {/* Format cards */}
+            <motion.div
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.16, duration: 0.35 }}
+              className="w-full max-w-[680px] mx-auto px-6"
+            >
+              <p className="font-body text-[13px] text-ink/40 mb-3.5">
+                选择格式，快速开始
+              </p>
+              <div className="flex gap-3">
+                {TEMPLATES.map((t, i) => {
+                  const Icon = FORMAT_ICONS[t.format];
+                  return (
+                    <motion.button
+                      key={t.id}
+                      initial={{ opacity: 0, y: 4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.22 + i * 0.05, duration: 0.3 }}
+                      onClick={() => handleFormatSelect(t)}
+                      className="flex-1 text-left px-4 pt-4 pb-3.5 rounded-xl border border-ink/[0.09] hover:border-ink/[0.18] hover:shadow-[0_1px_6px_rgba(0,0,0,0.04)] transition-all duration-200 group"
+                    >
+                      <div className="text-ink/35 group-hover:text-ink/55 transition-colors mb-2.5">
+                        <Icon />
+                      </div>
+                      <div className="font-body font-medium text-[13.5px] text-ink mb-0.5">
+                        {t.name}
+                      </div>
+                      <div className="font-body text-[12px] text-ink/40 leading-snug">
+                        {t.description}
+                      </div>
+                    </motion.button>
+                  );
+                })}
+              </div>
+            </motion.div>
 
-          <div className="flex-[1.4] min-h-0" />
-        </div>
+            <div className="flex-[1.4] min-h-0" />
+          </div>
         </div>
       </div>
     );
@@ -1119,41 +1068,11 @@ function CourseBuilderContent({
 
   return (
     <div className="h-full flex">
-      {/* History sidebar */}
-      <AnimatePresence>
-        {showHistory && (
-          <motion.div
-            initial={{ width: 0, opacity: 0 }}
-            animate={{ width: 280, opacity: 1 }}
-            exit={{ width: 0, opacity: 0 }}
-            transition={{ type: "spring", stiffness: 300, damping: 30 }}
-            className="border-r border-ink/[0.06] bg-white overflow-hidden"
-          >
-            <ConversationSidebar
-              isLoading={isLoadingConversations}
-              conversations={conversations}
-              currentConversationId={currentConversationId}
-              onCreateConversation={createNewConversation}
-              onLoadConversation={loadConversation}
-              onDeleteConversation={deleteConversation}
-            />
-          </motion.div>
-        )}
-      </AnimatePresence>
-
       {/* Chat column */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Top bar — breadcrumb title */}
         <div className="shrink-0 h-11 flex items-center justify-between px-5">
           <div className="flex items-center gap-1.5 text-[13.5px] font-body">
-            <button
-              onClick={() => setShowHistory(!showHistory)}
-              className="mr-2 w-6 h-6 flex items-center justify-center rounded text-ink/30 hover:text-ink/60 hover:bg-ink/[0.05] transition-colors"
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
-              </svg>
-            </button>
             <span className="text-ink/40">课程生成器</span>
             <span className="text-ink/25">/</span>
             <span className="text-ink/70">
@@ -1179,7 +1098,7 @@ function CourseBuilderContent({
         {/* Messages */}
         <div className="flex-1 min-h-0 overflow-y-auto">
           <div className="max-w-[680px] mx-auto px-6 py-4">
-            {messages.length === 0 ? (
+            {textMessages.length === 0 && !isLoading ? (
               <div className="flex items-center justify-center h-full pt-32">
                 <p className="text-ink/20 font-body text-sm">描述你想创建的课程...</p>
               </div>
@@ -1210,7 +1129,7 @@ function CourseBuilderContent({
         </div>
       </div>
 
-      {/* Artifact panel */}
+      {/* Artifact panel — standalone Sandpack */}
       <AnimatePresence>
         {showPreview && (
           <motion.div
@@ -1218,84 +1137,15 @@ function CourseBuilderContent({
             animate={{ width: "55%", opacity: 1 }}
             exit={{ width: 0, opacity: 0 }}
             transition={{ type: "spring", stiffness: 300, damping: 30 }}
-            className="flex flex-col border-l border-ink/[0.06] bg-white overflow-hidden"
+            className="h-full flex flex-col border-l border-ink/[0.06] bg-white overflow-hidden"
           >
-            {hasFiles ? (
-              <div className="flex-1 flex flex-col min-h-0">
-              <SandpackProvider
-                key={sandpackKey}
-                template="react"
-                files={files}
-                theme="light"
-                customSetup={{
-                  dependencies: {
-                    "framer-motion": "^11.0.0",
-                  },
-                }}
-                options={{
-                  activeFile: "/App.js",
-                }}
-              >
-                {/* Toolbar — inside SandpackProvider so refresh button has context */}
-                <div className="shrink-0 flex items-center justify-between pl-1 pr-2 py-1.5 border-b border-ink/[0.06]">
-                  <div className="flex items-center">
-                    <button
-                      onClick={() => setPreviewMode("preview")}
-                      className={`px-3.5 py-1.5 text-[12.5px] font-body font-medium rounded-md transition-colors ${
-                        previewMode === "preview" ? "text-ink bg-ink/[0.06]" : "text-ink/40 hover:text-ink/60"
-                      }`}
-                    >
-                      预览
-                    </button>
-                    <button
-                      onClick={() => setPreviewMode("code")}
-                      className={`px-3.5 py-1.5 text-[12.5px] font-body font-medium rounded-md transition-colors ${
-                        previewMode === "code" ? "text-ink bg-ink/[0.06]" : "text-ink/40 hover:text-ink/60"
-                      }`}
-                    >
-                      代码
-                    </button>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <SandpackRefreshButton />
-                    <SaveDraftButton
-                      title={selectedTemplate?.name || "新课程"}
-                      description={selectedTemplate?.description}
-                      format={selectedTemplate?.format || "lab"}
-                      files={files}
-                    />
-                    <button
-                      onClick={() => setShowPreview(false)}
-                      className="w-7 h-7 flex items-center justify-center rounded-md text-ink/30 hover:text-ink/60 hover:bg-ink/[0.05] transition-colors"
-                    >
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-                        <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-                {/* Content area */}
-                <div className="flex-1 min-h-0" style={{ position: "relative" }}>
-                  <div style={{
-                    position: "absolute", inset: 0,
-                    visibility: previewMode === "preview" ? "visible" : "hidden",
-                  }}>
-                    <SandpackPreview showOpenInCodeSandbox={false} showRefreshButton={false} style={{ height: "100%" }} />
-                  </div>
-                  <div style={{
-                    position: "absolute", inset: 0,
-                    visibility: previewMode === "code" ? "visible" : "hidden",
-                  }}>
-                    <SandpackCodeEditor showTabs showLineNumbers showInlineErrors wrapContent={false} style={{ height: "100%" }} />
-                  </div>
-                </div>
-              </SandpackProvider>
-              </div>
-            ) : (
-              <div className="flex items-center justify-center h-full text-ink/20 font-body text-sm">
-                代码生成后预览将在这里显示...
-              </div>
-            )}
+            <SandpackEditor
+              files={files}
+              previewMode={previewMode}
+              onPreviewModeChange={setPreviewMode}
+              onClose={() => setShowPreview(false)}
+              selectedTemplate={selectedTemplate}
+            />
           </motion.div>
         )}
       </AnimatePresence>
@@ -1305,63 +1155,35 @@ function CourseBuilderContent({
 
 // ── Wrapper ─────────────────────────────────────────────
 
-export default function CourseBuilder() {
-  const [session, setSession] = useState<{
-    threadId: string;
-    conversationId: string | null;
-    phase: CourseBuilderPhase;
-  }>(() => {
-    const savedThreadId =
-      typeof window !== "undefined"
-        ? localStorage.getItem("course_builder_thread_id")
-        : null;
+interface CourseBuilderInitialConversation {
+  id: string;
+  threadId: string;
+}
 
-    return {
-      threadId: savedThreadId || crypto.randomUUID(),
-      conversationId: null,
-      phase: "landing",
-    };
-  });
-  const [sessionKey, setSessionKey] = useState(0);
+interface CourseBuilderProps {
+  initialConversation?: CourseBuilderInitialConversation;
+}
 
-  const handleSessionStart = useCallback((nextSession: {
-    threadId: string;
-    conversationId: string | null;
-    phase: CourseBuilderPhase;
-  }) => {
-    if (typeof window !== "undefined") {
-      localStorage.setItem("course_builder_thread_id", nextSession.threadId);
-    }
-
-    setSession(nextSession);
-    setSessionKey((value) => value + 1);
-  }, []);
+export default function CourseBuilder({ initialConversation }: CourseBuilderProps) {
+  const [threadId] = useState(() => initialConversation?.threadId || crypto.randomUUID());
+  const [conversationId, setConversationId] = useState<string | null>(initialConversation?.id || null);
+  const initialPhase: CourseBuilderPhase = initialConversation ? "chat" : "landing";
 
   const handleConversationChange = useCallback((conversationId: string | null) => {
-    setSession((prev) => {
-      if (prev.conversationId === conversationId) {
-        return prev;
-      }
-
-      return {
-        ...prev,
-        conversationId,
-      };
-    });
+    setConversationId((prev) => (prev === conversationId ? prev : conversationId));
   }, []);
 
   return (
     <CopilotKit
-      key={`${session.threadId}:${sessionKey}`}
+      key={threadId}
       runtimeUrl="/api/copilotkit"
       agent="course-builder"
-      threadId={session.threadId}
+      threadId={threadId}
     >
       <CourseBuilderContent
-        threadId={session.threadId}
-        currentConversationId={session.conversationId}
-        initialPhase={session.phase}
-        onSessionStart={handleSessionStart}
+        threadId={threadId}
+        currentConversationId={conversationId}
+        initialPhase={initialPhase}
         onConversationChange={handleConversationChange}
       />
     </CopilotKit>
