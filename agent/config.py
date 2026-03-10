@@ -8,6 +8,7 @@
 from __future__ import annotations
 
 import os
+import warnings
 from pathlib import Path
 
 
@@ -35,6 +36,15 @@ def load_env() -> None:
     Does NOT override variables that are already set in the
     environment (e.g. from Docker, CI, or shell exports).
     """
+    # Suppress Pydantic field alias warnings from ag_ui package
+    # These are harmless warnings from the ag_ui dependency using older Pydantic patterns
+    warnings.filterwarnings(
+        "ignore",
+        category=UserWarning,
+        module="pydantic._internal._generate_schema",
+        message=".*alias.*attribute.*was provided to the.*Field.*function.*"
+    )
+
     env_path = _find_env_file()
     if env_path is None:
         return
