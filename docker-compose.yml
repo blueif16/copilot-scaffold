@@ -37,7 +37,9 @@ services:
 
   # Supabase Kong (API Gateway)
   kong:
-    image: kong:2.8.1
+    build:
+      context: .
+      dockerfile: Dockerfile.kong
     container_name: omniscience-kong
     ports:
       - "8000:8000"
@@ -49,8 +51,6 @@ services:
       KONG_PLUGINS: request-transformer,cors,key-auth,acl
       KONG_NGINX_PROXY_PROXY_BUFFER_SIZE: 160k
       KONG_NGINX_PROXY_PROXY_BUFFERS: 64 160k
-    volumes:
-      - ./supabase/kong.yml:/var/lib/kong/kong.yml:ro
     depends_on:
       - supabase-auth
       - supabase-rest

@@ -109,7 +109,7 @@ export default function TeacherDashboardPage() {
             我的课程
           </h1>
           <button
-            onClick={() => router.push("/teacher/courses/new")}
+            onClick={() => router.push("/teacher/chat/new")}
             className="flex items-center gap-2 px-4 py-2.5 bg-ink text-white rounded-full hover:bg-ink/90 active:scale-[0.98] transition-all font-body text-[13.5px] font-medium shadow-sm"
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
@@ -192,7 +192,7 @@ export default function TeacherDashboardPage() {
               点击上方「新建课程」开始创建你的第一个互动课程
             </p>
             <button
-              onClick={() => router.push("/teacher/courses/new")}
+              onClick={() => router.push("/teacher/chat/new")}
               className="px-5 py-2.5 bg-ink text-white rounded-full hover:bg-ink/90 transition-colors font-body text-[13.5px] font-medium"
             >
               新建课程

@@ -33,6 +33,7 @@ export interface UploadedImage {
 export interface CourseBuilderAgentState {
   files: Record<string, string>;
   uploaded_images: UploadedImage[];
+  _active_tools: { name: string; detail: string }[];
 }
 
 export interface CourseBuilderState {

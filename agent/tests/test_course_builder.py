@@ -136,22 +136,22 @@ class TestSystemPromptConstruction:
 
         full_prompt = BASE_SYSTEM + LAB_PROMPT
 
-        assert "React developer" in full_prompt
+        assert "React开发者" in full_prompt
         assert "Sandpack" in full_prompt
-        assert "inline styles" in full_prompt
-        assert "Interactive Lab Simulation" in full_prompt
+        assert "内联样式" in full_prompt
+        assert "交互式实验模拟" in full_prompt
 
     def test_quiz_prompt_includes_feedback_guidance(self):
         """Quiz prompt should include feedback guidance."""
-        assert "feedback" in QUIZ_PROMPT.lower()
-        assert "question" in QUIZ_PROMPT.lower()
-        assert "score" in QUIZ_PROMPT.lower()
+        assert "反馈" in QUIZ_PROMPT
+        assert "题目" in QUIZ_PROMPT
+        assert "得分" in QUIZ_PROMPT
 
     def test_dialogue_prompt_includes_branching(self):
-        """Dialogue prompt should mention branching."""
-        assert "branch" in DIALOGUE_PROMPT.lower()
-        assert "choice" in DIALOGUE_PROMPT.lower()
-        assert "character" in DIALOGUE_PROMPT.lower()
+        """Dialogue prompt should mention character interaction choices."""
+        assert "角色" in DIALOGUE_PROMPT
+        assert "选择" in DIALOGUE_PROMPT
+        assert "对话" in DIALOGUE_PROMPT
 
 
 if __name__ == "__main__":

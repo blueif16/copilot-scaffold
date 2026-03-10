@@ -6,10 +6,9 @@ import { useEffect, useState } from "react";
 import { createSupabaseBrowser } from "@/lib/supabase/client";
 import Link from "next/link";
 
-interface CourseHistoryItem {
+interface CourseBuilderHistoryItem {
   id: string;
-  title: string;
-  format: string;
+  title: string | null;
   updated_at: string;
 }
 
@@ -21,7 +20,7 @@ export default function TeacherLayout({
   const { profile, loading, signOut } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
-  const [courses, setCourses] = useState<CourseHistoryItem[]>([]);
+  const [builderConversations, setBuilderConversations] = useState<CourseBuilderHistoryItem[]>([]);
   const [collapsed, setCollapsed] = useState(false);
 
   useEffect(() => {
@@ -32,16 +31,50 @@ export default function TeacherLayout({
 
   useEffect(() => {
     if (!profile?.id) return;
+
     const supabase = createSupabaseBrowser();
-    supabase
-      .from("courses")
-      .select("id, title, format, updated_at")
-      .eq("teacher_id", profile.id)
-      .order("updated_at", { ascending: false })
-      .limit(30)
-      .then(({ data }) => {
-        if (data) setCourses(data);
+
+    const loadBuilderConversations = async () => {
+      const { data, error } = await supabase
+        .from("course_builder_conversations")
+        .select("id, title, updated_at")
+        .eq("user_id", profile.id)
+        .order("updated_at", { ascending: false })
+        .limit(30);
+
+      if (error) {
+        console.error("Failed to fetch course builder conversations:", error);
+        return;
+      }
+
+      setBuilderConversations(data || []);
+    };
+
+    const handleConversationCreated = (event: Event) => {
+      const detail = (event as CustomEvent<CourseBuilderHistoryItem>).detail;
+      if (!detail) return;
+
+      setBuilderConversations((prev) => {
+        const next = prev.filter((conversation) => conversation.id !== detail.id);
+        return [detail, ...next];
       });
+    };
+
+    const handleConversationMutated = () => {
+      void loadBuilderConversations();
+    };
+
+    void loadBuilderConversations();
+
+    window.addEventListener("course-builder:conversation-created", handleConversationCreated as EventListener);
+    window.addEventListener("course-builder:conversation-updated", handleConversationMutated);
+    window.addEventListener("course-builder:conversation-deleted", handleConversationMutated);
+
+    return () => {
+      window.removeEventListener("course-builder:conversation-created", handleConversationCreated as EventListener);
+      window.removeEventListener("course-builder:conversation-updated", handleConversationMutated);
+      window.removeEventListener("course-builder:conversation-deleted", handleConversationMutated);
+    };
   }, [profile?.id]);
 
   if (loading) {
@@ -89,7 +122,7 @@ export default function TeacherLayout({
 
           {/* New course */}
           <Link
-            href="/teacher/courses/new"
+            href="/teacher/chat/new"
             className={`flex items-center rounded-lg text-ink/60 hover:text-ink hover:bg-ink/[0.04] transition-colors font-body text-[13.5px] ${
               collapsed ? "justify-center w-full py-2" : "gap-2.5 w-full px-3 py-2"
             }`}
@@ -137,30 +170,40 @@ export default function TeacherLayout({
 
         {/* Divider + History (hidden when collapsed) */}
         {!collapsed && (
-          <>
-            <div className="mx-4 my-2 border-t border-ink/[0.06]" />
-            <div className="flex-1 min-h-0 overflow-y-auto px-3 py-1">
-              {courses.length > 0 && (
-                <div>
-                  <div className="px-3 py-1.5 text-[11px] font-body text-ink/35 uppercase tracking-wider">
-                    最近课程
-                  </div>
-                  <div className="space-y-0.5">
-                    {courses.map((course) => (
-                      <Link
-                        key={course.id}
-                        href={`/teacher/courses/${course.id}`}
-                        className="block px-3 py-2 rounded-lg text-[13px] font-body text-ink/55 hover:text-ink/80 hover:bg-ink/[0.03] transition-colors truncate leading-snug"
-                        title={course.title}
-                      >
-                        {course.title}
-                      </Link>
-                    ))}
+          <div className="flex-1 min-h-0 flex flex-col">
+            {builderConversations.length > 0 && (
+              <>
+                <div className="mx-4 my-2 border-t border-ink/[0.06]" />
+                <div className="flex-1 min-h-0 overflow-y-auto px-3 py-1">
+                  <div>
+                    <div className="px-3 py-1.5 text-[11px] font-body text-ink/35 uppercase tracking-wider">
+                      历史对话
+                    </div>
+                    <div className="space-y-0.5">
+                      {builderConversations.map((conversation) => {
+                        const href = `/teacher/chat/${conversation.id}`;
+
+                        return (
+                          <Link
+                            key={conversation.id}
+                            href={href}
+                            className={`block w-full text-left px-3 py-2 rounded-lg text-[13px] font-body transition-colors truncate leading-snug ${
+                              pathname === href
+                                ? "text-ink bg-ink/[0.06]"
+                                : "text-ink/55 hover:text-ink/80 hover:bg-ink/[0.03]"
+                            }`}
+                            title={conversation.title || "未命名对话"}
+                          >
+                            {conversation.title || "未命名对话"}
+                          </Link>
+                        );
+                      })}
+                    </div>
                   </div>
                 </div>
-              )}
-            </div>
-          </>
+              </>
+            )}
+          </div>
         )}
 
         {/* Spacer when collapsed (pushes profile to bottom) */}
