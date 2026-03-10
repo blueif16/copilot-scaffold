@@ -6,6 +6,9 @@ import {
 } from "@copilotkit/runtime";
 import { LangGraphHttpAgent } from "@copilotkit/runtime/langgraph";
 
+export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
+
 // ── Agent Configuration ─────────────────────────────────
 // Connect to add_langgraph_fastapi_endpoint agents
 
