@@ -559,7 +559,6 @@ function CourseBuilderContent({
   // can render tool call indicators with CopilotKit-managed status.
   useCopilotAction({
     name: "*",
-    // @ts-expect-error — catch-all render receives { name, args, status }
     render: ({ name: toolName, args, status }: { name: string; args: any; status: string }) => {
       const tool = TOOL_LABELS[toolName] || { label: toolName, icon: "⚙" };
       let detail = "";
@@ -585,7 +584,6 @@ function CourseBuilderContent({
         </div>
       );
     },
-    followUp: false,
   });
 
   const files = agentState?.files || {};
