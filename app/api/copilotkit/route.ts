@@ -7,7 +7,6 @@ import {
 import { LangGraphHttpAgent } from "@copilotkit/runtime/langgraph";
 
 export const dynamic = "force-dynamic";
-export const runtime = "nodejs";
 
 // ── Agent Configuration ─────────────────────────────────
 // Connect to add_langgraph_fastapi_endpoint agents
@@ -16,7 +15,7 @@ const backendUrl = process.env.BACKEND_URL || "http://localhost:8123";
 
 const serviceAdapter = new ExperimentalEmptyAdapter();
 
-const runtime = new CopilotRuntime({
+const copilotRuntime = new CopilotRuntime({
   agents: {
     "observation-changing-states": new LangGraphHttpAgent({
       url: `${backendUrl}/agents/observation-changing-states`,
@@ -66,7 +65,7 @@ export const POST = async (req: NextRequest) => {
   });
 
   const { handleRequest } = copilotRuntimeNextJSAppRouterEndpoint({
-    runtime,
+    runtime: copilotRuntime,
     serviceAdapter,
     endpoint: "/api/copilotkit",
   });
