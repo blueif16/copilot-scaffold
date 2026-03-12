@@ -3,8 +3,6 @@
 export const dynamic = 'force-dynamic';
 
 import { motion } from "framer-motion";
-import { useRouter } from "next/navigation";
-import { useEffect } from "react";
 import { TOPICS } from "@/lib/topics";
 import { CompanionHub } from "@/components/home/CompanionHub";
 import { TopicCarousel } from "@/components/home/TopicCarousel";
@@ -13,16 +11,7 @@ import { useAuth } from "@/contexts/AuthContext";
 
 export default function HomePage() {
   const { t, locale, setLocale } = useLocale();
-  const { profile, loading } = useAuth();
-  const router = useRouter();
-
-  useEffect(() => {
-    console.log("[home] loading:", loading, "profile:", profile);
-    if (!loading && profile?.role === "teacher") {
-      console.log("[home] Redirecting teacher to dashboard");
-      router.replace("/teacher/dashboard");
-    }
-  }, [loading, profile, router]);
+  const { loading } = useAuth();
 
   // Show loading state while auth is initializing
   if (loading) {
@@ -31,11 +20,6 @@ export default function HomePage() {
         <div className="text-lg">Loading...</div>
       </div>
     );
-  }
-
-  // Don't render student content if redirecting teacher
-  if (profile?.role === "teacher") {
-    return null;
   }
 
   return (
