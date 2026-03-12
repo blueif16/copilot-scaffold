@@ -379,6 +379,8 @@ function InputBox({
           rows={1}
           style={{ overflow: "hidden" }}
           className="w-full resize-none px-5 pt-4 pb-2 font-body text-[15px] text-ink placeholder:text-ink/35 focus:outline-none bg-transparent leading-relaxed"
+          data-testid="chat-message-input"
+          aria-label="Type your message"
         />
         {/* Hidden file input */}
         <input
@@ -398,6 +400,8 @@ function InputBox({
               onClick={() => fileInputRef.current?.click()}
               title="上传图片（教材、试卷、手写笔记等）"
               className="w-8 h-8 flex items-center justify-center rounded-lg text-ink/25 hover:text-ink/45 hover:bg-ink/[0.04] transition-colors"
+              data-testid="upload-image-button"
+              aria-label="Upload image (textbook, worksheet, notes)"
             >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
                 <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
@@ -423,6 +427,8 @@ function InputBox({
                     transition={{ duration: 0.12 }}
                     onClick={onSend}
                     className="w-8 h-8 flex items-center justify-center rounded-lg bg-ink text-white hover:bg-ink/85 active:scale-95 transition-all"
+                    data-testid="chat-send-button"
+                    aria-label="Send message"
                   >
                     <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
                       <path d="M8 14V2M8 2L3 7M8 2L13 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -935,6 +941,8 @@ function CourseBuilderContent({
                       transition={{ delay: 0.22 + i * 0.05, duration: 0.3 }}
                       onClick={() => handleFormatSelect(t)}
                       className="flex-1 text-left px-4 pt-4 pb-3.5 rounded-xl border border-ink/[0.09] hover:border-ink/[0.18] hover:shadow-[0_1px_6px_rgba(0,0,0,0.04)] transition-all duration-200 group"
+                      data-testid={`format-${t.format}`}
+                      aria-label={`Select ${t.format === 'lab' ? 'lab simulation' : t.format === 'quiz' ? 'quiz' : 'dialogue'} format`}
                     >
                       <div className="text-ink/35 group-hover:text-ink/55 transition-colors mb-2.5">
                         <Icon />
