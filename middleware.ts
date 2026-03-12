@@ -60,6 +60,11 @@ export async function middleware(request: NextRequest) {
       console.error("[middleware] Profile fetch exception:", err);
     }
 
+    // Redirect teachers from root to their dashboard
+    if (request.nextUrl.pathname === "/" && profileRole === "teacher") {
+      return NextResponse.redirect(new URL("/teacher/dashboard", request.url));
+    }
+
     const isTeacherRoute =
       request.nextUrl.pathname.startsWith("/teacher/") ||
       request.nextUrl.pathname.startsWith("/dashboard") ||
