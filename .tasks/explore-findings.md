@@ -1,569 +1,225 @@
-# Slice 11 Exploration Findings: Course Builder Agent Tools + Preview
+# LangGraph StateGraph State Management Research Findings
 
-**Date:** 2026-03-07  
-**Scope:** Existing agent patterns, API routes, course builder UI, Supabase integration, dependencies
+**Research Date:** 2026-03-12
+**Prefix:** [main]
+
+## Overview
+
+This document captures research findings on LangGraph StateGraph state management behavior, specifically focusing on state merging, persistence, and annotation semantics.
 
 ---
 
-## 1. Existing Agent Patterns
+## 1. How StateGraph Merges State Updates from Nodes
 
-### Location
-- **Agent graphs:** `/Users/tk/Desktop/Omniscience/agent/graphs/`
-  - `observation.py` — Processes simulation events, routes to AI or programmed reactions
-  - `chat.py` — Conversational responses for student questions
-- **Agent main:** `/Users/tk/Desktop/Omniscience/agent/main.py`
-- **Topic configs:** `/Users/tk/Desktop/Omniscience/agent/topics/{topic_id}/`
-  - `config.py` — TopicConfig with pedagogical prompts, knowledge context, chat system prompt
-  - `reactions.py` — ReactionRegistry with programmed event→reaction mappings
+### Default Behavior: Shallow Merge with Overwrite
 
-### Agent Structure Pattern
+**Key Finding:** When a node returns a partial state update (subset of state keys), LangGraph performs a **shallow merge** at the top level:
+- Keys returned by the node **overwrite** the corresponding keys in the existing state
+- Keys not returned by the node remain unchanged
+- This is a **top-level merge only** - no deep merging of nested structures
 
-**Graph Architecture:**
-- Uses LangGraph with StateGraph + MemorySaver checkpointer
-- State extends `CopilotKitState` (provides `messages` + `copilotkit` context)
-- Nodes are async functions that return dict updates
-- Command routing for conditional edges (no explicit conditional_edge calls)
-
-**Observation Agent (observation.py):**
+**Example:**
 ```python
-# State: ObservationAgentState
-# Nodes: event_classifier → reaction_lookup → [ai_reasoning] → deliver_reaction
-# Flow:
-# 1. event_classifier: Enriches event with occurrence count
-# 2. reaction_lookup: Checks ReactionRegistry, routes via Command
-#    - If match + no escalate → deliver_reaction (programmed)
-#    - If no match or escalate → ai_reasoning (LLM)
-# 3. ai_reasoning: Uses Gemini 2.5 Flash with emit_reaction tool
-# 4. deliver_reaction: Writes to companion state, emits via copilotkit_emit_state
-```
+# Current state
+state = {
+    "foo": "old_value",
+    "bar": [1, 2, 3],
+    "baz": "unchanged"
+}
 
-**Chat Agent (chat.py):**
-```python
-# State: ChatAgentState
-# Single node: conversational_response
-# Uses Gemini 2.5 Flash Lite (cheaper, faster for kids)
-# System prompt includes: simulation state, recent events, progress, reaction history
-```
+# Node returns partial update
+def node(state):
+    return {"foo": "new_value", "bar": [4, 5]}
 
-### Key Patterns to Follow
-
-1. **Config via Closure:** TopicConfig and ReactionRegistry are captured by closure, never in graph state
-2. **State Zones:** Observation agent writes to simulation+events (Zone 1), backend writes to companion (Zone 2)
-3. **Tool Factory:** `make_emit_reaction_tool()` creates constrained tool with allowed emotions/animations
-4. **Error Handling:** Catch exceptions, return fallback, don't propagate (prevents RUN_ERROR terminal state)
-5. **Async Nodes:** Use `async def` for LLM calls, pass `config: RunnableConfig`
-6. **Emit State:** Use `copilotkit_emit_state(config, {...})` to push updates to frontend immediately
-
-### Agent Registration (main.py)
-
-```python
-# Pattern: Build graph with config, wrap in LangGraphAGUIAgent, register with add_langgraph_fastapi_endpoint
-observation_graph_changing_states = build_observation_graph(
-    changing_states_config,
-    changing_states_reactions,
-)
-add_langgraph_fastapi_endpoint(
-    app=app,
-    agent=LangGraphAGUIAgent(
-        name="observation-changing-states",
-        description="...",
-        graph=observation_graph_changing_states,
-    ),
-    path="/agents/observation-changing-states",
-)
-```
-
-**Naming Convention:** `{agent_type}-{topic_id}` (e.g., `observation-changing-states`, `chat-changing-states`)
-
-### ReAct Pattern
-
-Not explicitly used. Instead:
-- **Programmed Reactions:** EventPattern matching with conditions (supports `__gte`, `__lte`, `__in` operators)
-- **Escalation to AI:** Reactions can set `escalate_to_ai=True` with `ai_hint` for LLM context
-- **Tool Calls:** AI uses `emit_reaction` tool to generate reactions
-
----
-
-## 2. API Route Patterns
-
-### Location
-- **Next.js API routes:** `/Users/tk/Desktop/Omniscience/app/api/`
-  - `copilotkit/route.ts` — Main CopilotKit endpoint
-  - `voice/route.ts` — Voice API
-  - `auth/callback/route.ts` — OAuth callback
-
-### CopilotKit Route Pattern (copilotkit/route.ts)
-
-```typescript
-// 1. Create CopilotRuntime with agents
-const runtime = new CopilotRuntime({
-  agents: {
-    "observation-changing-states": new LangGraphHttpAgent({
-      url: `${backendUrl}/agents/observation-changing-states`,
-    }),
-    "chat-changing-states": new LangGraphHttpAgent({
-      url: `${backendUrl}/agents/chat-changing-states`,
-    }),
-    // ... more agents
-  },
-});
-
-// 2. Handle POST requests
-export const POST = async (req: NextRequest) => {
-  const body = await req.text();
-  const newReq = new NextRequest(req.url, {
-    method: req.method,
-    headers: req.headers,
-    body: body,
-  });
-
-  const { handleRequest } = copilotRuntimeNextJSAppRouterEndpoint({
-    runtime,
-    serviceAdapter: new ExperimentalEmptyAdapter(),
-    endpoint: "/api/copilotkit",
-  });
-
-  return await handleRequest(newReq);
-};
-```
-
-### Backend URL Resolution
-- Frontend env: `BACKEND_URL` (default: `http://localhost:8123`)
-- Docker: `http://backend:8123` (set in docker-compose.yml)
-- Agents exposed at: `{BACKEND_URL}/agents/{agent_name}`
-
-### Authentication/Session Handling
-
-**Frontend:**
-- Uses Supabase SSR client (`@supabase/ssr`)
-- `createSupabaseBrowser()` — Browser client
-- `createSupabaseServer()` — Server client with cookie handling
-- Auth context in `/Users/tk/Desktop/Omniscience/contexts/AuthContext.tsx`
-
-**Backend:**
-- Middleware: `/Users/tk/Desktop/Omniscience/agent/middleware.py` (FixAGUIProtocolMiddleware)
-- Auth dependency: `get_current_user` (optional, returns 401 if not authenticated)
-- Example protected endpoint: `/me` (returns user id, email, role, display_name)
-
-### Error Handling Patterns
-
-- Middleware fixes protocol issues (missing threadId, runId, state, tools, context, forwardedProps, message ids)
-- Agents catch exceptions and return fallback responses
-- No propagation of errors to prevent RUN_ERROR terminal state
-
----
-
-## 3. Course Builder UI
-
-### Location
-- **Component:** `/Users/tk/Desktop/Omniscience/components/teacher/CourseBuilder.tsx`
-- **Page:** `/Users/tk/Desktop/Omniscience/app/(teacher)/courses/new/page.tsx`
-- **Types:** `/Users/tk/Desktop/Omniscience/lib/types/course-builder.ts`
-
-### Current State (Slice 10)
-
-**Phases:**
-1. **landing** — Template selection + free-form input
-2. **chat** — Chat-only interface (full height)
-3. **split** — Chat on left (50%), Sandpack preview on right (50%)
-
-**Templates:**
-```typescript
-const TEMPLATES: CourseTemplate[] = [
-  { id: "water-cycle", name: "Water Cycle", format: "lab", ... },
-  { id: "solar-system", name: "Solar System", format: "lab", ... },
-  { id: "photosynthesis", name: "Photosynthesis", format: "dialogue", ... },
-];
-```
-
-**State Management:**
-```typescript
-const [phase, setPhase] = useState<BuilderPhase>("landing");
-const [selectedTemplate, setSelectedTemplate] = useState<CourseTemplate | null>(null);
-const [messages, setMessages] = useState<ChatMessage[]>([]);
-const [input, setInput] = useState("");
-const [isLoading, setIsLoading] = useState(false);
-const [files, setFiles] = useState<Record<string, string>>({});
-```
-
-**Chat Integration:**
-- Currently simulated with 1s timeout
-- Placeholder for actual API call in Slice 11
-- Messages sent/received via state updates
-
-**Sandpack Integration:**
-```typescript
-<SandpackProvider template="react" files={files} theme="light">
-  <SandpackPreview showOpenInCodeSandbox={false} showRefreshButton={true} />
-</SandpackProvider>
-```
-
-### Key Patterns to Follow
-
-1. **Phase Transitions:** Use AnimatePresence + motion.div for smooth transitions
-2. **Message Rendering:** Map messages array, distinguish user vs assistant
-3. **Loading State:** Show animated dots while waiting for response
-4. **File Updates:** Update `files` state to trigger Sandpack re-render
-5. **Input Handling:** Trim, check isLoading, use Enter key for send
-6. **Auto-scroll:** useEffect with messagesEndRef.scrollIntoView()
-
-### Missing Pieces for Slice 11
-
-1. **API endpoint** to send chat messages to course builder agent
-2. **Agent integration** — Course Builder Agent that:
-   - Takes user message + template context
-   - Generates JSX code for Sandpack
-   - Returns structured response (message + files)
-3. **File update logic** — Trigger split view when files are generated
-4. **Save/publish flow** — Store course to Supabase
-
----
-
-## 4. Supabase Integration
-
-### Location
-- **Client setup:** `/Users/tk/Desktop/Omniscience/lib/supabase/client.ts`
-- **Server setup:** `/Users/tk/Desktop/Omniscience/lib/supabase/server.ts`
-- **Migrations:** `/Users/tk/Desktop/Omniscience/supabase/migrations/`
-- **Docker config:** `/Users/tk/Desktop/Omniscience/docker-compose.yml`
-
-### Schema (from 20260307000000_auth_profiles.sql)
-
-**profiles table:**
-```sql
-CREATE TABLE public.profiles (
-  id uuid PRIMARY KEY REFERENCES auth.users ON DELETE CASCADE,
-  role text CHECK (role IN ('student', 'teacher')) NOT NULL DEFAULT 'student',
-  display_name text,
-  avatar_url text,
-  letta_agent_id text,  -- For Slice 12 (memory)
-  created_at timestamptz DEFAULT now()
-);
--- RLS: Users can read/update own profile
-```
-
-**courses table:**
-```sql
-CREATE TABLE public.courses (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  teacher_id uuid NOT NULL REFERENCES public.profiles(id),
-  title text NOT NULL,
-  description text,
-  format text CHECK (format IN ('lab', 'quiz')) NOT NULL DEFAULT 'lab',
-  age_range int4range,
-  status text CHECK (status IN ('draft', 'published')) DEFAULT 'draft',
-  simulation_jsx text,              -- Single JSX source for Sandpack
-  interactions_json jsonb,          -- Event→Reaction mappings
-  companion_config jsonb,           -- Companion personality, knowledge context
-  thumbnail_url text,
-  created_at timestamptz DEFAULT now(),
-  updated_at timestamptz DEFAULT now()
-);
--- RLS: Teachers CRUD own courses, students read published
--- Indexes: teacher_id, status
-```
-
-**student_progress table:**
-```sql
-CREATE TABLE public.student_progress (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  student_id uuid NOT NULL REFERENCES public.profiles(id),
-  course_id uuid NOT NULL REFERENCES public.courses(id),
-  thread_id uuid,                    -- CopilotKit session
-  progress_data jsonb DEFAULT '{}',
-  reaction_history text[] DEFAULT '{}',
-  last_active timestamptz DEFAULT now(),
-  UNIQUE(student_id, course_id)
-);
--- RLS: Students own their progress
--- Indexes: student_id, course_id, last_active
-```
-
-### Client Usage Pattern
-
-**Browser:**
-```typescript
-import { createSupabaseBrowser } from "@/lib/supabase/client";
-const supabase = createSupabaseBrowser();
-const { data, error } = await supabase
-  .from("courses")
-  .select("*")
-  .eq("teacher_id", userId);
-```
-
-**Server:**
-```typescript
-import { createSupabaseServer } from "@/lib/supabase/server";
-const supabase = await createSupabaseServer();
-const { data, error } = await supabase
-  .from("courses")
-  .insert([{ teacher_id, title, ... }]);
-```
-
-### Environment Variables
-
-```
-NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
-SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
-USE_SELFHOSTED_SUPABASE=false  # Set true for Docker Compose
-```
-
-### Self-Hosted Supabase (Docker)
-
-Services in docker-compose.yml:
-- `supabase-db` (PostgreSQL 15.1)
-- `supabase-auth` (GoTrue)
-- `supabase-rest` (PostgREST)
-- `supabase-realtime`
-- `supabase-storage`
-- `kong` (API Gateway on port 8000)
-- `supabase-studio` (Web UI on port 3000)
-
----
-
-## 5. Dependencies
-
-### Python (agent/pyproject.toml)
-
-```toml
-dependencies = [
-    "copilotkit>=0.1.30",
-    "langgraph>=0.2.0",
-    "langchain-core>=0.3.0",
-    "langchain-google-genai>=2.1.0",  # Gemini SDK
-    "supabase>=2.0.0",
-    "letta-client>=0.1.0",  # For Slice 12
-]
-```
-
-**Key versions:**
-- LangGraph: 0.2.0+ (for Command routing)
-- LangChain: 0.3.0+ (for tool binding)
-- Gemini SDK: 2.1.0+ (for ChatGoogleGenerativeAI)
-
-### Frontend (package.json)
-
-```json
+# Resulting state after merge
 {
-  "@codesandbox/sandpack-react": "^2.20.0",
-  "@copilotkit/react-core": "^1.8.16",
-  "@copilotkit/react-ui": "^1.8.16",
-  "@copilotkit/runtime": "^1.8.16",
-  "@copilotkit/runtime-client-gql": "^1.8.16",
-  "@google/genai": "^1.44.0",
-  "@supabase/ssr": "^0.5.2",
-  "@supabase/supabase-js": "^2.98.0",
-  "framer-motion": "^11.18.0",
-  "next": "14.2.29",
-  "react": "^18.3.1"
+    "foo": "new_value",      # overwritten
+    "bar": [4, 5],           # overwritten (not appended!)
+    "baz": "unchanged"       # preserved
 }
 ```
 
-**Key versions:**
-- CopilotKit: 1.8.16 (for useCoAgent, useCopilotChat, useCopilotAction)
-- Sandpack: 2.20.0 (for React template preview)
-- Supabase: 2.98.0 (for auth + database)
-
-### Gemini SDK Status
-
-✅ **Already installed:**
-- Python: `langchain-google-genai>=2.1.0`
-- Frontend: `@google/genai>=1.44.0`
-
-**Models used:**
-- Observation agent: `gemini-2.5-flash` (AI reasoning)
-- Chat agent: `gemini-2.5-flash-lite` (fast, cheap)
-- Course builder agent: TBD (likely `gemini-2.5-flash` for code generation)
+**Source:** Context7 documentation states: "If a node returns only a partial update to the state, the graph merges that update into the existing state."
 
 ---
 
-## 6. Integration Points for Slice 11
+## 2. Does Returning `{"files": files}` Overwrite or Merge?
 
-### Frontend → Backend Flow
+### Answer: It Overwrites (Without Custom Reducer)
 
-1. **User sends message in CourseBuilder**
-   - POST to `/api/copilotkit` with message
-   - CopilotKit runtime routes to `course-builder-agent`
-   - Backend agent receives via LangGraphHttpAgent
+**Critical Finding:** For dict fields like `files: dict`, returning `{"files": files}` will **completely replace** the existing `files` dict, not merge it.
 
-2. **Course Builder Agent**
-   - Receives: user message, template context, previous messages
-   - Generates: JSX code for Sandpack
-   - Returns: structured response (message + files dict)
+**Why This Matters:**
+- If `state["files"]` contains `{"file1.txt": "content1", "file2.txt": "content2"}`
+- And a node returns `{"files": {"file3.txt": "content3"}}`
+- The result is `{"files": {"file3.txt": "content3"}}` - file1 and file2 are **lost**
 
-3. **Frontend receives response**
-   - Updates `messages` state
-   - Updates `files` state (triggers Sandpack re-render)
-   - Transitions to `split` phase if files generated
+**Solution:** To preserve existing files, nodes must:
+1. Read the current state
+2. Manually merge: `files = {**state["files"], **new_files}`
+3. Return the merged dict
 
-4. **Save to Supabase**
-   - User clicks "Save Draft"
-   - POST to backend endpoint (TBD)
-   - Inserts/updates `courses` table with:
-     - `simulation_jsx` (from files["/App.tsx"])
-     - `interactions_json` (if agent generates reactions)
-     - `companion_config` (if agent generates personality)
-
-### Backend Architecture
-
-**New agent needed:**
-- Name: `course-builder-agent`
-- Type: Single-node graph (like chat agent)
-- Model: Gemini 2.5 Flash
-- Inputs: user message, template, conversation history
-- Outputs: JSX code + companion config (optional)
-- Tools: None (pure generation, no tool calls)
-
-**New API endpoint needed:**
-- POST `/courses` — Save draft course
-- GET `/courses/{id}` — Fetch course
-- PUT `/courses/{id}` — Update course
-- DELETE `/courses/{id}` — Delete course
+**Alternative:** Define a custom reducer for the `files` key (see Section 4).
 
 ---
 
-## 7. Gotchas & Constraints
+## 3. How MemorySaver Persists State Between Node Executions
 
-### Agent-Specific
+### Checkpoint-Based Persistence
 
-1. **State Zones:** Observation agent must NOT write to companion state directly. Use `copilotkit_emit_state()` instead.
-2. **Cooldowns:** Use event timestamps, not wall-clock time (for checkpoint safety)
-3. **One-shot reactions:** Track in `_fired` dict, check before matching
-4. **Error handling:** Always catch exceptions in async nodes, return fallback
-5. **Tool constraints:** `make_emit_reaction_tool()` validates emotions/animations against allowed lists
+**Key Concepts:**
 
-### CopilotKit-Specific
+1. **Checkpoints:** LangGraph creates a snapshot of the entire state after each node execution (called a "super-step")
+2. **Threads:** A `thread_id` serves as the primary key for storing and retrieving checkpoint sequences
+3. **MemorySaver/InMemorySaver:** In-memory implementation of the checkpointer interface (data lost on process restart)
 
-1. **Message IDs:** All messages must have `id` field (middleware adds if missing)
-2. **Context field:** Must be `[]` not `{}` (middleware fixes)
-3. **ThreadId/RunId:** Must be present (middleware generates if missing)
-4. **Emit state:** Only works inside async nodes with `config` parameter
-5. **Chat availability:** Check `chatIsAvailable` before sending messages
+**Persistence Flow:**
+```python
+from langgraph.checkpoint.memory import MemorySaver
 
-### Supabase-Specific
+checkpointer = MemorySaver()
+graph = builder.compile(checkpointer=checkpointer)
 
-1. **RLS policies:** Must enable RLS on all tables, define policies explicitly
-2. **Triggers:** Auto-create profile on signup, auto-update `updated_at` on course changes
-3. **Self-hosted:** Kong gateway on port 8000, Studio on port 3000
-4. **Migrations:** Run in order, check for existing tables before creating
+# First invocation - creates new thread
+config = {"configurable": {"thread_id": "conversation-1"}}
+graph.invoke({"messages": []}, config)
 
-### Sandpack-Specific
-
-1. **Template:** Only `"react"` template supported in current setup
-2. **Files:** Must include `/App.tsx` or `/index.tsx` as entry point
-3. **Re-render:** Triggered by `files` state change, not individual file updates
-4. **Preview:** Runs in iframe, has access to npm packages in template
-
----
-
-## 8. File Structure Summary
-
+# Second invocation - loads state from thread
+graph.invoke({"messages": [...]}, config)  # State is restored!
 ```
-/Users/tk/Desktop/Omniscience/
-├── agent/
-│   ├── main.py                          # Agent registration
-│   ├── config.py                        # Env loading
-│   ├── models.py                        # Universal types (SimulationEvent, Reaction, etc.)
-│   ├── middleware.py                    # Protocol fixes
-│   ├── graphs/
-│   │   ├── observation.py               # Observation agent graph
-│   │   └── chat.py                      # Chat agent graph
-│   └── topics/
-│       ├── changing_states/
-│       │   ├── config.py                # TopicConfig
-│       │   └── reactions.py             # ReactionRegistry
-│       ├── electric_circuits/
-│       └── genetics_basics/
-├── app/
-│   ├── api/
-│   │   ├── copilotkit/route.ts          # CopilotKit endpoint
-│   │   ├── voice/route.ts
-│   │   └── auth/callback/route.ts
-│   ├── (teacher)/
-│   │   ├── courses/new/page.tsx         # Course builder page
-│   │   └── layout.tsx
-│   ├── (student)/
-│   │   ├── topics/changing-states/page.tsx
-│   │   └── layout.tsx
-│   └── layout.tsx                       # Root layout (AuthProvider, LocaleProvider)
-├── components/
-│   ├── teacher/
-│   │   ├── CourseBuilder.tsx            # Main builder component
-│   │   ├── TemplateCard.tsx
-│   │   └── CourseCard.tsx
-│   ├── simulations/
-│   │   ├── ChangingStatesSimulation.tsx
-│   │   ├── ElectricCircuitsSimulation.tsx
-│   │   └── GeneticsBasicsSimulation.tsx
-│   ├── chat/ChatOverlay.tsx
-│   ├── companion/Companion.tsx
-│   └── spotlight/SpotlightCard.tsx
-├── framework/
-│   ├── TopicRunner.tsx                  # Main agent orchestration
-│   ├── TopicPageLayout.tsx              # Page wrapper with CopilotKit
-│   └── SoundManager.tsx
-├── lib/
-│   ├── supabase/
-│   │   ├── client.ts                    # Browser client
-│   │   └── server.ts                    # Server client
-│   ├── types/
-│   │   ├── course-builder.ts            # CourseTemplate, ChatMessage, etc.
-│   │   ├── changing-states.ts
-│   │   ├── electric-circuits.ts
-│   │   └── genetics-basics.ts
-│   ├── topics/
-│   │   ├── changing-states/config.ts    # Frontend topic config
-│   │   └── index.ts
-│   └── session.ts
-├── contexts/
-│   ├── AuthContext.tsx
-│   └── LocaleContext.tsx
-├── supabase/
-│   ├── migrations/
-│   │   ├── 20240307000000_create_profiles.sql
-│   │   └── 20260307000000_auth_profiles.sql
-│   └── kong.yml
-├── docker-compose.yml
-├── Dockerfile.backend
-├── Dockerfile.frontend
-├── package.json
-└── agent/pyproject.toml
+
+**Checkpoint Sequence:**
+1. Initial checkpoint: Empty state with `START` as next node
+2. After user input: State includes input, next node is `node_a`
+3. After `node_a`: State includes `node_a` outputs, next node is `node_b`
+4. After `node_b`: Final state with no next node
+
+**State Retrieval:**
+```python
+# Get current state
+state = graph.get_state(config)
+
+# Get state history (most recent first)
+history = list(graph.get_state_history(config))
+
+# Get specific checkpoint
+config_with_checkpoint = {
+    "configurable": {
+        "thread_id": "1",
+        "checkpoint_id": "1ef663ba-28fe-6528-8002-5a559208592c"
+    }
+}
+state = graph.get_state(config_with_checkpoint)
+```
+
+**Production Persistence:**
+- `MemorySaver`: In-memory only (development/testing)
+- `SqliteSaver`: SQLite database persistence
+- `PostgresSaver`: PostgreSQL database persistence
+- All support encryption via `EncryptedSerializer`
+
+---
+
+## 4. State Annotation Semantics for Dict Fields
+
+### Reducer Functions Control Merge Behavior
+
+**Default (No Annotation):** Overwrite behavior
+```python
+class State(TypedDict):
+    files: dict  # Returns {"files": new_dict} overwrites entirely
+```
+
+**With Custom Reducer:** Custom merge logic
+```python
+from typing import Annotated
+from operator import add
+
+class State(TypedDict):
+    messages: Annotated[list, add]  # Appends to list instead of replacing
+```
+
+### Common Reducer Patterns
+
+**1. List Append (operator.add):**
+```python
+from typing import Annotated
+from operator import add
+
+class State(TypedDict):
+    messages: Annotated[list, add]
+    completed_sections: Annotated[list, add]
+
+# Node can return just new items
+def node(state):
+    return {"messages": [new_message]}  # Appends, doesn't replace
+```
+
+**2. Custom Dict Merge:**
+```python
+def merge_dicts(left: dict, right: dict) -> dict:
+    """Merge two dicts, with right taking precedence."""
+    return {**left, **right}
+
+class State(TypedDict):
+    files: Annotated[dict, merge_dicts]
+
+# Now returning {"files": {"new.txt": "content"}} merges instead of replacing
+```
+
+**3. Explicit Overwrite (bypass reducer):**
+```python
+from langgraph.types import Overwrite
+
+# Force overwrite even if reducer is defined
+return {"files": Overwrite(new_files_dict)}
+```
+
+### Parallel Execution and Reducers
+
+**Critical for Parallel Nodes:** When multiple nodes execute in parallel and update the same state key, reducers determine how their outputs combine:
+
+```python
+class State(TypedDict):
+    aggregate: Annotated[list, operator.add]
+
+# Nodes b and c run in parallel
+def b(state): return {"aggregate": ["B"]}
+def c(state): return {"aggregate": ["C"]}
+
+# Without reducer: One would overwrite the other (race condition)
+# With operator.add: Results concatenate: ["B", "C"] or ["C", "B"]
 ```
 
 ---
 
-## 9. Next Steps for Slice 11
+## Key Takeaways
 
-1. **Create Course Builder Agent**
-   - File: `/Users/tk/Desktop/Omniscience/agent/graphs/course_builder.py`
-   - Pattern: Single-node graph like chat agent
-   - Input: user message, template, conversation history
-   - Output: JSX code + optional companion config
+1. **Partial updates merge at top level only** - returning a subset of state keys preserves unreturned keys
+2. **Dict fields overwrite by default** - `{"files": new_dict}` replaces the entire dict, not merges
+3. **Manual merging required** - nodes must explicitly merge dicts: `{**state["files"], **new_files}`
+4. **Reducers enable custom merge logic** - use `Annotated[type, reducer_func]` for append/merge behavior
+5. **MemorySaver uses thread_id** - state persists across invocations with same thread_id
+6. **Checkpoints created per node** - full state snapshot after each node execution
+7. **Parallel nodes need reducers** - without reducers, parallel updates to same key create race conditions
 
-2. **Register Agent in main.py**
-   - Add to agent dict in CopilotRuntime
-   - Register with add_langgraph_fastapi_endpoint
+---
 
-3. **Create API Endpoints**
-   - POST `/api/courses` — Save draft
-   - GET `/api/courses/{id}` — Fetch
-   - PUT `/api/courses/{id}` — Update
-   - DELETE `/api/courses/{id}` — Delete
+## Implications for Course Builder Agent
 
-4. **Integrate with CourseBuilder Component**
-   - Replace simulated response with actual API call
-   - Handle file updates from agent response
-   - Trigger split view transition
+**Current Issue:** If `course_builder.py` returns `{"files": files}` without merging existing state, previous files are lost.
 
-5. **Add Save/Publish Flow**
-   - "Save Draft" button → POST to `/api/courses`
-   - Store to Supabase `courses` table
-   - Show success/error toast
+**Fix Options:**
+1. **Manual merge in node:** `files = {**state.get("files", {}), **new_files}`
+2. **Define reducer:** Add custom dict merge reducer to state annotation
+3. **Read-then-write pattern:** Always read current state before updating
 
-6. **Testing**
-   - Test agent with various templates
-   - Test file generation and Sandpack rendering
-   - Test Supabase save/load flow
-   - Test RLS policies for teacher/student access
+**Recommended:** Option 1 (manual merge) for explicit control and clarity.
 
+---
+
+## References
+
+- LangGraph Documentation: https://docs.langchain.com/oss/python/langgraph/
+- Context7 Library ID: `/websites/langchain_oss_python_langgraph`
+- Code Snippets Analyzed: 851 snippets from official documentation
