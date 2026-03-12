@@ -388,8 +388,8 @@ class CourseBuilderState(CopilotKitState):
     """
     files: dict[str, str]
     uploaded_images: list[dict[str, str]]  # [{id, base64, mimeType, filename}]
-    _tool_results_cache: dict[str, str] = {}  # tool_call_id → full result (NOT synced to frontend)
-    _active_tools: list[dict[str, str]] = []   # [{name, detail}] → pushed to frontend for inline rendering
+    _tool_results_cache: dict[str, str]  # tool_call_id → full result (NOT synced to frontend)
+    _active_tools: list[dict[str, str]]   # [{name, detail}] → pushed to frontend for inline rendering
 
 
 # ── Graph Nodes ──────────────────────────────────────────

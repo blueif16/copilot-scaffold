@@ -41,17 +41,24 @@ class FixAGUIProtocolMiddleware:
             await self.app(scope, receive, send)
             return
 
-        print(f"[FixAGUIProtocol] Processing POST {path}")
+        is_course_builder = "course-builder" in path
+        log_prefix = "[wt-main][FixAGUIProtocol]" if is_course_builder else "[FixAGUIProtocol]"
+        print(f"{log_prefix} Processing POST {path}")
 
         # Collect the full request body
         body_chunks: list[bytes] = []
         body_complete = False
+        patched_body_sent = False
 
         async def patched_receive() -> dict:
-            nonlocal body_complete
+            nonlocal body_complete, patched_body_sent
 
             if body_complete:
-                # After we've sent the patched body, return empty
+                # After we've sent the patched body, pass through to original receive
+                # This allows the ASGI app to properly close the connection
+                if patched_body_sent:
+                    return await receive()
+                patched_body_sent = True
                 return {"type": "http.request", "body": b"", "more_body": False}
 
             # Accumulate chunks until the full body arrives
@@ -67,6 +74,9 @@ class FixAGUIProtocolMiddleware:
 
                 try:
                     data = json.loads(full_body)
+                    if is_course_builder:
+                        print(f"{log_prefix} Original body keys: {list(data.keys())}")
+                        print(f"{log_prefix} Original body size: {len(full_body)} bytes")
                     modified = False
 
                     # Fix 1: Add missing threadId
@@ -126,17 +136,27 @@ class FixAGUIProtocolMiddleware:
                                     data["config"]["configurable"] = {}
                                 data["config"]["configurable"]["user_id"] = user_id
                                 modified = True
-                                print(f"[FixAGUIProtocol] Injected user_id={user_id}")
+                                print(f"{log_prefix} Injected user_id={user_id}")
                         except Exception as e:
-                            print(f"[FixAGUIProtocol] Failed to extract user_id: {e}")
+                            print(f"{log_prefix} Failed to extract user_id: {e}")
 
                     if modified:
                         msg_count = len(data.get("messages", []))
-                        print(f"[FixAGUIProtocol] Patched: threadId={data.get('threadId', '?')[:8]}..., {msg_count} messages")
+                        print(f"{log_prefix} Patched: threadId={data.get('threadId', '?')[:8]}..., {msg_count} messages")
+                        if is_course_builder:
+                            print(f"{log_prefix} Patched body keys: {list(data.keys())}")
+                            print(f"{log_prefix} Required fields present: threadId={bool(data.get('threadId'))}, runId={bool(data.get('runId'))}, state={bool('state' in data)}, tools={bool('tools' in data)}, context={bool('context' in data)}, forwardedProps={bool('forwardedProps' in data)}")
                         full_body = json.dumps(data).encode()
+                        if is_course_builder:
+                            print(f"{log_prefix} Patched body size: {len(full_body)} bytes")
+                            print(f"{log_prefix} Patched body is valid JSON: {True}")
+                    elif is_course_builder:
+                        print(f"{log_prefix} No modifications needed (all fields present)")
 
                 except Exception as e:
-                    print(f"[FixAGUIProtocol] Parse error (passing through): {e}")
+                    print(f"{log_prefix} Parse error (passing through): {e}")
+                    if is_course_builder:
+                        print(f"{log_prefix} ERROR: Failed to parse/patch request body")
 
                 return {"type": "http.request", "body": full_body, "more_body": False}
 
