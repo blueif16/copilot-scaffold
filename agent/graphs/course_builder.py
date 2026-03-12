@@ -401,10 +401,12 @@ async def chat_node(state: CourseBuilderState, config: RunnableConfig) -> dict:
 
     print(f"[Agent:chat_node] Received {len(state['messages'])} messages")
 
-    for i, msg in enumerate(state['messages']):
+    # Debug: log last 3 messages
+    for i, msg in enumerate(state['messages'][-3:]):
         content = getattr(msg, 'content', '')
         msg_type = type(msg).__name__
-        print(f"[Agent:chat_node] Message {i}: {msg_type}, content: {content[:100]}")
+        content_preview = content[:100] if isinstance(content, str) else str(content)[:100]
+        print(f"[Agent:chat_node] Message {len(state['messages']) - 3 + i}: {msg_type}, content: {content_preview}")
 
     llm = ChatGoogleGenerativeAI(
         model=get_gemini_model(),
@@ -504,13 +506,17 @@ async def chat_node(state: CourseBuilderState, config: RunnableConfig) -> dict:
         await copilotkit_emit_state(config, {"uploaded_images": []})
         print(f"[Agent:chat_node] Cleared uploaded images from state")
 
-    # Clear tool results cache when this is the final response (no more tool
-    # calls). If the LLM is making more tool calls, keep the cache alive for
-    # the next tool_executor → chat_node cycle.
+    # Always clear active tools when producing final response (no tool calls)
+    # Keep tool cache alive until explicitly cleared by tool_executor
+    if not has_tool_calls:
+        result["_active_tools"] = []
+        await copilotkit_emit_state(config, {"_active_tools": []})
+        print(f"[Agent:chat_node] Cleared active tools (final response)")
+
+    # Clear tool cache only after final response is complete
     if tool_cache and not has_tool_calls:
         result["_tool_results_cache"] = {}
-        result["_active_tools"] = []
-        print(f"[Agent:chat_node] Cleared tool results cache ({len(tool_cache)} entries) and active tools")
+        print(f"[Agent:chat_node] Cleared tool results cache ({len(tool_cache)} entries)")
 
     return result
 
@@ -536,9 +542,11 @@ async def tool_executor(state: CourseBuilderState, config: RunnableConfig) -> di
         name = tc["name"]
         args = tc["args"]
         detail = args.get("path") or args.get("query") or args.get("name") or ""
-        active_tools.append({"name": name, "detail": detail})
+        if detail and len(detail) > 60:
+            detail = detail[:60] + "…"
+        active_tools.append({"name": name, "detail": detail, "status": "executing"})
     await copilotkit_emit_state(config, {"_active_tools": active_tools})
-    print(f"[Agent:tool_executor] Emitted active tools: {[t['name'] for t in active_tools]}")
+    print(f"[Agent:tool_executor] Emitted {len(active_tools)} active tools: {[t['name'] for t in active_tools]}")
 
     files = dict(state.get("files") or {})
     tool_results = []
@@ -656,15 +664,15 @@ async def tool_executor(state: CourseBuilderState, config: RunnableConfig) -> di
             ToolMessage(content="", tool_call_id=tool_call_id)
         )
 
-    # Emit file changes to frontend
+    # Mark tools as complete and emit file changes
     total_size = sum(len(c) for c in files.values())
     print(f"[Agent:tool_executor] Emitting state: {len(files)} files, total size: {total_size} chars")
     if errors:
         print(f"[Agent:tool_executor] Errors encountered: {errors}")
 
-    # Don't clear _active_tools here — keep them visible until chat_node
-    # produces the final response, so frontend can show "complete" status.
-    await copilotkit_emit_state(config, {"files": files})
+    # Update tool status to complete
+    completed_tools = [{"name": t["name"], "detail": t["detail"], "status": "complete"} for t in active_tools]
+    await copilotkit_emit_state(config, {"files": files, "_active_tools": completed_tools})
     print(f"[Agent:tool_executor] State emitted successfully")
     print(f"[Agent:tool_executor] Current files in state: {list(files.keys())}")
 
