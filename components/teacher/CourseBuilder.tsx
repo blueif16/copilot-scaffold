@@ -509,10 +509,14 @@ function CourseBuilderContent({
         detail = params.path || params.query || params.filename || params.name || "";
         if (typeof detail === "string" && detail.length > 60) detail = detail.slice(0, 60) + "…";
       }
+
+      const isComplete = status === "complete" || status === "success";
+      const isExecuting = status === "executing" || status === "in_progress";
+
       return (
         <div className="flex items-center gap-2 py-0.5">
           <span className={`w-5 h-5 flex items-center justify-center rounded text-[11px] font-bold flex-shrink-0 ${
-            status === "complete"
+            isComplete
               ? "bg-ink/[0.06] text-ink/40"
               : "bg-playful-blue/10 text-playful-blue animate-pulse"
           }`}>
@@ -521,7 +525,7 @@ function CourseBuilderContent({
           <span className="text-[13px] font-body text-ink/50">
             {tool.label}{detail ? ` ${detail}` : ""}
           </span>
-          {status !== "complete" && (
+          {isExecuting && (
             <span className="text-[11px] font-body text-ink/25 animate-pulse">...</span>
           )}
         </div>
@@ -562,9 +566,14 @@ function CourseBuilderContent({
   // Render messages with tool calls handled by useDefaultRenderTool
   const renderMessages = () => {
     const elements: JSX.Element[] = [];
+    const processedIds = new Set<string>();
 
     for (const msg of visibleMessages || []) {
-      if (!msg) continue;
+      if (!msg || !msg.id) continue;
+
+      // Prevent duplicate rendering
+      if (processedIds.has(msg.id)) continue;
+      processedIds.add(msg.id);
 
       // Skip tool result messages
       if (msg.role === "tool") continue;
