@@ -13,6 +13,7 @@ load_env()
 from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.concurrency import run_in_threadpool
+from contextlib import asynccontextmanager
 from copilotkit import LangGraphAGUIAgent
 from ag_ui_langgraph import add_langgraph_fastapi_endpoint
 from pydantic import BaseModel
@@ -25,7 +26,7 @@ logger = logging.getLogger(__name__)
 
 from .graphs.chat import build_chat_graph
 from .graphs.observation import build_observation_graph
-from .graphs.course_builder import build_course_builder_graph
+from .graphs.course_builder import build_course_builder_graph_sync
 from .topics.changing_states.config import changing_states_config
 from .topics.changing_states.reactions import changing_states_reactions
 from .topics.electric_circuits.config import electric_circuits_config
@@ -123,9 +124,10 @@ chat_graph_genetics = build_chat_graph(
 )
 
 # Course Builder (Teacher-facing)
-# Note: build_course_builder_graph is async, so we need to initialize it at startup
-course_builder_graph = None
-course_builder_agent = None
+# Build the graph synchronously at module load time
+print("[INIT] Building course builder graph...")
+course_builder_graph = build_course_builder_graph_sync()
+print("[INIT] Course builder graph built successfully")
 
 # ── Create FastAPI app and register agents ────────────────
 
@@ -146,32 +148,18 @@ app.add_middleware(
 # Register session routes
 app.include_router(sessions_router)
 
-# ── Startup event to initialize async graph ────────────────
+# ── Register all agents ────────────────────────────────────
 
-@app.on_event("startup")
-async def startup_event():
-    """Initialize async course builder graph on startup."""
-    global course_builder_graph, course_builder_agent
-    print("[wt-feat/course-builder-conversation-memory] Initializing course builder graph...")
-    course_builder_graph = await build_course_builder_graph()
-
-    # Create the agent wrapper
-    course_builder_agent = LangGraphAGUIAgent(
+# Course Builder (Teacher-facing)
+add_langgraph_fastapi_endpoint(
+    app=app,
+    agent=LangGraphAGUIAgent(
         name="course-builder",
         description="Helps teachers create interactive science lessons with JSX code generation",
         graph=course_builder_graph,
-    )
-
-    # Register the endpoint after the graph is ready
-    add_langgraph_fastapi_endpoint(
-        app=app,
-        agent=course_builder_agent,
-        path="/agents/course-builder",
-    )
-
-    print("[wt-feat/course-builder-conversation-memory] Course builder graph initialized and endpoint registered")
-
-# ── Register all agents ────────────────────────────────────
+    ),
+    path="/agents/course-builder",
+)
 
 # Changing States (Level 1, Ages 6-8)
 add_langgraph_fastapi_endpoint(

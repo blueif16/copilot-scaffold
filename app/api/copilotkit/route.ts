@@ -70,18 +70,28 @@ export const POST = async (req: NextRequest) => {
     endpoint: "/api/copilotkit",
   });
 
-  const response = await handleRequest(newReq);
+  try {
+    const response = await handleRequest(newReq);
 
-  // Log responses
-  if (isAgentRun || isStateEmit) {
-    console.log("[Backend→CopilotKit]", {
-      status: response.status,
-      contentType: response.headers.get("content-type"),
-      timestamp: new Date().toISOString(),
-    });
+    // Log responses
+    if (isAgentRun || isStateEmit) {
+      console.log("[Backend→CopilotKit]", {
+        status: response.status,
+        contentType: response.headers.get("content-type"),
+        timestamp: new Date().toISOString(),
+      });
+    }
+
+    // Log if streaming response
+    if (response.headers.get("content-type")?.includes("text/event-stream")) {
+      console.log("[CopilotKit] SSE stream started");
+    }
+
+    return response;
+  } catch (error) {
+    console.error("[CopilotKit] Error in handleRequest:", error);
+    throw error;
   }
-
-  return response;
 };
 
 export const GET = async () => {

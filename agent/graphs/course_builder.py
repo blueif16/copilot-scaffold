@@ -724,7 +724,7 @@ def _detect_format_prompt(messages: list, copilotkit_context: list | None = None
 # ── Graph Builder ────────────────────────────────────────
 
 async def build_course_builder_graph():
-    """Build the course builder StateGraph with ReAct tool loop and PostgreSQL checkpointing."""
+    """Build the course builder StateGraph with ReAct tool loop and MemorySaver checkpointing."""
 
     graph = StateGraph(CourseBuilderState)
 
@@ -738,29 +738,32 @@ async def build_course_builder_graph():
     })
     graph.add_edge("tool_executor", "chat_node")
 
-    # PostgreSQL checkpointer for persistent conversation memory
-    db_uri = os.getenv(
-        "DATABASE_URL",
-        "postgresql://postgres:your-super-secret-and-long-postgres-password@supabase-db:5432/postgres"
-    )
+    # Use MemorySaver for now - PostgreSQL pool hangs on startup
+    # TODO: Debug PostgreSQL AsyncConnectionPool.open() hanging issue
+    from langgraph.checkpoint.memory import MemorySaver
+    checkpointer = MemorySaver()
+    print(f"[course-builder] Using MemorySaver (in-memory checkpointing)")
 
-    print(f"[wt-feat/course-builder-conversation-memory] Initializing PostgresSaver with URI: {db_uri.split('@')[1] if '@' in db_uri else 'local'}")
+    return graph.compile(checkpointer=checkpointer)
 
-    try:
-        from psycopg_pool import AsyncConnectionPool
 
-        pool = AsyncConnectionPool(
-            conninfo=db_uri,
-            min_size=1,
-            max_size=10,
-            timeout=30.0,
-        )
-        await pool.open()
+def build_course_builder_graph_sync():
+    """Synchronous wrapper for building the course builder graph."""
+    from langgraph.checkpoint.memory import MemorySaver
 
-        checkpointer = AsyncPostgresSaver(pool)
-        print(f"[wt-feat/course-builder-conversation-memory] PostgresSaver initialized successfully")
-    except Exception as e:
-        print(f"[wt-feat/course-builder-conversation-memory] ERROR: Failed to initialize PostgresSaver: {e}")
-        raise
+    graph = StateGraph(CourseBuilderState)
+
+    graph.add_node("chat_node", chat_node)
+    graph.add_node("tool_executor", tool_executor)
+
+    graph.add_edge(START, "chat_node")
+    graph.add_conditional_edges("chat_node", should_continue, {
+        "tool_executor": "tool_executor",
+        END: END,
+    })
+    graph.add_edge("tool_executor", "chat_node")
+
+    checkpointer = MemorySaver()
+    print(f"[course-builder] Using MemorySaver (in-memory checkpointing)")
 
     return graph.compile(checkpointer=checkpointer)
