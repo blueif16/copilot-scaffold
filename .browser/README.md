@@ -1,5 +1,11 @@
 # Chat Flow Testing - One-Shot Guide
 
+## Start Services
+
+```bash
+./startup.sh  # Starts frontend + backend, logs to .logs/frontend.log and .logs/backend.log
+```
+
 ## Quick Test (agent-browser)
 
 ```bash
@@ -17,7 +23,8 @@ agent-browser fill '[data-testid="chat-message-input"]' "创建一个关于水�
 agent-browser click '[data-testid="chat-send-button"]'
 
 # 4. Check logs
-agent-browser console | grep -E "\[CopilotKit\]|\[Agent\]"
+agent-browser console | grep -E "\[CopilotKit\]|\[Agent\]"  # Browser console
+tail -20 .logs/backend.log | grep -E "\[Agent\]"            # Backend logs
 ```
 
 ## Message Flow
