@@ -4,10 +4,10 @@ import React, { useState, useRef, useEffect, useCallback } from "react";
 import dynamic from "next/dynamic";
 import { motion, AnimatePresence } from "framer-motion";
 import { CopilotKit } from "@copilotkit/react-core";
-import { useCoAgent } from "@copilotkit/react-core";
-import { useCopilotChatInternal } from "@copilotkit/react-core";
 import { useCopilotReadable } from "@copilotkit/react-core";
-import { useCopilotAction } from "@copilotkit/react-core";
+import { useCopilotChatInternal } from "@copilotkit/react-core";
+import { useAgent } from "@copilotkit/react-core/v2";
+import { useDefaultRenderTool } from "@copilotkit/react-core/v2";
 import { Role, TextMessage } from "@copilotkit/runtime-client-gql";
 import {
   CourseTemplate,
@@ -271,37 +271,6 @@ const TOOL_LABELS: Record<string, { label: string; icon: string }> = {
   get_component:      { label: "获取组件",   icon: "⚡" },
 };
 
-function ToolCallBubble({ name, args, status }: { name: string; args: any; status: string }) {
-  const tool = TOOL_LABELS[name] || { label: name, icon: "⚙" };
-  const isComplete = status === "complete";
-
-  // Extract a short detail string from args
-  let detail = "";
-  if (args) {
-    detail = args.path || args.query || args.filename || args.name || "";
-    // For write_file/update_file, show path only (content is too long)
-    if (typeof detail === "string" && detail.length > 60) detail = detail.slice(0, 60) + "…";
-  }
-
-  return (
-    <div className="flex items-center gap-2 py-0.5">
-      <span className={`w-5 h-5 flex items-center justify-center rounded text-[11px] font-bold flex-shrink-0 ${
-        isComplete
-          ? "bg-ink/[0.06] text-ink/40"
-          : "bg-playful-blue/10 text-playful-blue animate-pulse"
-      }`}>
-        {tool.icon}
-      </span>
-      <span className="text-[13px] font-body text-ink/50">
-        {tool.label}{detail ? ` ${detail}` : ""}
-      </span>
-      {!isComplete && (
-        <span className="text-[11px] font-body text-ink/25 animate-pulse">...</span>
-      )}
-    </div>
-  );
-}
-
 // ── Input Box (Claude-style, stable ref) ────────────────
 
 function InputBox({
@@ -513,10 +482,9 @@ function CourseBuilderContent({
   const { messages: visibleMessages, appendMessage, isLoading } =
     useCopilotChatInternal();
 
-  const { state: agentState, setState: setAgentState } = useCoAgent<CourseBuilderAgentState>({
-    name: "course-builder",
-    initialState: { files: {}, uploaded_images: [], _active_tools: [] },
-  });
+  const { agent } = useAgent({ agentId: "course-builder" });
+  const agentState = agent.state as CourseBuilderAgentState | undefined;
+  const setAgentState = (state: CourseBuilderAgentState) => agent.setState(state);
 
   useCopilotReadable({
     description: "Selected course format",
@@ -529,16 +497,16 @@ function CourseBuilderContent({
       : null,
   });
 
-  // ── Catch-all tool render (CopilotKit canonical pattern) ──
-  // This populates `generativeUI` on messages so our headless chat
-  // can render tool call indicators with CopilotKit-managed status.
-  useCopilotAction({
-    name: "*",
-    render: ({ name: toolName, args, status }: { name: string; args: any; status: string }) => {
+  // ── Default tool renderer (v2 API) ──
+  // Replaces the v1 useCopilotAction({ name: "*" }) pattern.
+  // Renders tool calls with status indicators in the chat.
+  useDefaultRenderTool({
+    render: ({ name: toolName, parameters, status }) => {
       const tool = TOOL_LABELS[toolName] || { label: toolName, icon: "⚙" };
       let detail = "";
-      if (args) {
-        detail = args.path || args.query || args.filename || args.name || "";
+      if (parameters) {
+        const params = parameters as any;
+        detail = params.path || params.query || params.filename || params.name || "";
         if (typeof detail === "string" && detail.length > 60) detail = detail.slice(0, 60) + "…";
       }
       return (
@@ -564,101 +532,50 @@ function CourseBuilderContent({
   const files = agentState?.files || {};
   const hasFiles = Object.keys(files).length > 0;
 
-  // ── Classify visible messages ──────────────────────────
-  // AG-UI sends plain objects (not class instances).
-  // We use CopilotKit's recommended headless pattern:
-  //   - generativeUI on messages (populated by catch-all useCopilotAction)
-  //   - toolCalls property for shape-based fallback
-  //   - role === "tool" for results (skipped)
-  type ClassifiedMessage =
-    | { kind: "text"; msg: ChatMessage }
-    | { kind: "generative_ui"; id: string; render: () => React.ReactNode }
-    | { kind: "tool_call"; id: string; calls: Array<{ name: string; args: any; callId: string }> }
-    | { kind: "tool_result" };
+  // ── Message processing (v2 API) ──────────────────────────
+  // With useDefaultRenderTool, the framework handles tool call rendering.
+  // We only need to extract text messages and handle special cases.
 
-  const classified: ClassifiedMessage[] = (visibleMessages || [])
-    .filter((m: any) => !!m)
-    .map((msg: any): ClassifiedMessage | null => {
-      // Tool result: role === "tool" → skip rendering
-      if (msg.role === "tool") {
-        return { kind: "tool_result" };
-      }
+  // Track uploaded images by message ID for preview
+  const [imageMessageMap, setImageMessageMap] = useState<Record<string, UploadedImage>>({});
 
-      // Assistant message with toolCalls + generativeUI (from catch-all useCopilotAction)
-      // Only use generativeUI for messages that actually bear tool calls.
-      // Messages with generativeUI but no toolCalls are agent state renders — skip those.
-      if (msg.role === "assistant" && msg.toolCalls && typeof msg.generativeUI === "function") {
-        return {
-          kind: "generative_ui",
-          id: msg.id,
-          render: msg.generativeUI,
-        };
-      }
-
-      // Fallback: assistant message with toolCalls but no generativeUI
-      if (msg.role === "assistant" && msg.toolCalls) {
-        let calls: any[] = [];
-        try {
-          calls = typeof msg.toolCalls === "string" ? JSON.parse(msg.toolCalls) : msg.toolCalls;
-        } catch { /* malformed */ }
-        if (calls.length > 0) {
-          return {
-            kind: "tool_call",
-            id: msg.id,
-            calls: calls.map((c: any) => ({
-              name: c.function?.name || c.name || "unknown",
-              args: typeof c.function?.arguments === "string"
-                ? (() => { try { return JSON.parse(c.function.arguments); } catch { return {}; } })()
-                : c.function?.arguments || c.arguments || {},
-              callId: c.id || msg.id,
-            })),
-          };
-        }
-      }
-
-      // Text message — must have non-empty content
+  // Extract text-only messages for save/signature/empty-state
+  const messages: ChatMessage[] = (visibleMessages || [])
+    .filter((m: any) => !!m && m.role !== "tool")
+    .map((msg: any) => {
       const content = msg.content;
       const contentStr = typeof content === "string"
         ? content
         : Array.isArray(content) && content[0]?.text
           ? content[0].text
-          : null;
+          : "";
       if (!contentStr || contentStr.trim() === "") return null;
       return {
-        kind: "text",
-        msg: {
-          id: msg.id,
-          role: msg.role === "user" || msg.role === Role.User ? ("user" as const) : ("assistant" as const),
-          content: contentStr,
-          timestamp: new Date(msg.createdAt || Date.now()),
-        },
+        id: msg.id,
+        role: msg.role === "user" || msg.role === Role.User ? ("user" as const) : ("assistant" as const),
+        content: contentStr,
+        timestamp: new Date(msg.createdAt || Date.now()),
       };
     })
-    .filter((c): c is ClassifiedMessage => c !== null);
+    .filter((m): m is ChatMessage => m !== null);
 
-  // Flat list of text-only messages (for save, signature, empty-state check)
-  const messages: ChatMessage[] = classified
-    .filter((c): c is ClassifiedMessage & { kind: "text" } => c.kind === "text")
-    .map((c) => c.msg);
-
-  // Track uploaded images by message ID for preview
-  const [imageMessageMap, setImageMessageMap] = useState<Record<string, UploadedImage>>({});
-
-  // Render classified messages in order
+  // Render messages with tool calls handled by useDefaultRenderTool
   const renderMessages = () => {
     const elements: JSX.Element[] = [];
 
-    for (const item of classified) {
-      // Tool results: skip (status shown on the tool_call/generative_ui row)
-      if (item.kind === "tool_result") continue;
+    for (const msg of visibleMessages || []) {
+      if (!msg) continue;
 
-      // CopilotKit generativeUI (from catch-all useCopilotAction render)
-      if (item.kind === "generative_ui") {
+      // Skip tool result messages
+      if (msg.role === "tool") continue;
+
+      // Render tool calls if present (framework handles via useDefaultRenderTool)
+      if (msg.role === "assistant" && msg.toolCalls && typeof msg.generativeUI === "function") {
         try {
-          const rendered = item.render();
+          const rendered = msg.generativeUI();
           if (rendered) {
             elements.push(
-              <div key={`gui-${item.id}`} className="mb-4 space-y-1">
+              <div key={`tool-${msg.id}`} className="mb-4 space-y-1">
                 {rendered}
               </div>
             );
@@ -669,25 +586,22 @@ function CourseBuilderContent({
         continue;
       }
 
-      // Fallback tool call rendering (shape-based, when generativeUI unavailable)
-      if (item.kind === "tool_call") {
-        elements.push(
-          <div key={item.id} className="mb-4 space-y-1">
-            {item.calls.map((call) => (
-              <ToolCallBubble
-                key={call.callId}
-                name={call.name}
-                args={call.args}
-                status="complete"
-              />
-            ))}
-          </div>
-        );
-        continue;
-      }
-
       // Text message
-      const message = item.msg;
+      const content = msg.content;
+      const contentStr = typeof content === "string"
+        ? content
+        : Array.isArray(content) && content[0]?.text
+          ? content[0].text
+          : "";
+
+      if (!contentStr || contentStr.trim() === "") continue;
+
+      const message: ChatMessage = {
+        id: msg.id,
+        role: msg.role === "user" || msg.role === Role.User ? "user" : "assistant",
+        content: contentStr,
+        timestamp: new Date(msg.createdAt || Date.now()),
+      };
 
       // Image-only user messages
       const imageMatch = message.content?.match?.(/^\[已上传图片: ([^\]]+)\]$/);
@@ -889,7 +803,8 @@ function CourseBuilderContent({
     // If there's a pending image, push it into agent state
     if (pendingImage) {
       setAgentState({
-        ...agentState,
+        files: agentState?.files || {},
+        _active_tools: agentState?._active_tools || [],
         uploaded_images: [pendingImage],
       });
 
