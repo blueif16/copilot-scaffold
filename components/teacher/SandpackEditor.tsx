@@ -92,7 +92,16 @@ export function SandpackEditor({
 
   useEffect(() => {
     console.log("[SandpackEditor] files:", fileKeys, "key:", sandpackKey);
-  }, [sandpackKey]);
+    console.log("[SandpackEditor] previewMode:", previewMode);
+    console.log("[SandpackEditor] hasFiles:", hasFiles);
+    fileKeys.forEach(key => {
+      const content = files[key];
+      const preview = content.substring(0, 200);
+      const lines = content.split('\n').length;
+      console.log(`[SandpackEditor] ${key}: ${content.length} chars, ${lines} lines`);
+      console.log(`[SandpackEditor] ${key} preview:`, preview);
+    });
+  }, [sandpackKey, previewMode, hasFiles, files, fileKeys]);
 
   return (
     <div className="h-full flex flex-col">
@@ -159,20 +168,30 @@ export function SandpackEditor({
             }}
           >
             <SandpackLayout>
-              {previewMode === "preview" ? (
+              <div style={{
+                display: previewMode === "preview" ? "flex" : "none",
+                flex: 1,
+                minHeight: 0,
+                flexDirection: "column"
+              }}>
                 <SandpackPreview
                   showOpenInCodeSandbox={false}
                   showRefreshButton
                 />
-              ) : (
+              </div>
+              <div style={{
+                display: previewMode === "code" ? "flex" : "none",
+                flex: 1,
+                minHeight: 0,
+                flexDirection: "column"
+              }}>
                 <SandpackCodeEditor
                   showTabs
                   showLineNumbers
                   showInlineErrors
                   wrapContent
-                  style={{ height: '100%' }}
                 />
-              )}
+              </div>
             </SandpackLayout>
           </SandpackProvider>
         )}
