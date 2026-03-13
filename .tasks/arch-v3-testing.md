@@ -186,7 +186,7 @@ WHERE user_id = (SELECT id FROM profiles WHERE email = 'test-student-001@example
    - Password: `TeachPass123!`
    - Role: Teacher
 4. Click "Sign Up"
-5. Wait for redirect to `/teacher/dashboard`
+5. Wait for redirect to `/teacher/chat/new`
 
 **Verification:**
 ```sql
@@ -201,8 +201,8 @@ WHERE email = 'test-teacher-001@example.com';
 **Expected Result:**
 - ✅ Profile created with `role='teacher'`
 - ✅ `letta_agent_id` is NULL (teachers don't need memory agents)
-- ✅ Redirected to `/teacher/dashboard`
-- ✅ Dashboard shows empty state with "Create New Course" button
+- ✅ Redirected to `/teacher/chat/new` (default route for teachers)
+- ✅ Course builder landing page shows format options
 
 **Failure Modes:**
 - ❌ Redirected to `/student` → Middleware role routing broken
@@ -307,10 +307,10 @@ LIMIT 1;
 
 ### T2.4: Teacher Dashboard — Course List
 
-**Objective:** Verify dashboard displays saved courses
+**Objective:** Verify courses page displays saved courses
 
 **Steps:**
-1. Navigate back to `/teacher/dashboard`
+1. Navigate back to `/teacher/courses`
 2. Observe course list
 
 **Verification:**
@@ -323,7 +323,7 @@ ORDER BY created_at DESC;
 ```
 
 **Expected Result:**
-- ✅ Dashboard shows course from T2.2/T2.3
+- ✅ Courses page shows course from T2.2/T2.3
 - ✅ Course card displays:
   - Title (or "Untitled Course" if no title set)
   - Format badge ("Lab")
