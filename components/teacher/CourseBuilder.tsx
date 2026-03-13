@@ -646,12 +646,14 @@ function CourseBuilderContent({
   // ── Auto-open preview when agent writes real files ──
   // Track total file content size — scaffold is ~small, real content is >2KB
   const totalFileSize = Object.values(files).reduce((sum, c) => sum + c.length, 0);
+  const hasOpenedPreview = useRef(false);
   useEffect(() => {
-    // Only auto-open once. Real agent-written files will be much bigger than scaffolds.
-    if (hasFiles && totalFileSize > 2000 && !showPreview) {
+    // Only auto-open once per conversation. Use ref to prevent re-opening after close.
+    if (hasFiles && totalFileSize > 2000 && !hasOpenedPreview.current) {
+      hasOpenedPreview.current = true;
       setShowPreview(true);
     }
-  }, [hasFiles, totalFileSize, showPreview]);
+  }, [hasFiles, totalFileSize]);
 
   // [DATA-FLOW] Track messages + files from checkpoint - unified in LangGraph
   const [loadedMessageCount, setLoadedMessageCount] = useState(0);
