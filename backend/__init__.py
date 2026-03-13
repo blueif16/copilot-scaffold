@@ -1,5 +1,1 @@
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
+"""CopilotKit + LangGraph backend package."""
