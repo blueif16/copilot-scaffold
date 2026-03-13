@@ -562,11 +562,11 @@ async def tool_executor(state: CourseBuilderState, config: RunnableConfig) -> di
     await copilotkit_emit_state(config, {"_active_tools": active_tools})
     print(f"[Agent:tool_executor] Emitted {len(active_tools)} active tools: {[t['name'] for t in active_tools]}")
 
-    files = dict(state.get("files") or {})
+    files = state.get("files") or {}
     files_modified = False  # Track if files were actually changed
     tool_results = []
     errors = []
-    full_results_cache: dict[str, str] = dict(state.get("_tool_results_cache") or {})
+    full_results_cache = state.get("_tool_results_cache") or {}
 
     for tc in last_message.tool_calls:
         start_time = time.time()
