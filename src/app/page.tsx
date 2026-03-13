@@ -6,7 +6,8 @@ import { CopilotChat } from "@copilotkit/react-ui";
 
 type AgentState = {
   messages: string[];
-  status: string;
+  current_task: string;
+  result: string;
 };
 
 export default function Home() {
@@ -17,13 +18,15 @@ export default function Home() {
     name: "scaffold_agent",
     initialState: {
       messages: [],
-      status: "idle",
+      current_task: "",
+      result: "",
     },
   });
 
   console.log("[DATA-FLOW] Agent state shape:", {
     messages: state.messages,
-    status: state.status,
+    current_task: state.current_task,
+    result: state.result,
     timestamp: new Date().toISOString(),
   });
 
@@ -48,20 +51,20 @@ export default function Home() {
 
   // Frontend action: Update agent status manually
   useCopilotAction({
-    name: "updateAgentStatus",
-    description: "Manually update the agent status in the UI",
+    name: "updateAgentTask",
+    description: "Manually update the agent's current task",
     parameters: [
       {
-        name: "status",
+        name: "task",
         type: "string",
-        description: "New status value",
+        description: "New task value",
         required: true,
       },
     ],
-    handler: async ({ status }) => {
-      console.log("[DATA-FLOW] updateAgentStatus called:", { status });
-      setState({ ...state, status });
-      return `Status updated to ${status}`;
+    handler: async ({ task }) => {
+      console.log("[DATA-FLOW] updateAgentTask called:", { task });
+      setState({ ...state, current_task: task });
+      return `Task updated to ${task}`;
     },
   });
 
@@ -75,8 +78,13 @@ export default function Home() {
           <div className="p-4 bg-black/20 border-b border-white/10">
             <h1 className="text-white text-xl font-semibold">CopilotKit + LangGraph</h1>
             <p className="text-white/70 text-sm mt-1">
-              Agent Status: <span className="font-mono">{state.status}</span>
+              Task: <span className="font-mono">{state.current_task || "none"}</span>
             </p>
+            {state.result && (
+              <p className="text-white/70 text-sm mt-1">
+                Result: <span className="font-mono">{state.result}</span>
+              </p>
+            )}
           </div>
           <CopilotChat
             className="h-[calc(100%-80px)]"
