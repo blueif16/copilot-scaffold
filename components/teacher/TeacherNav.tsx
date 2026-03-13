@@ -7,7 +7,7 @@ export function TeacherNav() {
   const pathname = usePathname();
 
   const navItems = [
-    { href: "/teacher/dashboard", label: "Dashboard", icon: "grid" },
+    { href: "/teacher/courses", label: "Courses", icon: "grid" },
     { href: "/teacher/chat/new", label: "Create", icon: "plus" },
     { href: "/teacher/settings", label: "Settings", icon: "settings" },
   ];

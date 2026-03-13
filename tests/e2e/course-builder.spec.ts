@@ -12,11 +12,8 @@ test.describe('Course Builder E2E', () => {
     // Submit login form
     await page.getByRole('button', { name: /Log in|登录/i }).click();
 
-    // Wait for redirect to dashboard
-    await page.waitForURL('/teacher/dashboard', { timeout: 10000 });
-
-    // Navigate to course builder via the Create link
-    await page.getByRole('link', { name: 'Create' }).click();
+    // Wait for redirect to chat/new (default route for teachers)
+    await page.waitForURL('/teacher/chat/new', { timeout: 10000 });
     await page.waitForLoadState('networkidle');
   });
 
