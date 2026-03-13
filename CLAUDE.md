@@ -30,6 +30,8 @@ agent/.venv/bin/python -m uvicorn agent.main:app --host 0.0.0.0 --port 8123 --re
 
 ## Testing Backend Agents
 
+**NEVER run `npm run build` or `npm run dev` manually** — `./startup.sh` is always running in the background. Running build commands will kill the dev server and waste time.
+
 **Direct agent testing (no frontend needed):**
 ```bash
 # Start backend
