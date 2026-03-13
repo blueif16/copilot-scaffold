@@ -655,14 +655,13 @@ function CourseBuilderContent({
 
   // ── Load existing conversation messages from DB ────────
   const [messagesLoaded, setMessagesLoaded] = useState(false);
-  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+  const [loadedMessageCount, setLoadedMessageCount] = useState(0);
 
   useEffect(() => {
     // Only load once when we have a conversation ID and haven't loaded yet
     if (!currentConversationId || messagesLoaded || phase !== "chat") return;
 
     const loadMessages = async () => {
-      setIsLoadingHistory(true);
       try {
         console.log("[DATA-FLOW] CourseBuilder: Loading messages for conversation", currentConversationId);
         const response = await fetch(`/api/course-builder/conversations/${currentConversationId}`);
@@ -670,7 +669,6 @@ function CourseBuilderContent({
         if (!response.ok) {
           console.error("[DATA-FLOW] CourseBuilder: Failed to load conversation:", response.status);
           setMessagesLoaded(true); // Don't retry
-          setIsLoadingHistory(false);
           return;
         }
 
@@ -684,7 +682,6 @@ function CourseBuilderContent({
 
         if (dbMessages.length === 0) {
           setMessagesLoaded(true);
-          setIsLoadingHistory(false);
           return;
         }
 
@@ -697,12 +694,12 @@ function CourseBuilderContent({
           appendMessage(textMessage);
         }
 
+        // Track how many messages were loaded from DB - don't auto-save these
+        setLoadedMessageCount(dbMessages.length);
         setMessagesLoaded(true);
-        setIsLoadingHistory(false);
       } catch (error) {
         console.error("[DATA-FLOW] CourseBuilder: Error loading messages:", error);
         setMessagesLoaded(true); // Don't retry on error
-        setIsLoadingHistory(false);
       }
     };
 
@@ -819,16 +816,18 @@ function CourseBuilderContent({
     return content.length < trimmed.length ? `${content}...` : content;
   };
 
-  // Auto-save conversation when text messages change
-  // Skip when loading history (don't re-save or reorder list when opening existing conversation)
+  // Auto-save conversation when user sends NEW messages (not when loading history)
+  // Only save messages beyond what was loaded from DB
+  const newMessages = textMessages.slice(loadedMessageCount);
   useEffect(() => {
-    if (textMessages.length > 0 && phase === "chat" && !isLoadingHistory) {
+    if (newMessages.length > 0 && phase === "chat") {
+      console.log("[DATA-FLOW] Auto-save: new messages detected, scheduling save");
       const timer = setTimeout(() => {
         saveConversation();
       }, 2000); // Debounce 2s
       return () => clearTimeout(timer);
     }
-  }, [messageSignature, phase, isLoadingHistory]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [messageSignature, phase, loadedMessageCount]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Handlers ──────────────────────────────────────────
 
