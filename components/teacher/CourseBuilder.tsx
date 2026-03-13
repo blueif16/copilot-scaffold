@@ -516,8 +516,8 @@ function CourseBuilderContent({
         if (typeof detail === "string" && detail.length > 60) detail = detail.slice(0, 60) + "…";
       }
 
-      const isComplete = status === "complete" || status === "success";
-      const isExecuting = status === "executing" || status === "in_progress";
+      const isComplete = status === "complete";
+      const isExecuting = status === "executing" || status === "inProgress";
 
       return (
         <div className="flex items-center gap-2 py-0.5">
@@ -653,58 +653,27 @@ function CourseBuilderContent({
     }
   }, [hasFiles, totalFileSize, showPreview]);
 
-  // ── Load existing conversation messages from DB ────────
-  const [messagesLoaded, setMessagesLoaded] = useState(false);
+  // [DATA-FLOW] Track messages + files from checkpoint - unified in LangGraph
   const [loadedMessageCount, setLoadedMessageCount] = useState(0);
 
   useEffect(() => {
-    // Only load once when we have a conversation ID and haven't loaded yet
-    if (!currentConversationId || messagesLoaded || phase !== "chat") return;
+    const fileCount = Object.keys(files).length;
+    const totalSize = Object.values(files).reduce((sum, c) => sum + c.length, 0);
+    console.log("[DATA-FLOW] Checkpoint state:", {
+      msgCount: visibleMessages.length,
+      fileCount,
+      totalSize,
+      files: Object.keys(files)
+    });
+  }, [files, visibleMessages.length]);
 
-    const loadMessages = async () => {
-      try {
-        console.log("[DATA-FLOW] CourseBuilder: Loading messages for conversation", currentConversationId);
-        const response = await fetch(`/api/course-builder/conversations/${currentConversationId}`);
-
-        if (!response.ok) {
-          console.error("[DATA-FLOW] CourseBuilder: Failed to load conversation:", response.status);
-          setMessagesLoaded(true); // Don't retry
-          return;
-        }
-
-        const data = await response.json();
-        const dbMessages = data.messages || [];
-
-        console.log("[DATA-FLOW] CourseBuilder: Loaded messages", {
-          count: dbMessages.length,
-          sample: dbMessages[0] ? { role: dbMessages[0].role, contentLength: dbMessages[0].content?.length } : null,
-        });
-
-        if (dbMessages.length === 0) {
-          setMessagesLoaded(true);
-          return;
-        }
-
-        // Append each message to CopilotKit state
-        for (const msg of dbMessages) {
-          const textMessage = new TextMessage({
-            content: msg.content,
-            role: msg.role === "user" ? Role.User : Role.Assistant,
-          });
-          appendMessage(textMessage);
-        }
-
-        // Track how many messages were loaded from DB - don't auto-save these
-        setLoadedMessageCount(dbMessages.length);
-        setMessagesLoaded(true);
-      } catch (error) {
-        console.error("[DATA-FLOW] CourseBuilder: Error loading messages:", error);
-        setMessagesLoaded(true); // Don't retry on error
-      }
-    };
-
-    void loadMessages();
-  }, [currentConversationId, messagesLoaded, phase, appendMessage]);
+  // Track initial message count - messages restored from checkpoint automatically by CopilotKit
+  useEffect(() => {
+    if (visibleMessages.length > 0 && loadedMessageCount === 0) {
+      console.log("[DATA-FLOW] Messages from checkpoint:", visibleMessages.length);
+      setLoadedMessageCount(visibleMessages.length);
+    }
+  }, [visibleMessages.length, loadedMessageCount]);
 
   // ── Conversation Management ───────────────────────────
 
@@ -761,39 +730,12 @@ function CourseBuilderContent({
     }
   };
 
+  // Messages are now stored in LangGraph checkpoint - no manual save needed
   const saveConversation = async (title?: string) => {
-    if (textMessages.length === 0) return;
-
     const conversationId = await ensureConversation(title);
     if (conversationId) {
-      await saveMessages(conversationId);
-    }
-  };
-
-  const saveMessages = async (conversationId: string) => {
-    if (textMessages.length === 0) return;
-
-    try {
-      const response = await fetch(`/api/course-builder/conversations/${conversationId}/messages`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          messages: textMessages.map(m => ({
-            role: m.role,
-            content: m.content,
-          })),
-        }),
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error("[CourseBuilder] Failed to save messages:", response.status, errorText);
-        return;
-      }
-
+      console.log("[DATA-FLOW] Conversation saved to DB (checkpoint persists everything)");
       window.dispatchEvent(new CustomEvent("course-builder:conversation-updated"));
-    } catch (error) {
-      console.error("[CourseBuilder] Failed to save messages:", error);
     }
   };
 
@@ -816,25 +758,27 @@ function CourseBuilderContent({
     return content.length < trimmed.length ? `${content}...` : content;
   };
 
-  // Auto-save conversation when user sends NEW messages (not when loading history)
-  // Only save messages beyond what was loaded from DB
+  // Auto-save conversation metadata (title) to DB when new messages
+  // Messages + files are stored in LangGraph checkpoint automatically
   const newMessages = textMessages.slice(loadedMessageCount);
   useEffect(() => {
     if (newMessages.length > 0 && phase === "chat") {
-      console.log("[DATA-FLOW] Auto-save: new messages detected, scheduling save");
+      console.log("[DATA-FLOW] New messages - checkpoint auto-persists, saving conv metadata");
       const timer = setTimeout(() => {
         saveConversation();
-      }, 2000); // Debounce 2s
+      }, 2000);
       return () => clearTimeout(timer);
     }
-  }, [messageSignature, phase, loadedMessageCount]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [messageSignature, phase, loadedMessageCount]);
 
   // ── Handlers ──────────────────────────────────────────
 
   const handleFormatSelect = useCallback((template: CourseTemplate) => {
+    console.log("[DATA-FLOW] Format select:", template.format);
     setSelectedTemplate(template);
     // Seed agent state with bare scaffold — agent will write_file to replace it
     const templateFiles = getTemplateFiles(template.format);
+    console.log("[DATA-FLOW] Setting template files:", Object.keys(templateFiles));
     setAgentState({ files: templateFiles, uploaded_images: [], _active_tools: [] });
     // Don't show preview yet — scaffold is just a placeholder
     // Preview opens automatically when hasFiles updates after agent writes real content
@@ -926,108 +870,111 @@ function CourseBuilderContent({
     onImageRemove: handleImageRemove,
   };
 
+  // Visibility styles — keep both views mounted, only toggle visibility
+  const isLanding = phase === "landing";
+  const landingStyle = isLanding ? {} : { display: "none" };
+  const chatStyle = !isLanding ? {} : { display: "none" };
+
   // ════════════════════════════════════════════════════════
-  // LANDING
+  // LANDING (kept mounted, visibility toggled)
   // ════════════════════════════════════════════════════════
 
-  if (phase === "landing") {
-    return (
-      <div className="h-full flex flex-col">
-        {/* Top bar — just title, like Claude's breadcrumb */}
-        <div className="shrink-0 h-11 flex items-center px-5">
-          <span className="font-body text-[13.5px] text-ink/50">课程生成器</span>
-        </div>
+  const landingContent = (
+    <div style={landingStyle} className="h-full flex flex-col">
+      {/* Top bar — just title, like Claude's breadcrumb */}
+      <div className="shrink-0 h-11 flex items-center px-5">
+        <span className="font-body text-[13.5px] text-ink/50">课程生成器</span>
+      </div>
 
-        <div className="flex-1 flex min-h-0">
-          <div className="flex-1 flex flex-col items-center min-h-0">
-            <div className="flex-1 min-h-0" />
+      <div className="flex-1 flex min-h-0">
+        <div className="flex-1 flex flex-col items-center min-h-0">
+          <div className="flex-1 min-h-0" />
 
-            {/* Greeting */}
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4 }}
-              className="flex items-center gap-3 mb-8"
-            >
-              <svg width="32" height="32" viewBox="0 0 36 36" fill="none">
-                <circle cx="18" cy="18" r="2.5" fill="#C4704B" />
-                {[0, 45, 90, 135, 180, 225, 270, 315].map((angle) => (
-                  <line
-                    key={angle}
-                    x1="18" y1="18"
-                    x2={18 + 13 * Math.cos((angle * Math.PI) / 180)}
-                    y2={18 + 13 * Math.sin((angle * Math.PI) / 180)}
-                    stroke="#C4704B" strokeWidth="1.8" strokeLinecap="round"
-                  />
-                ))}
-              </svg>
-              <h1 className="font-display text-[28px] font-normal text-ink tracking-[-0.01em]">
-                {greeting}，老师
-              </h1>
-            </motion.div>
+          {/* Greeting */}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4 }}
+            className="flex items-center gap-3 mb-8"
+          >
+            <svg width="32" height="32" viewBox="0 0 36 36" fill="none">
+              <circle cx="18" cy="18" r="2.5" fill="#C4704B" />
+              {[0, 45, 90, 135, 180, 225, 270, 315].map((angle) => (
+                <line
+                  key={angle}
+                  x1="18" y1="18"
+                  x2={18 + 13 * Math.cos((angle * Math.PI) / 180)}
+                  y2={18 + 13 * Math.sin((angle * Math.PI) / 180)}
+                  stroke="#C4704B" strokeWidth="1.8" strokeLinecap="round"
+                />
+              ))}
+            </svg>
+            <h1 className="font-display text-[28px] font-normal text-ink tracking-[-0.01em]">
+              {greeting}，老师
+            </h1>
+          </motion.div>
 
-            {/* Input */}
-            <motion.div
-              initial={{ opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.08, duration: 0.35 }}
-              className="w-full px-6 mb-8"
-            >
-              <InputBox {...inputProps} />
-            </motion.div>
+          {/* Input */}
+          <motion.div
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.08, duration: 0.35 }}
+            className="w-full px-6 mb-8"
+          >
+            <InputBox {...inputProps} />
+          </motion.div>
 
-            {/* Format cards */}
-            <motion.div
-              initial={{ opacity: 0, y: 4 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.16, duration: 0.35 }}
-              className="w-full max-w-[680px] mx-auto px-6"
-            >
-              <p className="font-body text-[13px] text-ink/40 mb-3.5">
-                选择格式，快速开始
-              </p>
-              <div className="flex gap-3">
-                {TEMPLATES.map((t, i) => {
-                  const Icon = FORMAT_ICONS[t.format];
-                  return (
-                    <motion.button
-                      key={t.id}
-                      initial={{ opacity: 0, y: 4 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.22 + i * 0.05, duration: 0.3 }}
-                      onClick={() => handleFormatSelect(t)}
-                      className="flex-1 text-left px-4 pt-4 pb-3.5 rounded-xl border border-ink/[0.09] hover:border-ink/[0.18] hover:shadow-[0_1px_6px_rgba(0,0,0,0.04)] transition-all duration-200 group"
-                      data-testid={`format-${t.format}`}
-                      aria-label={`Select ${t.format === 'lab' ? 'lab simulation' : t.format === 'quiz' ? 'quiz' : 'dialogue'} format`}
-                    >
-                      <div className="text-ink/35 group-hover:text-ink/55 transition-colors mb-2.5">
-                        <Icon />
-                      </div>
-                      <div className="font-body font-medium text-[13.5px] text-ink mb-0.5">
-                        {t.name}
-                      </div>
-                      <div className="font-body text-[12px] text-ink/40 leading-snug">
-                        {t.description}
-                      </div>
-                    </motion.button>
-                  );
-                })}
-              </div>
-            </motion.div>
+          {/* Format cards */}
+          <motion.div
+            initial={{ opacity: 0, y: 4 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.16, duration: 0.35 }}
+            className="w-full max-w-[680px] mx-auto px-6"
+          >
+            <p className="font-body text-[13px] text-ink/40 mb-3.5">
+              选择格式，快速开始
+            </p>
+            <div className="flex gap-3">
+              {TEMPLATES.map((t, i) => {
+                const Icon = FORMAT_ICONS[t.format];
+                return (
+                  <motion.button
+                    key={t.id}
+                    initial={{ opacity: 0, y: 4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.22 + i * 0.05, duration: 0.3 }}
+                    onClick={() => handleFormatSelect(t)}
+                    className="flex-1 text-left px-4 pt-4 pb-3.5 rounded-xl border border-ink/[0.09] hover:border-ink/[0.18] hover:shadow-[0_1px_6px_rgba(0,0,0,0.04)] transition-all duration-200 group"
+                    data-testid={`format-${t.format}`}
+                    aria-label={`Select ${t.format === 'lab' ? 'lab simulation' : t.format === 'quiz' ? 'quiz' : 'dialogue'} format`}
+                  >
+                    <div className="text-ink/35 group-hover:text-ink/55 transition-colors mb-2.5">
+                      <Icon />
+                    </div>
+                    <div className="font-body font-medium text-[13.5px] text-ink mb-0.5">
+                      {t.name}
+                    </div>
+                    <div className="font-body text-[12px] text-ink/40 leading-snug">
+                      {t.description}
+                    </div>
+                  </motion.button>
+                );
+              })}
+            </div>
+          </motion.div>
 
-            <div className="flex-[1.4] min-h-0" />
-          </div>
+          <div className="flex-[1.4] min-h-0" />
         </div>
       </div>
-    );
-  }
+    </div>
+  );
 
   // ════════════════════════════════════════════════════════
-  // CHAT
+  // CHAT (kept mounted, visibility toggled)
   // ════════════════════════════════════════════════════════
 
-  return (
-    <div className="h-full flex">
+  const chatContent = (
+    <div style={chatStyle} className="h-full flex">
       {/* Chat column */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Top bar — breadcrumb title */}
@@ -1040,16 +987,28 @@ function CourseBuilderContent({
             </span>
           </div>
           <div className="flex items-center gap-2">
-            {hasFiles && !showPreview && (
+            {hasFiles && (
               <button
-                onClick={() => setShowPreview(true)}
+                onClick={() => setShowPreview(!showPreview)}
                 className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-ink/[0.08] hover:border-ink/[0.16] text-ink/45 hover:text-ink/65 transition-all text-[12px] font-body font-medium"
               >
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
-                  <rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" strokeWidth="1.5" />
-                  <path d="M12 3V21" stroke="currentColor" strokeWidth="1.5" />
-                </svg>
-                预览
+                {showPreview ? (
+                  <>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+                      <rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" strokeWidth="1.5" />
+                      <path d="M9 9l6 6M15 9l-6 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                    </svg>
+                    关闭
+                  </>
+                ) : (
+                  <>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+                      <rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" strokeWidth="1.5" />
+                      <path d="M12 3V21" stroke="currentColor" strokeWidth="1.5" />
+                    </svg>
+                    预览
+                  </>
+                )}
               </button>
             )}
           </div>
@@ -1089,27 +1048,28 @@ function CourseBuilderContent({
         </div>
       </div>
 
-      {/* Artifact panel — standalone Sandpack */}
-      <AnimatePresence>
-        {showPreview && (
-          <motion.div
-            initial={{ width: 0, opacity: 0 }}
-            animate={{ width: "55%", opacity: 1 }}
-            exit={{ width: 0, opacity: 0 }}
-            transition={{ type: "spring", stiffness: 300, damping: 30 }}
-            className="h-full flex flex-col border-l border-ink/[0.06] bg-white overflow-hidden"
-          >
-            <SandpackEditor
-              files={files}
-              previewMode={previewMode}
-              onPreviewModeChange={setPreviewMode}
-              onClose={() => setShowPreview(false)}
-              selectedTemplate={selectedTemplate}
-            />
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* Artifact panel — Sandpack editor (visibility only, not unmount) */}
+      <div
+        className={`h-full flex flex-col border-l border-ink/[0.06] bg-white overflow-hidden transition-all duration-300 ${
+          showPreview ? "w-[55%] opacity-100" : "w-0 opacity-0"
+        }`}
+        style={{ visibility: showPreview ? "visible" : "hidden", pointerEvents: showPreview ? "auto" : "none" }}
+      >
+        <SandpackEditor
+          files={files}
+          previewMode={previewMode}
+          onPreviewModeChange={setPreviewMode}
+          selectedTemplate={selectedTemplate}
+        />
+      </div>
     </div>
+  );
+
+  return (
+    <>
+      {landingContent}
+      {chatContent}
+    </>
   );
 }
 
@@ -1126,13 +1086,13 @@ interface CourseBuilderProps {
 
 export default function CourseBuilder({ initialConversation }: CourseBuilderProps) {
   // For NEW conversations (no id yet), use the threadId from props.
-  // For EXISTING conversations (has id), generate a NEW threadId because
-  // the stored threadId might have stale state in MemorySaver backend.
+  // For EXISTING conversations (has id), reuse the stored threadId to resume
+  // from LangGraph checkpoint - this restores files and other agent state.
   const [threadId] = useState(() => {
     if (initialConversation?.id) {
-      // Existing conversation - fresh thread to avoid "Thread already running" error
-      console.log("[DATA-FLOW] CourseBuilder: Existing conversation, generating new threadId");
-      return crypto.randomUUID();
+      // Existing conversation - reuse stored threadId to resume from checkpoint
+      console.log("[DATA-FLOW] CourseBuilder: Existing conversation, reusing threadId:", initialConversation.threadId);
+      return initialConversation.threadId;
     }
     // New conversation - use the threadId (will be created on first message)
     return initialConversation?.threadId || crypto.randomUUID();
