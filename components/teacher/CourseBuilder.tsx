@@ -653,6 +653,62 @@ function CourseBuilderContent({
     }
   }, [hasFiles, totalFileSize, showPreview]);
 
+  // ── Load existing conversation messages from DB ────────
+  const [messagesLoaded, setMessagesLoaded] = useState(false);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+
+  useEffect(() => {
+    // Only load once when we have a conversation ID and haven't loaded yet
+    if (!currentConversationId || messagesLoaded || phase !== "chat") return;
+
+    const loadMessages = async () => {
+      setIsLoadingHistory(true);
+      try {
+        console.log("[DATA-FLOW] CourseBuilder: Loading messages for conversation", currentConversationId);
+        const response = await fetch(`/api/course-builder/conversations/${currentConversationId}`);
+
+        if (!response.ok) {
+          console.error("[DATA-FLOW] CourseBuilder: Failed to load conversation:", response.status);
+          setMessagesLoaded(true); // Don't retry
+          setIsLoadingHistory(false);
+          return;
+        }
+
+        const data = await response.json();
+        const dbMessages = data.messages || [];
+
+        console.log("[DATA-FLOW] CourseBuilder: Loaded messages", {
+          count: dbMessages.length,
+          sample: dbMessages[0] ? { role: dbMessages[0].role, contentLength: dbMessages[0].content?.length } : null,
+        });
+
+        if (dbMessages.length === 0) {
+          setMessagesLoaded(true);
+          setIsLoadingHistory(false);
+          return;
+        }
+
+        // Append each message to CopilotKit state
+        for (const msg of dbMessages) {
+          const textMessage = new TextMessage({
+            content: msg.content,
+            role: msg.role === "user" ? Role.User : Role.Assistant,
+          });
+          appendMessage(textMessage);
+        }
+
+        setMessagesLoaded(true);
+        setIsLoadingHistory(false);
+      } catch (error) {
+        console.error("[DATA-FLOW] CourseBuilder: Error loading messages:", error);
+        setMessagesLoaded(true); // Don't retry on error
+        setIsLoadingHistory(false);
+      }
+    };
+
+    void loadMessages();
+  }, [currentConversationId, messagesLoaded, phase, appendMessage]);
+
   // ── Conversation Management ───────────────────────────
 
   const ensureConversation = async (title?: string) => {
@@ -764,14 +820,15 @@ function CourseBuilderContent({
   };
 
   // Auto-save conversation when text messages change
+  // Skip when loading history (don't re-save or reorder list when opening existing conversation)
   useEffect(() => {
-    if (textMessages.length > 0 && phase === "chat") {
+    if (textMessages.length > 0 && phase === "chat" && !isLoadingHistory) {
       const timer = setTimeout(() => {
         saveConversation();
       }, 2000); // Debounce 2s
       return () => clearTimeout(timer);
     }
-  }, [messageSignature, phase]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [messageSignature, phase, isLoadingHistory]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Handlers ──────────────────────────────────────────
 
@@ -1069,7 +1126,18 @@ interface CourseBuilderProps {
 }
 
 export default function CourseBuilder({ initialConversation }: CourseBuilderProps) {
-  const [threadId] = useState(() => initialConversation?.threadId || crypto.randomUUID());
+  // For NEW conversations (no id yet), use the threadId from props.
+  // For EXISTING conversations (has id), generate a NEW threadId because
+  // the stored threadId might have stale state in MemorySaver backend.
+  const [threadId] = useState(() => {
+    if (initialConversation?.id) {
+      // Existing conversation - fresh thread to avoid "Thread already running" error
+      console.log("[DATA-FLOW] CourseBuilder: Existing conversation, generating new threadId");
+      return crypto.randomUUID();
+    }
+    // New conversation - use the threadId (will be created on first message)
+    return initialConversation?.threadId || crypto.randomUUID();
+  });
   const [conversationId, setConversationId] = useState<string | null>(initialConversation?.id || null);
   const initialPhase: CourseBuilderPhase = initialConversation ? "chat" : "landing";
 
