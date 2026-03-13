@@ -64,13 +64,11 @@ export function SandpackEditor({
   files,
   previewMode,
   onPreviewModeChange,
-  onClose,
   selectedTemplate,
 }: {
   files: Record<string, string>;
   previewMode: "preview" | "code";
   onPreviewModeChange: (mode: "preview" | "code") => void;
-  onClose: () => void;
   selectedTemplate: CourseTemplate | null;
 }) {
   const fileKeys = Object.keys(files);
@@ -114,14 +112,6 @@ export function SandpackEditor({
             format={selectedTemplate?.format || "lab"}
             files={files}
           />
-          <button
-            onClick={onClose}
-            className="w-7 h-7 flex items-center justify-center rounded-md text-ink/30 hover:text-ink/60 hover:bg-ink/[0.05] transition-colors"
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-              <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </button>
         </div>
       </div>
 
@@ -150,19 +140,21 @@ export function SandpackEditor({
             }}
           >
             <SandpackLayout>
-              {previewMode === "preview" ? (
+              {/* Always render both to preserve state - toggle visibility with CSS */}
+              <div className={previewMode === "preview" ? "block" : "hidden"}>
                 <SandpackPreview
                   showOpenInCodeSandbox={false}
                   showRefreshButton
                 />
-              ) : (
+              </div>
+              <div className={previewMode === "code" ? "block" : "hidden"}>
                 <SandpackCodeEditor
                   showTabs
                   showLineNumbers
                   showInlineErrors
                   wrapContent
                 />
-              )}
+              </div>
             </SandpackLayout>
           </SandpackProvider>
         )}
