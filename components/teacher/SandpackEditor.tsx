@@ -24,6 +24,22 @@ function ensureSandpackStyles() {
     .sandpack-fill > div {
       height: 100% !important;
     }
+    /* Fix code editor height to show all content */
+    .sp-code-editor {
+      height: 100% !important;
+      min-height: 0 !important;
+    }
+    .sp-code-editor .cm-scroller {
+      overflow: auto !important;
+      height: 100% !important;
+    }
+    .sp-code-editor .cm-content {
+      min-height: 100% !important;
+    }
+    /* Ensure tabs container doesn't overflow */
+    .sp-tabs {
+      overflow-x: auto !important;
+    }
   `;
   document.head.appendChild(style);
 }
@@ -134,7 +150,8 @@ export function SandpackEditor({
                 showTabs
                 showLineNumbers
                 showInlineErrors
-                wrapContent={false}
+                wrapContent
+                style={{ height: '100%' }}
               />
             )}
           </SandpackLayout>
