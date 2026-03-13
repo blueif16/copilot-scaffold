@@ -28,17 +28,27 @@ function ensureSandpackStyles() {
     .sp-code-editor {
       height: 100% !important;
       min-height: 0 !important;
+      display: flex !important;
+      flex-direction: column !important;
+    }
+    .sp-code-editor .cm-editor {
+      height: 100% !important;
+      flex: 1 !important;
+      min-height: 0 !important;
     }
     .sp-code-editor .cm-scroller {
       overflow: auto !important;
       height: 100% !important;
+      max-height: 100% !important;
     }
     .sp-code-editor .cm-content {
-      min-height: 100% !important;
+      min-height: auto !important;
+      height: auto !important;
     }
     /* Ensure tabs container doesn't overflow */
     .sp-tabs {
       overflow-x: auto !important;
+      flex-shrink: 0 !important;
     }
   `;
   document.head.appendChild(style);
