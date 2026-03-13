@@ -21,7 +21,7 @@ from __future__ import annotations
 
 import json
 import os
-from typing import Any, Literal
+from typing import Any, Literal, Annotated
 
 from copilotkit import CopilotKitState
 from copilotkit.langgraph import copilotkit_emit_state, copilotkit_customize_config
@@ -380,15 +380,29 @@ def get_component(name: str) -> str:
 TOOLS = [read_file, list_files, write_file, update_file, delete_file, search_components, get_component]
 
 
+# ── State Reducers ───────────────────────────────────────
+
+def merge_dicts(left: dict | None, right: dict | None) -> dict:
+    """Merge two dictionaries, with right taking precedence for conflicts.
+    This prevents LangGraph's default "last write wins" behavior where
+    frontend state overwrites checkpointed state entirely.
+    """
+    if left is None:
+        return right or {}
+    if right is None:
+        return left
+    return {**left, **right}
+
+
 # ── Agent State ──────────────────────────────────────────
 
 class CourseBuilderState(CopilotKitState):
     """Course builder agent state.
     CopilotKitState provides: messages, copilotkit (actions + context).
     """
-    files: dict[str, str]
+    files: Annotated[dict[str, str], merge_dicts]
     uploaded_images: list[dict[str, str]]  # [{id, base64, mimeType, filename}]
-    _tool_results_cache: dict[str, str]  # tool_call_id → full result (NOT synced to frontend)
+    _tool_results_cache: Annotated[dict[str, str], merge_dicts]  # tool_call_id → full result (NOT synced to frontend)
     _active_tools: list[dict[str, str]]   # [{name, detail}] → pushed to frontend for inline rendering
 
 
@@ -549,6 +563,7 @@ async def tool_executor(state: CourseBuilderState, config: RunnableConfig) -> di
     print(f"[Agent:tool_executor] Emitted {len(active_tools)} active tools: {[t['name'] for t in active_tools]}")
 
     files = dict(state.get("files") or {})
+    files_modified = False  # Track if files were actually changed
     tool_results = []
     errors = []
     full_results_cache: dict[str, str] = dict(state.get("_tool_results_cache") or {})
@@ -590,6 +605,7 @@ async def tool_executor(state: CourseBuilderState, config: RunnableConfig) -> di
                 else:
                     is_new = path not in files
                     files[path] = content
+                    files_modified = True
                     action = "Created" if is_new else "Overwrote"
                     result = f"✓ {action} {path} ({len(content)} chars)"
                     print(f"[Agent:tool_executor] write_file: {action} {path} ({len(content)} chars)")
@@ -608,6 +624,7 @@ async def tool_executor(state: CourseBuilderState, config: RunnableConfig) -> di
                     current = files[path]
                     if old_text in current:
                         files[path] = current.replace(old_text, new_text, 1)
+                        files_modified = True
                         result = f"✓ Updated {path} (replaced {len(old_text)} → {len(new_text)} chars)"
                         print(f"[Agent:tool_executor] update_file: {path} success (replaced {len(old_text)} → {len(new_text)} chars)")
                     else:
@@ -622,6 +639,7 @@ async def tool_executor(state: CourseBuilderState, config: RunnableConfig) -> di
                 path = args.get("path")
                 if path in files:
                     del files[path]
+                    files_modified = True
                     result = f"✓ Deleted {path}"
                     print(f"[Agent:tool_executor] delete_file: {path}")
                 else:
@@ -666,21 +684,34 @@ async def tool_executor(state: CourseBuilderState, config: RunnableConfig) -> di
 
     # Mark tools as complete and emit file changes
     total_size = sum(len(c) for c in files.values())
-    print(f"[Agent:tool_executor] Emitting state: {len(files)} files, total size: {total_size} chars")
+    print(f"[Agent:tool_executor] Files modified: {files_modified}, {len(files)} files, total size: {total_size} chars")
     if errors:
         print(f"[Agent:tool_executor] Errors encountered: {errors}")
 
     # Update tool status to complete
     completed_tools = [{"name": t["name"], "detail": t["detail"], "status": "complete"} for t in active_tools]
-    await copilotkit_emit_state(config, {"files": files, "_active_tools": completed_tools})
-    print(f"[Agent:tool_executor] State emitted successfully")
-    print(f"[Agent:tool_executor] Current files in state: {list(files.keys())}")
 
-    return {
-        "files": files,
+    # Only emit files if they were actually modified (write/update/delete operations)
+    # Read-only tools (search_components, get_component, read_file, list_files) don't emit files
+    if files_modified:
+        await copilotkit_emit_state(config, {"files": files, "_active_tools": completed_tools})
+        print(f"[Agent:tool_executor] State emitted with files: {list(files.keys())}")
+    else:
+        await copilotkit_emit_state(config, {"_active_tools": completed_tools})
+        print(f"[Agent:tool_executor] State emitted without files (read-only operation)")
+
+    print(f"[Agent:tool_executor] State emitted successfully")
+
+    # Only return files in state update if they were modified
+    result = {
         "_tool_results_cache": full_results_cache,
         "messages": tool_results,
     }
+    if files_modified:
+        result["files"] = files
+        print(f"[Agent:tool_executor] Returning files in state: {list(files.keys())}")
+
+    return result
 
 
 def should_continue(state: CourseBuilderState) -> str:
