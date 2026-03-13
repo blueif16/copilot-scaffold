@@ -16,51 +16,45 @@ function ensureSandpackStyles() {
   const style = document.createElement("style");
   style.id = "sandpack-global-styles";
   style.textContent = `
+    /* Make Sandpack fill its container */
     .sandpack-fill {
       height: 100% !important;
       width: 100% !important;
     }
-    /* Make SandpackLayout fill its parent */
     .sandpack-fill > div {
       height: 100% !important;
     }
-    /* Fix code editor to fill container and scroll properly */
-    .sp-code-editor {
-      height: 100% !important;
-      min-height: 0 !important;
-      display: flex !important;
-      flex-direction: column !important;
-      overflow: hidden !important;
-    }
-    .sp-code-editor .cm-editor {
-      flex: 1 !important;
-      min-height: 0 !important;
-      overflow: hidden !important;
-    }
-    .sp-code-editor .cm-scroller {
-      overflow-y: auto !important;
-      overflow-x: auto !important;
-      height: 100% !important;
-    }
-    .sp-code-editor .cm-content,
-    .sp-code-editor .cm-line {
-      height: auto !important;
-      min-height: auto !important;
-    }
-    /* Ensure tabs container doesn't overflow */
-    .sp-tabs {
-      overflow-x: auto !important;
-      flex-shrink: 0 !important;
-    }
-    /* Force SandpackLayout to use flex */
+    /* Stack layout: tabs at top, editor fills remaining space */
     .sp-layout {
       display: flex !important;
       flex-direction: column !important;
     }
-    .sp-stack {
+    .sp-editor {
+      display: flex !important;
+      flex-direction: column !important;
       flex: 1 !important;
       min-height: 0 !important;
-      overflow: hidden !important;
+    }
+    /* Tabs bar: horizontal scroll, fixed height */
+    .sp-tabs {
+      flex-shrink: 0 !important;
+      height: auto !important;
+      max-height: 40px !important;
+      overflow-x: auto !important;
+      overflow-y: hidden !important;
+    }
+    /* Code editor: flex to fill remaining space */
+    .sp-code-editor {
+      flex: 1 !important;
+      min-height: 0 !important;
+      height: auto !important;
+    }
+    .sp-code-editor .cm-editor {
+      height: 100% !important;
+      min-height: 0 !important;
+    }
+    .sp-code-editor .cm-scroller {
+      overflow: auto !important;
     }
   `;
   document.head.appendChild(style);
@@ -90,18 +84,6 @@ export function SandpackEditor({
   // Inject global styles once
   useEffect(() => { ensureSandpackStyles(); }, []);
 
-  useEffect(() => {
-    console.log("[SandpackEditor] files:", fileKeys, "key:", sandpackKey);
-    console.log("[SandpackEditor] previewMode:", previewMode);
-    console.log("[SandpackEditor] hasFiles:", hasFiles);
-    fileKeys.forEach(key => {
-      const content = files[key];
-      const preview = content.substring(0, 200);
-      const lines = content.split('\n').length;
-      console.log(`[SandpackEditor] ${key}: ${content.length} chars, ${lines} lines`);
-      console.log(`[SandpackEditor] ${key} preview:`, preview);
-    });
-  }, [sandpackKey, previewMode, hasFiles, files, fileKeys]);
 
   return (
     <div className="h-full flex flex-col">
@@ -168,30 +150,19 @@ export function SandpackEditor({
             }}
           >
             <SandpackLayout>
-              <div style={{
-                display: previewMode === "preview" ? "flex" : "none",
-                flex: 1,
-                minHeight: 0,
-                flexDirection: "column"
-              }}>
+              {previewMode === "preview" ? (
                 <SandpackPreview
                   showOpenInCodeSandbox={false}
                   showRefreshButton
                 />
-              </div>
-              <div style={{
-                display: previewMode === "code" ? "flex" : "none",
-                flex: 1,
-                minHeight: 0,
-                flexDirection: "column"
-              }}>
+              ) : (
                 <SandpackCodeEditor
                   showTabs
                   showLineNumbers
                   showInlineErrors
                   wrapContent
                 />
-              </div>
+              )}
             </SandpackLayout>
           </SandpackProvider>
         )}
