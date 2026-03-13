@@ -24,31 +24,43 @@ function ensureSandpackStyles() {
     .sandpack-fill > div {
       height: 100% !important;
     }
-    /* Fix code editor height to show all content */
+    /* Fix code editor to fill container and scroll properly */
     .sp-code-editor {
       height: 100% !important;
       min-height: 0 !important;
       display: flex !important;
       flex-direction: column !important;
+      overflow: hidden !important;
     }
     .sp-code-editor .cm-editor {
-      height: 100% !important;
       flex: 1 !important;
       min-height: 0 !important;
+      overflow: hidden !important;
     }
     .sp-code-editor .cm-scroller {
-      overflow: auto !important;
+      overflow-y: auto !important;
+      overflow-x: auto !important;
       height: 100% !important;
-      max-height: 100% !important;
     }
-    .sp-code-editor .cm-content {
-      min-height: auto !important;
+    .sp-code-editor .cm-content,
+    .sp-code-editor .cm-line {
       height: auto !important;
+      min-height: auto !important;
     }
     /* Ensure tabs container doesn't overflow */
     .sp-tabs {
       overflow-x: auto !important;
       flex-shrink: 0 !important;
+    }
+    /* Force SandpackLayout to use flex */
+    .sp-layout {
+      display: flex !important;
+      flex-direction: column !important;
+    }
+    .sp-stack {
+      flex: 1 !important;
+      min-height: 0 !important;
+      overflow: hidden !important;
     }
   `;
   document.head.appendChild(style);
