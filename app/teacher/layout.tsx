@@ -87,7 +87,7 @@ export default function TeacherLayout({
 
   if (profile?.role !== "teacher") return null;
 
-  const isDashboard = pathname === "/teacher/dashboard";
+  const isCoursesPage = pathname === "/teacher/courses";
 
   return (
     <div className="h-screen flex bg-paper overflow-hidden">
@@ -102,7 +102,7 @@ export default function TeacherLayout({
           <div className={`flex items-center mb-4 ${collapsed ? "justify-center" : "justify-between"}`}>
             {!collapsed && (
               <Link
-                href="/teacher/dashboard"
+                href="/teacher/chat/new"
                 className="font-display text-[17px] font-semibold text-ink tracking-[-0.01em] hover:opacity-80 transition-opacity"
               >
                 Omniscience
@@ -152,9 +152,9 @@ export default function TeacherLayout({
         {/* Nav */}
         <div className={collapsed ? "px-1.5 py-1" : "px-3 py-1"}>
           <Link
-            href="/teacher/dashboard"
+            href="/teacher/courses"
             className={`flex items-center rounded-lg font-body text-[13.5px] transition-colors ${
-              isDashboard ? "text-ink bg-ink/[0.06]" : "text-ink/50 hover:text-ink/70 hover:bg-ink/[0.03]"
+              isCoursesPage ? "text-ink bg-ink/[0.06]" : "text-ink/50 hover:text-ink/70 hover:bg-ink/[0.03]"
             } ${collapsed ? "justify-center py-2" : "gap-2.5 px-3 py-2"}`}
             title="我的课程"
           >
@@ -214,7 +214,7 @@ export default function TeacherLayout({
           {collapsed ? (
             <div className="flex flex-col items-center gap-2">
               <Link
-                href="/teacher/dashboard"
+                href="/teacher/courses"
                 className="w-9 h-9 rounded-full bg-ink/[0.08] flex items-center justify-center text-[12px] font-bold text-ink/50 hover:bg-ink/[0.12] transition-colors"
                 title={profile?.display_name || "教师"}
               >

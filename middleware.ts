@@ -60,9 +60,9 @@ export async function middleware(request: NextRequest) {
       console.error("[middleware] Profile fetch exception:", err);
     }
 
-    // Redirect teachers from root to their dashboard
+    // Redirect teachers from root to chat/new
     if (request.nextUrl.pathname === "/" && profileRole === "teacher") {
-      return NextResponse.redirect(new URL("/teacher/dashboard", request.url));
+      return NextResponse.redirect(new URL("/teacher/chat/new", request.url));
     }
 
     const isTeacherRoute =
