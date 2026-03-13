@@ -72,14 +72,6 @@ export function SandpackEditor({
     console.log("[SandpackEditor] files:", fileKeys, "key:", sandpackKey);
   }, [sandpackKey]);
 
-  if (!hasFiles) {
-    return (
-      <div className="flex-1 flex items-center justify-center text-ink/20 font-body text-sm">
-        代码生成后预览将在这里显示...
-      </div>
-    );
-  }
-
   return (
     <div className="h-full flex flex-col">
       {/* Toolbar */}
@@ -122,40 +114,46 @@ export function SandpackEditor({
 
       {/* Sandpack — fills all remaining height via flex-1 + min-h-0 */}
       <div className="flex-1 min-h-0">
-        <SandpackProvider
-          key={sandpackKey}
-          template="react"
-          files={files}
-          theme="light"
-          customSetup={{
-            dependencies: { "framer-motion": "^11.0.0" },
-          }}
-          options={{
-            activeFile: files["/App.js"] ? "/App.js" : fileKeys[0],
-            classes: {
-              "sp-wrapper": "sandpack-fill",
-              "sp-layout": "sandpack-fill",
-              "sp-stack": "sandpack-fill",
-            },
-          }}
-        >
-          <SandpackLayout>
-            {previewMode === "preview" ? (
-              <SandpackPreview
-                showOpenInCodeSandbox={false}
-                showRefreshButton
-              />
-            ) : (
-              <SandpackCodeEditor
-                showTabs
-                showLineNumbers
-                showInlineErrors
-                wrapContent
-                style={{ height: '100%' }}
-              />
-            )}
-          </SandpackLayout>
-        </SandpackProvider>
+        {!hasFiles ? (
+          <div className="flex items-center justify-center h-full text-ink/20 font-body text-sm">
+            代码生成后预览将在这里显示...
+          </div>
+        ) : (
+          <SandpackProvider
+            key={sandpackKey}
+            template="react"
+            files={files}
+            theme="light"
+            customSetup={{
+              dependencies: { "framer-motion": "^11.0.0" },
+            }}
+            options={{
+              activeFile: files["/App.js"] ? "/App.js" : fileKeys[0],
+              classes: {
+                "sp-wrapper": "sandpack-fill",
+                "sp-layout": "sandpack-fill",
+                "sp-stack": "sandpack-fill",
+              },
+            }}
+          >
+            <SandpackLayout>
+              {previewMode === "preview" ? (
+                <SandpackPreview
+                  showOpenInCodeSandbox={false}
+                  showRefreshButton
+                />
+              ) : (
+                <SandpackCodeEditor
+                  showTabs
+                  showLineNumbers
+                  showInlineErrors
+                  wrapContent
+                  style={{ height: '100%' }}
+                />
+              )}
+            </SandpackLayout>
+          </SandpackProvider>
+        )}
       </div>
     </div>
   );
