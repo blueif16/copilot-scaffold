@@ -138,7 +138,7 @@ async def copilotkit_endpoint(request: Dict[str, Any]) -> JSONResponse:
 @app.on_event("startup")
 async def startup_event():
     """Log startup event."""
-    logger.info("Server starting", port=8123)
+    logger.info("Server starting", port=8000)
 
 
 @app.on_event("shutdown")
@@ -149,5 +149,5 @@ async def shutdown_event():
 
 if __name__ == "__main__":
     import uvicorn
-    logger.info("Starting uvicorn server", host="0.0.0.0", port=8123)
-    uvicorn.run(app, host="0.0.0.0", port=8123)
+    logger.info("Starting uvicorn server", host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=8000)

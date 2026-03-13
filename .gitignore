@@ -42,3 +42,4 @@ yarn-error.log*
 # Python
 *.egg-info/
 .eggs/
+logs/
