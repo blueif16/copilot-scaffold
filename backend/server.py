@@ -86,21 +86,37 @@ async def copilotkit_endpoint(request: Dict[str, Any]) -> JSONResponse:
 
     Processes requests from CopilotKit frontend and executes the LangGraph agent.
     """
-    logger.info("CopilotKit request received", request_keys=list(request.keys()))
+    logger.info("[DATA-FLOW] CopilotKit request received", request_keys=list(request.keys()))
 
     try:
         # Extract task from request
         task = request.get("task", "")
         messages = request.get("messages", [])
 
+        # Log incoming state shape
+        logger.info(
+            "[DATA-FLOW] Incoming state from frontend",
+            task=task,
+            message_count=len(messages),
+            messages_sample=messages[:2] if messages else []
+        )
+
         # Execute the graph
-        result = graph.invoke({
+        initial_state = {
             "messages": messages,
             "current_task": task,
             "result": ""
-        })
+        }
 
-        logger.info("Graph execution completed", result_length=len(str(result)))
+        logger.info("[DATA-FLOW] Invoking graph with state", state_shape=list(initial_state.keys()))
+        result = graph.invoke(initial_state)
+
+        # Log outgoing state shape
+        logger.info(
+            "[DATA-FLOW] Graph execution completed",
+            result_keys=list(result.keys()),
+            result_preview=result.get("result", "")[:100]
+        )
 
         return JSONResponse(content={
             "status": "success",
@@ -109,7 +125,7 @@ async def copilotkit_endpoint(request: Dict[str, Any]) -> JSONResponse:
         })
 
     except Exception as e:
-        logger.error("Graph execution failed", error=str(e), error_type=type(e).__name__)
+        logger.error("[DATA-FLOW] Graph execution failed", error=str(e), error_type=type(e).__name__)
         return JSONResponse(
             status_code=500,
             content={

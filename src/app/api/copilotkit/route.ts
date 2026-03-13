@@ -25,3 +25,17 @@ export const POST = async (req: NextRequest) => {
 
   return handleRequest(req);
 };
+
+export const GET = async () => {
+  return new Response(
+    JSON.stringify({
+      status: "healthy",
+      service: "copilotkit-runtime",
+      timestamp: new Date().toISOString(),
+    }),
+    {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    }
+  );
+};
