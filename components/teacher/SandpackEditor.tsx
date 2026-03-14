@@ -86,21 +86,23 @@ export function SandpackEditor({
     .map((k) => `${k}:${files[k].length}`)
     .join("|");
 
-  // Ref to the preview container for screenshot capture
-  const previewContainerRef = useRef<HTMLDivElement>(null);
+  // Ref to the Sandpack container for screenshot capture
+  // Note: We capture the entire Sandpack container (not just preview iframe)
+  // because html2canvas cannot capture iframe content due to same-origin policy
+  const sandpackContainerRef = useRef<HTMLDivElement>(null);
 
   // Inject global styles once
   useEffect(() => { ensureSandpackStyles(); }, []);
 
   // Screenshot capture callback
   const handleCaptureScreenshot = useCallback(async (): Promise<string | null> => {
-    if (!previewContainerRef.current) {
-      console.warn("[SandpackEditor] Preview container ref not available");
+    if (!sandpackContainerRef.current) {
+      console.warn("[SandpackEditor] Sandpack container ref not available");
       return null;
     }
 
     try {
-      const dataUrl = await capturePreviewScreenshot(previewContainerRef.current);
+      const dataUrl = await capturePreviewScreenshot(sandpackContainerRef.current);
       return dataUrl;
     } catch (error) {
       console.error("[SandpackEditor] Screenshot capture failed:", error);
@@ -150,7 +152,7 @@ export function SandpackEditor({
       </div>
 
       {/* Sandpack — fills all remaining height via flex-1 + min-h-0 */}
-      <div className="flex-1 min-h-0">
+      <div ref={sandpackContainerRef} className="flex-1 min-h-0">
         {!hasFiles ? (
           <div className="flex items-center justify-center h-full text-ink/20 font-body text-sm">
             代码生成后预览将在这里显示...
@@ -175,10 +177,7 @@ export function SandpackEditor({
           >
             <SandpackLayout>
               {/* Always render both to preserve state - toggle visibility with CSS */}
-              <div
-                ref={previewContainerRef}
-                className={previewMode === "preview" ? "block" : "hidden"}
-              >
+              <div className={previewMode === "preview" ? "block" : "hidden"}>
                 <SandpackPreview
                   showOpenInCodeSandbox={false}
                   showRefreshButton
