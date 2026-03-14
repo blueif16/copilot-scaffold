@@ -15,6 +15,7 @@ interface Course {
   status: "saved" | "pending-review" | "published";
   files: Record<string, string>;
   thumbnail_url?: string;
+  conversation_id?: string;
   created_at: string;
   updated_at?: string;
 }
@@ -57,7 +58,7 @@ export default function TeacherDashboardPage() {
       const { data, error } = await supabase
         .from("courses")
         .select(
-          "id, title, description, format, status, files, thumbnail_url, created_at, updated_at"
+          "id, title, description, format, status, files, thumbnail_url, conversation_id, created_at, updated_at"
         )
         .eq("teacher_id", profile.id)
         .order("updated_at", { ascending: false });
@@ -66,13 +67,6 @@ export default function TeacherDashboardPage() {
         console.error("Failed to fetch courses:", error);
       } else {
         setCourses(data || []);
-        console.log("[Courses] Loaded courses:", data?.map(c => ({
-          id: c.id,
-          title: c.title,
-          format: c.format,
-          hasThumbnail: !!c.thumbnail_url,
-          thumbnailUrl: c.thumbnail_url || 'none'
-        })));
       }
       setLoading(false);
     };
@@ -81,6 +75,25 @@ export default function TeacherDashboardPage() {
 
   const filtered =
     tab === "all" ? courses : courses.filter((c) => c.status === tab);
+
+  const handlePublish = async (courseId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const supabase = createSupabaseBrowser();
+    const { error } = await supabase
+      .from("courses")
+      .update({ status: "pending-review" })
+      .eq("id", courseId);
+
+    if (error) {
+      console.error("Failed to publish course:", error);
+    } else {
+      setCourses((prev) =>
+        prev.map((c) =>
+          c.id === courseId ? { ...c, status: "pending-review" as const } : c
+        )
+      );
+    }
+  };
 
   // ── Loading skeleton ──────────────────────────────────
 
@@ -212,41 +225,51 @@ export default function TeacherDashboardPage() {
         ) : (
           <div className="grid grid-cols-3 gap-5">
             {filtered.map((course) => (
-              <button
+              <div
                 key={course.id}
-                onClick={() => router.push(`/teacher/courses/${course.id}`)}
                 className="group text-left relative"
               >
                 {/* Preview card */}
-                <div className="aspect-[4/3] rounded-xl border border-ink/[0.08] bg-white overflow-hidden mb-3 transition-shadow group-hover:shadow-[0_2px_12px_rgba(0,0,0,0.06)] group-hover:border-ink/[0.14]">
-                  {course.thumbnail_url ? (
-                    <>
-                      <img
-                        src={course.thumbnail_url}
-                        alt={course.title}
-                        className="w-full h-full object-cover"
-                        onLoad={() => console.log(`[Courses] Thumbnail loaded: ${course.title}`)}
-                        onError={(e) => {
-                          console.error(`[Courses] Thumbnail failed to load: ${course.title}`, course.thumbnail_url);
-                          e.currentTarget.style.display = 'none';
+                <div className="aspect-[4/3] rounded-xl border border-ink/[0.08] bg-white overflow-hidden mb-3 transition-all group-hover:shadow-[0_2px_12px_rgba(0,0,0,0.06)] group-hover:border-ink/[0.14] relative cursor-pointer"
+                  onClick={() => router.push(`/teacher/courses/${course.id}`)}
+                >
+                  {/* Hover overlay with actions */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-ink/80 via-ink/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-end justify-center pb-6 gap-3 z-10">
+                    {course.conversation_id && course.status !== "published" && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          router.push(`/teacher/chat/${course.conversation_id}`);
                         }}
-                      />
-                      {/* Debug overlay */}
-                      <div className="absolute top-2 right-2 px-2 py-1 bg-green-500 text-white text-[10px] rounded opacity-75">
-                        📷 Thumbnail
-                      </div>
-                    </>
+                        className="px-4 py-2 bg-white text-ink rounded-lg font-body text-[13px] font-medium hover:bg-white/90 active:scale-95 transition-all shadow-lg"
+                      >
+                        继续编辑
+                      </button>
+                    )}
+                    {course.status === "saved" && (
+                      <button
+                        onClick={(e) => handlePublish(course.id, e)}
+                        className="px-4 py-2 bg-ink text-white rounded-lg font-body text-[13px] font-medium hover:bg-ink/90 active:scale-95 transition-all shadow-lg"
+                      >
+                        发布审核
+                      </button>
+                    )}
+                  </div>
+                  {course.thumbnail_url ? (
+                    <img
+                      src={course.thumbnail_url}
+                      alt={course.title}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        e.currentTarget.style.display = 'none';
+                      }}
+                    />
                   ) : course.files && (course.files["/Simulation.js"] || course.files["/App.js"]) ? (
                     <div className="h-full p-4 overflow-hidden">
-                      {/* Code preview snippet */}
                       <div className="rounded-lg border border-ink/[0.06] bg-ink/[0.02] p-3 h-full overflow-hidden">
                         <div className="font-mono text-[10px] leading-[1.5] text-ink/50 whitespace-pre-wrap break-all">
                           {(course.files["/Simulation.js"] || course.files["/App.js"] || "").slice(0, 400)}
                         </div>
-                      </div>
-                      {/* Debug overlay */}
-                      <div className="absolute top-2 right-2 px-2 py-1 bg-amber-500 text-white text-[10px] rounded opacity-75">
-                        📝 Code
                       </div>
                     </div>
                   ) : (
@@ -272,10 +295,6 @@ export default function TeacherDashboardPage() {
                           <circle cx="12" cy="8" r="1" fill="currentColor" />
                           <circle cx="16" cy="8" r="1" fill="currentColor" />
                         </svg>
-                      </div>
-                      {/* Debug overlay */}
-                      <div className="absolute top-2 right-2 px-2 py-1 bg-gray-500 text-white text-[10px] rounded opacity-75">
-                        ⚠️ Empty
                       </div>
                     </div>
                   )}
@@ -306,7 +325,7 @@ export default function TeacherDashboardPage() {
                     </span>
                   </div>
                 </div>
-              </button>
+              </div>
             ))}
           </div>
         )}
