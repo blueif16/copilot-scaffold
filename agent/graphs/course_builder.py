@@ -755,7 +755,7 @@ def _detect_format_prompt(messages: list, copilotkit_context: list | None = None
 # ── Graph Builder ────────────────────────────────────────
 
 async def build_course_builder_graph():
-    """Build the course builder StateGraph with ReAct tool loop and MemorySaver checkpointing."""
+    """Build the course builder StateGraph with ReAct tool loop and PostgresSaver checkpointing."""
 
     graph = StateGraph(CourseBuilderState)
 
@@ -769,11 +769,18 @@ async def build_course_builder_graph():
     })
     graph.add_edge("tool_executor", "chat_node")
 
-    # Use MemorySaver for now - PostgreSQL pool hangs on startup
-    # TODO: Debug PostgreSQL AsyncConnectionPool.open() hanging issue
-    from langgraph.checkpoint.memory import MemorySaver
-    checkpointer = MemorySaver()
-    print(f"[course-builder] Using MemorySaver (in-memory checkpointing)")
+    # Use PostgresSaver for production-grade state persistence
+    from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
+    import os
+
+    postgres_uri = os.environ.get("POSTGRES_URI")
+    if postgres_uri:
+        checkpointer = await AsyncPostgresSaver.from_conn_string(postgres_uri)
+        print(f"[course-builder] Using PostgresSaver (DB-backed checkpointing)")
+    else:
+        from langgraph.checkpoint.memory import MemorySaver
+        checkpointer = MemorySaver()
+        print(f"[course-builder] POSTGRES_URI not set, using MemorySaver (in-memory)")
 
     return graph.compile(checkpointer=checkpointer)
 
@@ -781,6 +788,17 @@ async def build_course_builder_graph():
 def build_course_builder_graph_sync():
     """Synchronous wrapper for building the course builder graph."""
     from langgraph.checkpoint.memory import MemorySaver
+    import os
+
+    postgres_uri = os.environ.get("POSTGRES_URI")
+    if postgres_uri:
+        # For sync usage, we still use MemorySaver (sync PostgresSaver needs different setup)
+        # The async version is used in production via CopilotKit
+        print(f"[course-builder] sync mode - using MemorySaver (use async for PostgresSaver)")
+        checkpointer = MemorySaver()
+    else:
+        checkpointer = MemorySaver()
+        print(f"[course-builder] Using MemorySaver (in-memory checkpointing)")
 
     graph = StateGraph(CourseBuilderState)
 
@@ -793,8 +811,5 @@ def build_course_builder_graph_sync():
         END: END,
     })
     graph.add_edge("tool_executor", "chat_node")
-
-    checkpointer = MemorySaver()
-    print(f"[course-builder] Using MemorySaver (in-memory checkpointing)")
 
     return graph.compile(checkpointer=checkpointer)

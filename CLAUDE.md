@@ -59,3 +59,25 @@ curl -X POST http://127.0.0.1:8123/agents/course-builder \
 **Expected output:** SSE stream with `RUN_STARTED`, `TEXT_MESSAGE_CONTENT`, `RUN_FINISHED` events.
 
 **Yes, agents work independently** - you can have normal multi-turn conversations via curl without the frontend.
+
+## State Persistence
+
+**Correct flow:**
+```
+ThreadId → CopilotKit → LangGraph checkpoint → PostgreSQL
+                      ↑
+              messages + files + state (all unified)
+```
+
+- LangGraph checkpoint = source of truth for all agent state (messages, files, images)
+- Your DB tables = only for metadata (conversation.id ↔ thread_id mapping, title, timestamps)
+- Messages restore automatically from checkpoint via CopilotKit (no manual load/save needed)
+- ALWAYS reuse same threadId for existing conversations
+
+**DATA-FLOW logs for debugging:**
+```
+[DATA-FLOW] Checkpoint state: { msgCount, fileCount, totalSize, files: [...] }
+[DATA-FLOW] Messages from checkpoint: N
+[DATA-FLOW] Format select: lab
+[DATA-FLOW] Setting template files: [...]
+```
