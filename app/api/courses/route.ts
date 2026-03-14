@@ -49,29 +49,74 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Insert course into database
-    const { data: course, error } = await supabase
-      .from("courses")
-      .insert({
-        teacher_id: user.id,
-        title,
-        description: description || null,
-        format,
-        files,
-        status: "saved",
-        related_topics: [],
-        conversation_id: conversationId || null,
-        thumbnail_url: thumbnail_url || null,
-      })
-      .select()
-      .single();
+    // Check if course already exists for this conversation
+    let course;
+    let isUpdate = false;
 
-    if (error) {
-      console.error("[courses] Failed to create course:", error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+    if (conversationId) {
+      const { data: existingCourse } = await supabase
+        .from("courses")
+        .select("id")
+        .eq("conversation_id", conversationId)
+        .eq("teacher_id", user.id)
+        .single();
+
+      if (existingCourse) {
+        // Update existing course
+        const { data: updatedCourse, error: updateError } = await supabase
+          .from("courses")
+          .update({
+            title,
+            description: description || null,
+            format,
+            files,
+            thumbnail_url: thumbnail_url || null,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", existingCourse.id)
+          .select()
+          .single();
+
+        if (updateError) {
+          console.error("[courses] Failed to update course:", updateError);
+          return NextResponse.json({ error: updateError.message }, { status: 500 });
+        }
+
+        course = updatedCourse;
+        isUpdate = true;
+      }
     }
 
-    return NextResponse.json({ success: true, course }, { status: 201 });
+    // Insert new course if no existing course found
+    if (!course) {
+      const { data: newCourse, error: insertError } = await supabase
+        .from("courses")
+        .insert({
+          teacher_id: user.id,
+          title,
+          description: description || null,
+          format,
+          files,
+          status: "saved",
+          related_topics: [],
+          conversation_id: conversationId || null,
+          thumbnail_url: thumbnail_url || null,
+        })
+        .select()
+        .single();
+
+      if (insertError) {
+        console.error("[courses] Failed to create course:", insertError);
+        return NextResponse.json({ error: insertError.message }, { status: 500 });
+      }
+
+      course = newCourse;
+    }
+
+    return NextResponse.json(
+      { success: true, course, isUpdate },
+      { status: isUpdate ? 200 : 201 }
+    );
   } catch (error: any) {
     console.error("[courses] POST /courses error:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
