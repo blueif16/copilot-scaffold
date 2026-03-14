@@ -8,6 +8,7 @@ interface SaveCourseRequest {
   format: CourseFormat;
   files: Record<string, string>;
   conversationId?: string;
+  thumbnail_url?: string;
 }
 
 // POST /api/courses - Save a new course
@@ -22,7 +23,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body: SaveCourseRequest = await request.json();
-    const { title, description, format, files, conversationId } = body;
+    const { title, description, format, files, conversationId, thumbnail_url } = body;
 
     // Validate required fields
     if (!title || !format || !files) {
@@ -60,6 +61,7 @@ export async function POST(request: NextRequest) {
         status: "saved",
         related_topics: [],
         conversation_id: conversationId || null,
+        thumbnail_url: thumbnail_url || null,
       })
       .select()
       .single();

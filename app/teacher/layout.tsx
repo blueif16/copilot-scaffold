@@ -12,13 +12,6 @@ interface CourseBuilderHistoryItem {
   updated_at: string;
 }
 
-interface SavedCourse {
-  id: string;
-  title: string;
-  format: "lab" | "quiz" | "dialogue";
-  updated_at: string;
-}
-
 export default function TeacherLayout({
   children,
 }: {
@@ -28,7 +21,6 @@ export default function TeacherLayout({
   const router = useRouter();
   const pathname = usePathname();
   const [builderConversations, setBuilderConversations] = useState<CourseBuilderHistoryItem[]>([]);
-  const [savedCourses, setSavedCourses] = useState<SavedCourse[]>([]);
   const [collapsed, setCollapsed] = useState(false);
 
   useEffect(() => {
@@ -58,23 +50,6 @@ export default function TeacherLayout({
       setBuilderConversations(data || []);
     };
 
-    const loadSavedCourses = async () => {
-      const { data, error } = await supabase
-        .from("courses")
-        .select("id, title, format, updated_at")
-        .eq("status", "saved")
-        .eq("teacher_id", profile.id)
-        .order("updated_at", { ascending: false })
-        .limit(10);
-
-      if (error) {
-        console.error("Failed to fetch saved courses:", error);
-        return;
-      }
-
-      setSavedCourses(data || []);
-    };
-
     const handleConversationCreated = (event: Event) => {
       const detail = (event as CustomEvent<CourseBuilderHistoryItem>).detail;
       if (!detail) return;
@@ -89,23 +64,16 @@ export default function TeacherLayout({
       void loadBuilderConversations();
     };
 
-    const handleCourseCreated = () => {
-      void loadSavedCourses();
-    };
-
     void loadBuilderConversations();
-    void loadSavedCourses();
 
     window.addEventListener("course-builder:conversation-created", handleConversationCreated as EventListener);
     window.addEventListener("course-builder:conversation-updated", handleConversationMutated);
     window.addEventListener("course-builder:conversation-deleted", handleConversationMutated);
-    window.addEventListener("course-builder:course-created", handleCourseCreated);
 
     return () => {
       window.removeEventListener("course-builder:conversation-created", handleConversationCreated as EventListener);
       window.removeEventListener("course-builder:conversation-updated", handleConversationMutated);
       window.removeEventListener("course-builder:conversation-deleted", handleConversationMutated);
-      window.removeEventListener("course-builder:course-created", handleCourseCreated);
     };
   }, [profile?.id]);
 
@@ -206,7 +174,7 @@ export default function TeacherLayout({
             {builderConversations.length > 0 && (
               <>
                 <div className="mx-4 my-2 border-t border-ink/[0.06]" />
-                <div className="flex-1 min-h-0 overflow-y-auto px-3 py-1">
+                <div className="flex-1 min-h-0 overflow-y-auto px-3 py-1 scrollbar-hide">
                   <div>
                     <div className="px-3 py-1.5 text-[11px] font-body text-ink/35 uppercase tracking-wider">
                       历史对话
@@ -236,40 +204,6 @@ export default function TeacherLayout({
               </>
             )}
           </div>
-        )}
-
-        {/* Saved Courses Section */}
-        {!collapsed && savedCourses.length > 0 && (
-          <>
-            <div className="mx-4 my-2 border-t border-ink/[0.06]" />
-            <div className="flex-1 min-h-0 overflow-y-auto px-3 py-1">
-              <div className="px-3 py-1.5 text-[11px] font-body text-ink/35 uppercase tracking-wider">
-                已保存课程
-              </div>
-              <div className="space-y-0.5">
-                {savedCourses.map((course) => {
-                  const href = `/teacher/courses/${course.id}`;
-                  const formatIcon = course.format === "lab" ? "🧪" : course.format === "quiz" ? "📝" : "💬";
-
-                  return (
-                    <Link
-                      key={course.id}
-                      href={href}
-                      className={`block w-full text-left px-3 py-2 rounded-lg text-[13px] font-body transition-colors truncate leading-snug ${
-                        pathname === href
-                          ? "text-ink bg-ink/[0.06]"
-                          : "text-ink/55 hover:text-ink/80 hover:bg-ink/[0.03]"
-                      }`}
-                      title={course.title}
-                    >
-                      <span className="mr-1.5">{formatIcon}</span>
-                      {course.title}
-                    </Link>
-                  );
-                })}
-              </div>
-            </div>
-          </>
         )}
 
         {/* Spacer when collapsed (pushes profile to bottom) */}
