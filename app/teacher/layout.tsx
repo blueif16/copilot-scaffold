@@ -5,6 +5,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { createSupabaseBrowser } from "@/lib/supabase/client";
 import Link from "next/link";
+import StatusToast from "@/components/ui/StatusToast";
 
 interface CourseBuilderHistoryItem {
   id: string;
@@ -22,6 +23,12 @@ export default function TeacherLayout({
   const pathname = usePathname();
   const [builderConversations, setBuilderConversations] = useState<CourseBuilderHistoryItem[]>([]);
   const [collapsed, setCollapsed] = useState(false);
+  const [deleteStatus, setDeleteStatus] = useState<{ show: boolean; message: string; type: "success" | "error" | "loading" }>({
+    show: false,
+    message: "",
+    type: "loading",
+  });
+  const [showDeleteMenu, setShowDeleteMenu] = useState<string | null>(null);
 
   useEffect(() => {
     if (!loading && profile?.role !== "teacher") {
@@ -77,6 +84,39 @@ export default function TeacherLayout({
     };
   }, [profile?.id]);
 
+  const handleDeleteConversation = async (conversationId: string) => {
+    setShowDeleteMenu(null);
+    setDeleteStatus({ show: true, message: "正在删除...", type: "loading" });
+
+    try {
+      const response = await fetch(`/api/course-builder/conversations/${conversationId}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        throw new Error("删除失败");
+      }
+
+      // Remove from local state
+      setBuilderConversations((prev) => prev.filter((c) => c.id !== conversationId));
+
+      // Dispatch event for other components
+      window.dispatchEvent(new CustomEvent("course-builder:conversation-deleted"));
+
+      // If we're on the deleted conversation page, redirect to new
+      if (pathname === `/teacher/chat/${conversationId}`) {
+        router.push("/teacher/chat/new");
+      }
+
+      setDeleteStatus({ show: true, message: "对话已删除", type: "success" });
+      setTimeout(() => setDeleteStatus({ show: false, message: "", type: "loading" }), 2000);
+    } catch (error) {
+      console.error("Failed to delete conversation:", error);
+      setDeleteStatus({ show: true, message: "删除失败，请重试", type: "error" });
+      setTimeout(() => setDeleteStatus({ show: false, message: "", type: "loading" }), 3000);
+    }
+  };
+
   if (loading) {
     return (
       <div className="h-screen flex items-center justify-center bg-paper">
@@ -91,6 +131,13 @@ export default function TeacherLayout({
 
   return (
     <div className="h-screen flex bg-paper overflow-hidden">
+      {/* Delete status toast */}
+      <StatusToast
+        show={deleteStatus.show}
+        message={deleteStatus.message}
+        type={deleteStatus.type}
+      />
+
       {/* ── Sidebar ─────────────────────────────────── */}
       <aside
         className="shrink-0 flex flex-col border-r border-ink/[0.06] bg-paper overflow-hidden transition-[width] duration-200 ease-out"
@@ -182,20 +229,55 @@ export default function TeacherLayout({
                     <div className="space-y-0.5">
                       {builderConversations.map((conversation) => {
                         const href = `/teacher/chat/${conversation.id}`;
+                        const isMenuOpen = showDeleteMenu === conversation.id;
 
                         return (
-                          <Link
-                            key={conversation.id}
-                            href={href}
-                            className={`block w-full text-left px-3 py-2 rounded-lg text-[13px] font-body transition-colors truncate leading-snug ${
-                              pathname === href
-                                ? "text-ink bg-ink/[0.06]"
-                                : "text-ink/55 hover:text-ink/80 hover:bg-ink/[0.03]"
-                            }`}
-                            title={conversation.title || "未命名对话"}
-                          >
-                            {conversation.title || "未命名对话"}
-                          </Link>
+                          <div key={conversation.id} className="relative group">
+                            <Link
+                              href={href}
+                              className={`block w-full text-left px-3 py-2 rounded-lg text-[13px] font-body transition-colors truncate leading-snug ${
+                                pathname === href
+                                  ? "text-ink bg-ink/[0.06]"
+                                  : "text-ink/55 hover:text-ink/80 hover:bg-ink/[0.03]"
+                              }`}
+                              title={conversation.title || "未命名对话"}
+                            >
+                              {conversation.title || "未命名对话"}
+                            </Link>
+                            <button
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setShowDeleteMenu(isMenuOpen ? null : conversation.id);
+                              }}
+                              className="absolute right-2 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center rounded-md text-ink/25 hover:text-ink/60 hover:bg-ink/[0.08] transition-all opacity-0 group-hover:opacity-100"
+                              title="更多选项"
+                            >
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                                <circle cx="12" cy="6" r="1.5" fill="currentColor" />
+                                <circle cx="12" cy="12" r="1.5" fill="currentColor" />
+                                <circle cx="12" cy="18" r="1.5" fill="currentColor" />
+                              </svg>
+                            </button>
+                            {isMenuOpen && (
+                              <>
+                                {/* Backdrop to close menu */}
+                                <div
+                                  className="fixed inset-0 z-40"
+                                  onClick={() => setShowDeleteMenu(null)}
+                                />
+                                {/* Delete menu */}
+                                <div className="absolute right-2 top-full mt-1 z-50 w-32 py-1 bg-white rounded-lg border border-ink/[0.12] shadow-lg">
+                                  <button
+                                    onClick={() => handleDeleteConversation(conversation.id)}
+                                    className="w-full text-left px-3 py-1.5 text-[13px] font-body text-red-600 hover:bg-red-50 transition-colors"
+                                  >
+                                    删除对话
+                                  </button>
+                                </div>
+                              </>
+                            )}
+                          </div>
                         );
                       })}
                     </div>

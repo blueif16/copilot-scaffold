@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
 import { CourseFormat } from "@/lib/types/course-builder";
+import StatusToast from "@/components/ui/StatusToast";
 
 interface SaveDraftButtonProps {
   conversationId: string | null;
@@ -134,27 +134,11 @@ export default function SaveDraftButton({
   return (
     <>
       {/* Top overlay for errors/validation */}
-      <AnimatePresence>
-        {errorMessage && (
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            transition={{ duration: 0.2 }}
-            className="fixed top-4 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 rounded-lg bg-red-50 border border-red-200 shadow-lg"
-          >
-            <div className="flex items-center gap-2">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="text-red-500">
-                <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" />
-                <path d="M12 8v4M12 16h.01" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-              </svg>
-              <span className="text-[13.5px] font-body text-red-700 font-medium">
-                {errorMessage}
-              </span>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <StatusToast
+        show={!!errorMessage}
+        message={errorMessage || ""}
+        type="error"
+      />
 
       {/* Button */}
       <button
