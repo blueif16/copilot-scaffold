@@ -9,6 +9,7 @@ interface SaveDraftButtonProps {
   title: string;
   format: CourseFormat;
   files: Record<string, string>;
+  onCaptureScreenshot?: () => Promise<string | null>;
   onSaveSuccess?: (courseId: string) => void;
 }
 
@@ -19,10 +20,12 @@ export default function SaveDraftButton({
   title,
   format,
   files,
+  onCaptureScreenshot,
   onSaveSuccess,
 }: SaveDraftButtonProps) {
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [loadingMessage, setLoadingMessage] = useState<string>("保存中...");
 
   const isDisabled = !title.trim() || Object.keys(files).length === 0;
 
@@ -36,8 +39,43 @@ export default function SaveDraftButton({
 
     setSaveState("loading");
     setErrorMessage(null);
+    setLoadingMessage("保存中...");
 
     try {
+      let thumbnailUrl: string | undefined;
+
+      // Step 1: Capture screenshot if callback provided
+      if (onCaptureScreenshot) {
+        try {
+          setLoadingMessage("正在生成缩略图...");
+          const dataUrl = await onCaptureScreenshot();
+
+          if (dataUrl) {
+            // Step 2: Upload screenshot to get public URL
+            setLoadingMessage("正在上传缩略图...");
+            const uploadResponse = await fetch("/api/courses/thumbnail", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({ image: dataUrl }),
+            });
+
+            if (uploadResponse.ok) {
+              const uploadData = await uploadResponse.json();
+              thumbnailUrl = uploadData.url;
+            } else {
+              console.warn("[SaveDraftButton] Thumbnail upload failed:", await uploadResponse.text());
+            }
+          }
+        } catch (error) {
+          console.warn("[SaveDraftButton] Screenshot capture/upload failed:", error);
+          // Continue with save even if thumbnail fails
+        }
+      }
+
+      // Step 3: Save course with thumbnail URL
+      setLoadingMessage("保存中...");
       const response = await fetch("/api/courses", {
         method: "POST",
         headers: {
@@ -48,6 +86,7 @@ export default function SaveDraftButton({
           format,
           files,
           conversationId,
+          thumbnail_url: thumbnailUrl,
         }),
       });
 
@@ -147,7 +186,7 @@ export default function SaveDraftButton({
                 strokeLinecap="round"
               />
             </svg>
-            保存中...
+            {loadingMessage}
           </>
         )}
         {saveState === "success" && (

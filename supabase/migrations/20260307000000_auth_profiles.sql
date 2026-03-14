@@ -38,13 +38,9 @@ create table public.courses (
   teacher_id uuid references public.profiles(id) not null,
   title text not null,
   description text,
-  format text check (format in ('lab', 'quiz')) not null default 'lab',
-  age_range int4range,
-  status text check (status in ('draft', 'published')) default 'draft',
-  -- Generated content
-  simulation_jsx text,              -- Single JSX source for Sandpack
-  interactions_json jsonb,          -- Event→Reaction mappings
-  companion_config jsonb,           -- Companion personality, knowledge context
+  format text check (format in ('lab', 'quiz', 'dialogue')) not null default 'lab',
+  related_topics text[] default '{}',  -- List of related topic IDs or keywords
+  status text check (status in ('saved', 'pending-review', 'published')) default 'saved',
   thumbnail_url text,
   created_at timestamptz default now(),
   updated_at timestamptz default now()

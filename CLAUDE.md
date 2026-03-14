@@ -13,9 +13,14 @@ docker exec -i omniscience-supabase-db psql -U postgres -d postgres < supabase/m
 
 # 2. Restart PostgREST to reload schema cache (CRITICAL - always do this after schema changes)
 docker restart omniscience-supabase-rest
+
+# 3. If migration affects storage tables, restart storage service
+docker restart omniscience-supabase-storage
 ```
 
 **Why restart PostgREST?** PostgREST caches the database schema. After adding/modifying columns, you MUST restart it or it will return "column does not exist" errors even though the column exists in the database.
+
+**Storage table ownership:** Storage tables (storage.objects, storage.buckets) MUST be owned by supabase_storage_admin. If you get "new row violates row-level security policy" errors on storage uploads, check table ownership with `SELECT tableowner FROM pg_tables WHERE schemaname = 'storage';`
 
 ## Local Development
 

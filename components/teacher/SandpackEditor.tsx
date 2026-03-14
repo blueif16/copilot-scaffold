@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef, useCallback } from "react";
 import {
   SandpackProvider,
   SandpackLayout,
@@ -9,6 +9,7 @@ import {
 } from "@codesandbox/sandpack-react";
 import SaveDraftButton from "@/components/teacher/SaveDraftButton";
 import { CourseTemplate } from "@/lib/types/course-builder";
+import { capturePreviewScreenshot } from "@/lib/utils/screenshot";
 
 // Inject global Sandpack styles once
 function ensureSandpackStyles() {
@@ -67,6 +68,7 @@ export function SandpackEditor({
   selectedTemplate,
   conversationId,
   conversationTitle,
+  onCaptureScreenshot,
 }: {
   files: Record<string, string>;
   previewMode: "preview" | "code";
@@ -74,6 +76,7 @@ export function SandpackEditor({
   selectedTemplate: CourseTemplate | null;
   conversationId: string | null;
   conversationTitle: string;
+  onCaptureScreenshot?: () => Promise<string | null>;
 }) {
   const fileKeys = Object.keys(files);
   const hasFiles = fileKeys.length > 0;
@@ -83,8 +86,27 @@ export function SandpackEditor({
     .map((k) => `${k}:${files[k].length}`)
     .join("|");
 
+  // Ref to the preview container for screenshot capture
+  const previewContainerRef = useRef<HTMLDivElement>(null);
+
   // Inject global styles once
   useEffect(() => { ensureSandpackStyles(); }, []);
+
+  // Screenshot capture callback
+  const handleCaptureScreenshot = useCallback(async (): Promise<string | null> => {
+    if (!previewContainerRef.current) {
+      console.warn("[SandpackEditor] Preview container ref not available");
+      return null;
+    }
+
+    try {
+      const dataUrl = await capturePreviewScreenshot(previewContainerRef.current);
+      return dataUrl;
+    } catch (error) {
+      console.error("[SandpackEditor] Screenshot capture failed:", error);
+      return null;
+    }
+  }, []);
 
 
   return (
@@ -115,6 +137,7 @@ export function SandpackEditor({
             title={conversationTitle}
             format={selectedTemplate?.format || "lab"}
             files={files}
+            onCaptureScreenshot={handleCaptureScreenshot}
             onSaveSuccess={(courseId) => {
               window.dispatchEvent(
                 new CustomEvent("course-builder:course-created", {
@@ -152,7 +175,10 @@ export function SandpackEditor({
           >
             <SandpackLayout>
               {/* Always render both to preserve state - toggle visibility with CSS */}
-              <div className={previewMode === "preview" ? "block" : "hidden"}>
+              <div
+                ref={previewContainerRef}
+                className={previewMode === "preview" ? "block" : "hidden"}
+              >
                 <SandpackPreview
                   showOpenInCodeSandbox={false}
                   showRefreshButton

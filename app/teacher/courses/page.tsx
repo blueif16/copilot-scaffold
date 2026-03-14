@@ -14,6 +14,7 @@ interface Course {
   format: "lab" | "quiz" | "dialogue";
   status: "saved" | "pending-review" | "published";
   files: Record<string, string>;
+  thumbnail_url?: string;
   created_at: string;
   updated_at?: string;
 }
@@ -56,7 +57,7 @@ export default function TeacherDashboardPage() {
       const { data, error } = await supabase
         .from("courses")
         .select(
-          "id, title, description, format, status, files, created_at, updated_at"
+          "id, title, description, format, status, files, thumbnail_url, created_at, updated_at"
         )
         .eq("teacher_id", profile.id)
         .order("updated_at", { ascending: false });
@@ -65,6 +66,13 @@ export default function TeacherDashboardPage() {
         console.error("Failed to fetch courses:", error);
       } else {
         setCourses(data || []);
+        console.log("[Courses] Loaded courses:", data?.map(c => ({
+          id: c.id,
+          title: c.title,
+          format: c.format,
+          hasThumbnail: !!c.thumbnail_url,
+          thumbnailUrl: c.thumbnail_url || 'none'
+        })));
       }
       setLoading(false);
     };
@@ -207,17 +215,38 @@ export default function TeacherDashboardPage() {
               <button
                 key={course.id}
                 onClick={() => router.push(`/teacher/courses/${course.id}`)}
-                className="group text-left"
+                className="group text-left relative"
               >
                 {/* Preview card */}
                 <div className="aspect-[4/3] rounded-xl border border-ink/[0.08] bg-white overflow-hidden mb-3 transition-shadow group-hover:shadow-[0_2px_12px_rgba(0,0,0,0.06)] group-hover:border-ink/[0.14]">
-                  {course.files && (course.files["/Simulation.js"] || course.files["/App.js"]) ? (
+                  {course.thumbnail_url ? (
+                    <>
+                      <img
+                        src={course.thumbnail_url}
+                        alt={course.title}
+                        className="w-full h-full object-cover"
+                        onLoad={() => console.log(`[Courses] Thumbnail loaded: ${course.title}`)}
+                        onError={(e) => {
+                          console.error(`[Courses] Thumbnail failed to load: ${course.title}`, course.thumbnail_url);
+                          e.currentTarget.style.display = 'none';
+                        }}
+                      />
+                      {/* Debug overlay */}
+                      <div className="absolute top-2 right-2 px-2 py-1 bg-green-500 text-white text-[10px] rounded opacity-75">
+                        📷 Thumbnail
+                      </div>
+                    </>
+                  ) : course.files && (course.files["/Simulation.js"] || course.files["/App.js"]) ? (
                     <div className="h-full p-4 overflow-hidden">
                       {/* Code preview snippet */}
                       <div className="rounded-lg border border-ink/[0.06] bg-ink/[0.02] p-3 h-full overflow-hidden">
                         <div className="font-mono text-[10px] leading-[1.5] text-ink/50 whitespace-pre-wrap break-all">
                           {(course.files["/Simulation.js"] || course.files["/App.js"] || "").slice(0, 400)}
                         </div>
+                      </div>
+                      {/* Debug overlay */}
+                      <div className="absolute top-2 right-2 px-2 py-1 bg-amber-500 text-white text-[10px] rounded opacity-75">
+                        📝 Code
                       </div>
                     </div>
                   ) : (
@@ -243,6 +272,10 @@ export default function TeacherDashboardPage() {
                           <circle cx="12" cy="8" r="1" fill="currentColor" />
                           <circle cx="16" cy="8" r="1" fill="currentColor" />
                         </svg>
+                      </div>
+                      {/* Debug overlay */}
+                      <div className="absolute top-2 right-2 px-2 py-1 bg-gray-500 text-white text-[10px] rounded opacity-75">
+                        ⚠️ Empty
                       </div>
                     </div>
                   )}
