@@ -96,7 +96,7 @@ export default function SaveDraftButton({
       }
 
       const data = await response.json();
-      const courseId = data.id;
+      const courseId = data.course?.id || data.id;
 
       // Success state
       setSaveState("success");
