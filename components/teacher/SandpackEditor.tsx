@@ -96,6 +96,50 @@ export function SandpackEditor({
 
   // Screenshot capture callback
   const handleCaptureScreenshot = useCallback(async (): Promise<string | null> => {
+    // Try backend screenshot first (renders actual preview)
+    try {
+      const appJs = files["/App.js"] || files["App.js"] || "";
+      if (appJs) {
+        const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    body { margin: 0; padding: 20px; font-family: system-ui, -apple-system, sans-serif; }
+    #root { width: 100%; height: 100%; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+    ${appJs}
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>
+        `.trim();
+
+        const response = await fetch("http://localhost:8123/api/screenshot", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ html, width: 800, height: 600 }),
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          return data.image;
+        }
+      }
+    } catch (error) {
+      console.warn("[SandpackEditor] Backend screenshot failed, falling back to html2canvas:", error);
+    }
+
+    // Fallback to html2canvas (captures container, not iframe content)
     if (!sandpackContainerRef.current) {
       console.warn("[SandpackEditor] Sandpack container ref not available");
       return null;
@@ -108,7 +152,7 @@ export function SandpackEditor({
       console.error("[SandpackEditor] Screenshot capture failed:", error);
       return null;
     }
-  }, []);
+  }, [files]);
 
 
   return (
