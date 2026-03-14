@@ -15,7 +15,6 @@ import {
   CourseBuilderAgentState,
   UploadedImage,
 } from "@/lib/types/course-builder";
-import SaveDraftButton from "@/components/teacher/SaveDraftButton";
 import MessageActions from "@/components/teacher/MessageActions";
 import { getTemplateFiles } from "@/lib/templates";
 import Markdown from "react-markdown";
@@ -1062,6 +1061,8 @@ function CourseBuilderContent({
           previewMode={previewMode}
           onPreviewModeChange={setPreviewMode}
           selectedTemplate={selectedTemplate}
+          conversationId={currentConversationId}
+          conversationTitle={generateConversationTitle()}
         />
       </div>
     </div>
