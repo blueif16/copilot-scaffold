@@ -4,6 +4,19 @@
 
 - **Docker context is remote**: All Docker operations (docker-compose, docker build, docker exec) run on the remote server, not locally. The Docker context is already configured and active.
 
+## Database Migrations
+
+**Applying migrations to remote server:**
+```bash
+# 1. Apply SQL migration via Docker
+docker exec -i omniscience-supabase-db psql -U postgres -d postgres < supabase/migrations/MIGRATION_FILE.sql
+
+# 2. Restart PostgREST to reload schema cache (CRITICAL - always do this after schema changes)
+docker restart omniscience-supabase-rest
+```
+
+**Why restart PostgREST?** PostgREST caches the database schema. After adding/modifying columns, you MUST restart it or it will return "column does not exist" errors even though the column exists in the database.
+
 ## Local Development
 
 **CRITICAL: Always use the venv Python, not system Python**

@@ -12,13 +12,13 @@ interface Course {
   title: string;
   description?: string;
   format: "lab" | "quiz" | "dialogue";
-  status: "draft" | "published";
-  simulation_jsx?: string;
+  status: "saved" | "pending-review" | "published";
+  files: Record<string, string>;
   created_at: string;
   updated_at?: string;
 }
 
-type Tab = "all" | "draft" | "published";
+type Tab = "all" | "saved" | "pending-review" | "published";
 
 function timeAgo(dateStr: string): string {
   const now = Date.now();
@@ -56,7 +56,7 @@ export default function TeacherDashboardPage() {
       const { data, error } = await supabase
         .from("courses")
         .select(
-          "id, title, description, format, status, simulation_jsx, created_at, updated_at"
+          "id, title, description, format, status, files, created_at, updated_at"
         )
         .eq("teacher_id", profile.id)
         .order("updated_at", { ascending: false });
@@ -129,7 +129,8 @@ export default function TeacherDashboardPage() {
           {(
             [
               ["all", "全部"],
-              ["draft", "草稿"],
+              ["saved", "已保存"],
+              ["pending-review", "待审核"],
               ["published", "已发布"],
             ] as [Tab, string][]
           ).map(([key, label]) => {
@@ -184,8 +185,10 @@ export default function TeacherDashboardPage() {
             <h2 className="font-display text-xl font-medium text-ink mb-1.5">
               {tab === "all"
                 ? "还没有课程"
-                : tab === "draft"
-                ? "没有草稿"
+                : tab === "saved"
+                ? "没有已保存的课程"
+                : tab === "pending-review"
+                ? "没有待审核的课程"
                 : "没有已发布的课程"}
             </h2>
             <p className="font-body text-[14px] text-ink/40 mb-6 text-center max-w-sm">
@@ -208,12 +211,12 @@ export default function TeacherDashboardPage() {
               >
                 {/* Preview card */}
                 <div className="aspect-[4/3] rounded-xl border border-ink/[0.08] bg-white overflow-hidden mb-3 transition-shadow group-hover:shadow-[0_2px_12px_rgba(0,0,0,0.06)] group-hover:border-ink/[0.14]">
-                  {course.simulation_jsx ? (
+                  {course.files && (course.files["/Simulation.js"] || course.files["/App.js"]) ? (
                     <div className="h-full p-4 overflow-hidden">
                       {/* Code preview snippet */}
                       <div className="rounded-lg border border-ink/[0.06] bg-ink/[0.02] p-3 h-full overflow-hidden">
                         <div className="font-mono text-[10px] leading-[1.5] text-ink/50 whitespace-pre-wrap break-all">
-                          {course.simulation_jsx.slice(0, 400)}
+                          {(course.files["/Simulation.js"] || course.files["/App.js"] || "").slice(0, 400)}
                         </div>
                       </div>
                     </div>
@@ -251,9 +254,14 @@ export default function TeacherDashboardPage() {
                     <h3 className="font-body text-[14px] font-medium text-ink truncate flex-1 group-hover:text-ink/80 transition-colors">
                       {course.title}
                     </h3>
-                    {course.status === "draft" && (
+                    {course.status === "saved" && (
                       <span className="shrink-0 px-1.5 py-0.5 text-[10px] font-body text-ink/35 bg-ink/[0.04] rounded">
-                        草稿
+                        已保存
+                      </span>
+                    )}
+                    {course.status === "pending-review" && (
+                      <span className="shrink-0 px-1.5 py-0.5 text-[10px] font-body text-amber-600 bg-amber-50 rounded">
+                        待审核
                       </span>
                     )}
                   </div>

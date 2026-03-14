@@ -2,6 +2,21 @@
 
 export type CourseFormat = "lab" | "quiz" | "dialogue";
 
+// Database course record
+export interface Course {
+  id: string;
+  teacher_id: string;
+  title: string;
+  description: string | null;
+  format: CourseFormat;
+  related_topics: string[];  // List of related topic IDs or keywords
+  status: "saved" | "pending-review" | "published";
+  files: Record<string, string>;  // JSONB: { "/App.js": "...", "/Simulation.js": "...", ... }
+  thumbnail_url: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface CourseTemplate {
   id: string;
   name: string;

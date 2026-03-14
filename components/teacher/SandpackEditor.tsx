@@ -65,11 +65,15 @@ export function SandpackEditor({
   previewMode,
   onPreviewModeChange,
   selectedTemplate,
+  conversationId,
+  conversationTitle,
 }: {
   files: Record<string, string>;
   previewMode: "preview" | "code";
   onPreviewModeChange: (mode: "preview" | "code") => void;
   selectedTemplate: CourseTemplate | null;
+  conversationId: string | null;
+  conversationTitle: string;
 }) {
   const fileKeys = Object.keys(files);
   const hasFiles = fileKeys.length > 0;
@@ -107,10 +111,17 @@ export function SandpackEditor({
         </div>
         <div className="flex items-center gap-1">
           <SaveDraftButton
-            title={selectedTemplate?.name || "新课程"}
-            description={selectedTemplate?.description}
+            conversationId={conversationId}
+            title={conversationTitle}
             format={selectedTemplate?.format || "lab"}
             files={files}
+            onSaveSuccess={(courseId) => {
+              window.dispatchEvent(
+                new CustomEvent("course-builder:course-created", {
+                  detail: { id: courseId }
+                })
+              );
+            }}
           />
         </div>
       </div>
