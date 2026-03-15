@@ -303,7 +303,7 @@ export default function TeacherLayout({
                 {(profile?.display_name || "T").charAt(0).toUpperCase()}
               </Link>
               <button
-                onClick={() => signOut()}
+                onClick={async () => { await signOut(); router.push('/'); }}
                 className="w-8 h-8 flex items-center justify-center rounded-md text-ink/25 hover:text-ink/50 hover:bg-ink/[0.04] transition-colors"
                 title="退出登录"
               >
@@ -325,7 +325,7 @@ export default function TeacherLayout({
                 </div>
               </div>
               <button
-                onClick={() => signOut()}
+                onClick={async () => { await signOut(); router.push('/'); }}
                 className="w-7 h-7 flex items-center justify-center rounded-md text-ink/25 hover:text-ink/50 hover:bg-ink/[0.04] transition-colors shrink-0"
                 title="退出登录"
               >

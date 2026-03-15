@@ -1,5 +1,8 @@
 "use client";
 
+// Force dynamic to prevent static rendering which can cause auth issues
+export const dynamic = "force-dynamic";
+
 import { useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
@@ -24,7 +27,6 @@ export default function LoginPage() {
     try {
       console.log("[login] Starting login for:", email);
 
-      // Use Supabase client - it should handle cookies automatically
       const { data, error: signInError } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -36,8 +38,11 @@ export default function LoginPage() {
 
       console.log("[login] Login successful:", data.user?.email);
 
-      // Redirect with full page reload
-      window.location.href = "/";
+      // Small delay to ensure cookie is written before redirect
+      // This prevents race condition where middleware doesn't see session
+      setTimeout(() => {
+        window.location.href = "/teacher/chat/new";
+      }, 100);
     } catch (err: any) {
       console.error("[login] Login error:", err.message || err);
       setError(err.message || t.loginError);
