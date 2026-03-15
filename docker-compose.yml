@@ -74,7 +74,9 @@ services:
       API_EXTERNAL_URL: ${SUPABASE_PUBLIC_URL:-http://localhost:8000}
       GOTRUE_DB_DRIVER: postgres
       GOTRUE_DB_DATABASE_URL: postgres://supabase_auth_admin:${POSTGRES_PASSWORD:-your-super-secret-and-long-postgres-password}@supabase-db:5432/postgres
-      GOTRUE_SITE_URL: ${SITE_URL:-http://localhost:3082}
+      GOTRUE_SITE_URL: ${SITE_URL:-http://66.42.117.148:3082}
+      GOTRUE_COOKIE_DOMAIN: ${COOKIE_DOMAIN:-66.42.117.148}
+      GOTRUE_COOKIE_SAME_SITE: lax
       GOTRUE_URI_ALLOW_LIST: ${ADDITIONAL_REDIRECT_URLS:-}
       GOTRUE_DISABLE_SIGNUP: ${DISABLE_SIGNUP:-false}
       GOTRUE_JWT_ADMIN_ROLES: service_role
@@ -272,7 +274,9 @@ services:
     environment:
       - BACKEND_URL=http://backend:8123
       - NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL:-http://localhost:8000}
+      - SUPABASE_URL=http://kong:8000
       - NEXT_PUBLIC_SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
+      - JWT_SECRET=${JWT_SECRET}
     depends_on:
       backend:
         condition: service_healthy
