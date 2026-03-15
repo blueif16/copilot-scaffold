@@ -5,7 +5,11 @@ import { NextResponse, type NextRequest } from "next/server";
  * Supabase cookie name format: sb-{project-ref}-auth-token
  */
 function getSupabaseAuthCookieName(): string {
-  return 'sb-66-auth-token';
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || '';
+  const hostname = new URL(supabaseUrl).hostname;
+  // Supabase uses just the first part of hostname before first dot
+  const projectRef = hostname.split('.')[0];
+  return `sb-${projectRef}-auth-token`;
 }
 
 /**

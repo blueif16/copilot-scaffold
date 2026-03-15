@@ -1097,8 +1097,9 @@ export default function CourseBuilder({ initialConversation }: CourseBuilderProp
       console.log("[DATA-FLOW] CourseBuilder: Existing conversation, reusing threadId:", initialConversation.threadId);
       return initialConversation.threadId;
     }
-    // New conversation - use the threadId (will be created on first message)
-    return initialConversation?.threadId || crypto.randomUUID();
+    // New conversation - generate threadId (will be created on first message)
+    // Use crypto.randomUUID on client, fallback for SSR
+    return initialConversation?.threadId || (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`);
   });
   const [conversationId, setConversationId] = useState<string | null>(initialConversation?.id || null);
   const initialPhase: CourseBuilderPhase = initialConversation ? "chat" : "landing";
