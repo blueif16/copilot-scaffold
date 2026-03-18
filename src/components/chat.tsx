@@ -6,6 +6,45 @@ import { useAgent } from "@/hooks/use-agent";
 import { useState, useRef, useEffect } from "react";
 import { cn } from "@/lib/utils";
 
+function CopyButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <button
+      className="rounded p-1 text-muted-foreground transition-colors hover:text-foreground"
+      onClick={() => {
+        navigator.clipboard.writeText(text);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1500);
+      }}
+      title="Copy"
+      type="button"
+    >
+      {copied ? (
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+      ) : (
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+      )}
+    </button>
+  );
+}
+
+function ThumbUpButton() {
+  const [active, setActive] = useState(false);
+  return (
+    <button
+      className={cn(
+        "rounded p-1 transition-colors",
+        active ? "text-foreground" : "text-muted-foreground hover:text-foreground"
+      )}
+      onClick={() => setActive((v) => !v)}
+      title="Good response"
+      type="button"
+    >
+      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill={active ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M7 10v12"/><path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2a3.13 3.13 0 0 1 3 3.88Z"/></svg>
+    </button>
+  );
+}
+
 export function Chat() {
   const { state, running } = useAgent();
   const {
@@ -18,7 +57,6 @@ export function Chat() {
   const [input, setInput] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Auto-scroll to bottom on new messages
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
@@ -41,7 +79,7 @@ export function Chat() {
             </div>
           )}
 
-          {messages.map((msg: any) => (
+          {messages.filter((msg: any) => msg.content?.trim()).map((msg: any) => (
             <div
               key={msg.id}
               className={cn(
@@ -49,16 +87,19 @@ export function Chat() {
                 msg.role === "user" ? "justify-end" : "justify-start"
               )}
             >
-              <div
-                className={cn(
-                  "max-w-[80%] rounded-2xl px-4 py-3",
-                  msg.role === "user"
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-muted text-foreground"
-                )}
-              >
-                <p className="whitespace-pre-wrap text-sm">{msg.content}</p>
-              </div>
+              {msg.role === "user" ? (
+                <div className="max-w-[80%] rounded-2xl bg-primary px-4 py-3 text-primary-foreground">
+                  <p className="whitespace-pre-wrap text-sm">{msg.content}</p>
+                </div>
+              ) : (
+                <div className="flex flex-col items-start">
+                  <p className="whitespace-pre-wrap text-sm text-foreground">{msg.content}</p>
+                  <div className="mt-1 flex items-center gap-0.5">
+                    <CopyButton text={msg.content} />
+                    <ThumbUpButton />
+                  </div>
+                </div>
+              )}
             </div>
           ))}
 
@@ -79,7 +120,7 @@ export function Chat() {
       </div>
 
       {/* Input */}
-      <div className="sticky bottom-0 border-t bg-background">
+      <div className="sticky bottom-0 bg-background">
         <div className="mx-auto flex max-w-3xl items-center gap-2 px-4 py-4">
           <input
             autoFocus
@@ -97,20 +138,21 @@ export function Chat() {
           />
           {isLoading ? (
             <button
-              className="rounded-xl bg-destructive px-4 py-3 text-sm font-medium text-destructive-foreground"
+              className="flex items-center justify-center rounded-xl border bg-background p-3 text-foreground hover:bg-muted"
               onClick={stopGeneration}
               type="button"
+              title="Stop"
             >
-              Stop
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>
             </button>
           ) : (
             <button
-              className="rounded-xl bg-primary px-4 py-3 text-sm font-medium text-primary-foreground disabled:opacity-50"
+              className="flex items-center justify-center rounded-xl bg-primary p-3 text-primary-foreground disabled:opacity-50"
               disabled={!input.trim()}
               onClick={handleSend}
               type="button"
             >
-              Send
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 19V5"/><path d="M5 12l7-7 7 7"/></svg>
             </button>
           )}
         </div>
