@@ -2,6 +2,17 @@
 
 Production-ready scaffold for building full-stack AI agents with CopilotKit frontend integration and LangGraph backend orchestration.
 
+## Pinned Versions (Breaking Change Notice)
+
+| Package | Pinned Version | Reason |
+|---|---|---|
+| `copilotkit` | `==0.1.75` | v0.1.76+ broke import: `langchain.agents.middleware` removed |
+| `langgraph` | `>=0.3.25,<1.1.0` | Required by copilotkit 0.1.75; older `<0.3` range is incompatible |
+
+**API used**: `CopilotKitRemoteEndpoint` + `LangGraphAGUIAgent` (correct for 0.1.75)
+
+Do **not** upgrade `copilotkit` past `0.1.75` until the upstream import bug is resolved.
+
 ## Features
 
 - **Frontend**: Next.js 15 + React 19 + TypeScript + CopilotKit
