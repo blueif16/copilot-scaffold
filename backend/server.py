@@ -1,157 +1,40 @@
-"""FastAPI server with CopilotKit integration."""
-import json
-import logging
-from datetime import datetime
-from typing import Any, Dict
+"""FastAPI server with CopilotKit SDK integration."""
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from copilotkit import CopilotKitSDK, LangGraphAgent
+from copilotkit.integrations.fastapi import add_fastapi_endpoint
 
 from agent.graph import graph
 
+app = FastAPI(title="CopilotKit + LangGraph Backend", version="0.1.0")
 
-# Configure structured logging
-class StructuredLogger:
-    """Modal-style structured JSON logger."""
-
-    def __init__(self, name: str):
-        self.name = name
-        self.logger = logging.getLogger(name)
-        self.logger.setLevel(logging.INFO)
-
-        # Remove default handlers
-        self.logger.handlers = []
-
-        # Add console handler with JSON formatter
-        handler = logging.StreamHandler()
-        handler.setLevel(logging.INFO)
-        self.logger.addHandler(handler)
-
-    def _log(self, level: str, message: str, **kwargs):
-        """Log structured JSON message."""
-        log_entry = {
-            "timestamp": datetime.utcnow().isoformat() + "Z",
-            "level": level,
-            "message": message,
-            "service": self.name,
-            **kwargs
-        }
-        print(json.dumps(log_entry))
-
-    def info(self, message: str, **kwargs):
-        self._log("INFO", message, **kwargs)
-
-    def error(self, message: str, **kwargs):
-        self._log("ERROR", message, **kwargs)
-
-    def warning(self, message: str, **kwargs):
-        self._log("WARNING", message, **kwargs)
-
-
-logger = StructuredLogger("copilot-backend")
-
-# Create FastAPI app
-app = FastAPI(
-    title="CopilotKit + LangGraph Backend - Science Labs",
-    description="Backend server for CopilotKit with LangGraph agent for Science Labs",
-    version="0.1.0"
-)
-
-# Configure CORS for localhost:3000
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=[os.getenv("FRONTEND_URL", "http://localhost:3000")],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+# CopilotKit SDK handles AG-UI protocol, streaming, and state sync
+sdk = CopilotKitSDK(
+    agents=[
+        LangGraphAgent(
+            name="agent",
+            description="General-purpose assistant agent",
+            graph=graph,
+        )
+    ]
+)
+
+add_fastapi_endpoint(app, sdk, "/copilotkit")
+
 
 @app.get("/health")
-async def health_check() -> Dict[str, Any]:
-    """Health check endpoint."""
-    logger.info("Health check requested")
-    return {
-        "status": "healthy",
-        "service": "copilot-backend",
-        "timestamp": datetime.utcnow().isoformat() + "Z"
-    }
-
-
-@app.post("/copilotkit")
-async def copilotkit_endpoint(request: Dict[str, Any]) -> JSONResponse:
-    """
-    CopilotKit runtime endpoint.
-
-    Processes requests from CopilotKit frontend and executes the LangGraph agent.
-    """
-    logger.info("[DATA-FLOW] CopilotKit request received", request_keys=list(request.keys()))
-
-    try:
-        # Extract task from request
-        task = request.get("task", "")
-        messages = request.get("messages", [])
-
-        # Log incoming state shape
-        logger.info(
-            "[DATA-FLOW] Incoming state from frontend",
-            task=task,
-            message_count=len(messages),
-            messages_sample=messages[:2] if messages else []
-        )
-
-        # Execute the graph with LabState
-        initial_state = {
-            "messages": messages,
-            "active_lab": None,
-            "active_module": None,
-            "lab_progress": {},
-            "student_name": None,
-            "pending_approval": None,
-            "result": "",
-        }
-
-        logger.info("[DATA-FLOW] Invoking graph with state", state_shape=list(initial_state.keys()))
-        result = graph.invoke(initial_state)
-
-        # Log outgoing state shape
-        logger.info(
-            "[DATA-FLOW] Graph execution completed",
-            result_keys=list(result.keys()),
-            active_lab=result.get("active_lab"),
-        )
-
-        return JSONResponse(content={
-            "status": "success",
-            "result": result.get("result", ""),
-            "state": result
-        })
-
-    except Exception as e:
-        logger.error("[DATA-FLOW] Graph execution failed", error=str(e), error_type=type(e).__name__)
-        return JSONResponse(
-            status_code=500,
-            content={
-                "status": "error",
-                "error": str(e)
-            }
-        )
-
-
-@app.on_event("startup")
-async def startup_event():
-    """Log startup event."""
-    logger.info("Server starting", port=8000)
-
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    """Log shutdown event."""
-    logger.info("Server shutting down")
-
-
-if __name__ == "__main__":
-    import uvicorn
-    logger.info("Starting uvicorn server", host="0.0.0.0", port=8000)
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+async def health():
+    return {"status": "healthy"}
