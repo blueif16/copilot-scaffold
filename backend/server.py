@@ -1,4 +1,4 @@
-"""FastAPI server with CopilotKit SDK integration."""
+"""FastAPI server with AG-UI + LangGraph integration."""
 import os
 from dotenv import load_dotenv
 
@@ -6,8 +6,8 @@ load_dotenv()
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from copilotkit import CopilotKitRemoteEndpoint, LangGraphAGUIAgent
-from copilotkit.integrations.fastapi import add_fastapi_endpoint
+from copilotkit import LangGraphAGUIAgent
+from ag_ui_langgraph import add_langgraph_fastapi_endpoint
 
 from agent.graph import graph
 
@@ -21,19 +21,22 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-sdk = CopilotKitRemoteEndpoint(
-    agents=[
-        LangGraphAGUIAgent(
-            name="agent",
-            description="General-purpose assistant agent",
-            graph=graph,
-        )
-    ]
+add_langgraph_fastapi_endpoint(
+    app=app,
+    agent=LangGraphAGUIAgent(
+        name="agent",
+        description="General-purpose assistant agent",
+        graph=graph,
+    ),
+    path="/copilotkit",
 )
-
-add_fastapi_endpoint(app, sdk, "/copilotkit")
 
 
 @app.get("/health")
 async def health():
     return {"status": "healthy"}
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)

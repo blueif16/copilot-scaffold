@@ -1,6 +1,7 @@
 "use client";
 
-import { useCopilotChat } from "@copilotkit/react-core";
+import { useCopilotChatInternal } from "@copilotkit/react-core";
+import { TextMessage, Role } from "@copilotkit/runtime-client-gql";
 import { useAgent } from "@/hooks/use-agent";
 import { useState, useRef, useEffect } from "react";
 import { cn } from "@/lib/utils";
@@ -8,11 +9,11 @@ import { cn } from "@/lib/utils";
 export function Chat() {
   const { state, running } = useAgent();
   const {
-    visibleMessages = [],
+    messages = [],
     appendMessage,
     stopGeneration,
     isLoading,
-  } = useCopilotChat();
+  } = useCopilotChatInternal();
 
   const [input, setInput] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -20,13 +21,13 @@ export function Chat() {
   // Auto-scroll to bottom on new messages
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [visibleMessages]);
+  }, [messages]);
 
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
     const text = input;
     setInput("");
-    appendMessage({ role: "user", content: text } as any);
+    appendMessage(new TextMessage({ role: Role.User, content: text }));
   };
 
   return (
@@ -34,13 +35,13 @@ export function Chat() {
       {/* Messages */}
       <div className="flex-1 overflow-y-auto">
         <div className="mx-auto max-w-3xl px-4 py-8">
-          {visibleMessages.length === 0 && (
+          {messages.length === 0 && (
             <div className="flex h-full items-center justify-center text-muted-foreground">
               <p>Send a message to get started.</p>
             </div>
           )}
 
-          {visibleMessages.map((msg: any) => (
+          {messages.map((msg: any) => (
             <div
               key={msg.id}
               className={cn(
