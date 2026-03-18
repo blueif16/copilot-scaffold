@@ -1,18 +1,16 @@
 import {
   CopilotRuntime,
-  ExperimentalEmptyAdapter,
   copilotRuntimeNextJSAppRouterEndpoint,
 } from "@copilotkit/runtime";
+import { LangGraphHttpAgent } from "@copilotkit/runtime/langgraph";
 import { NextRequest } from "next/server";
 
-const serviceAdapter = new ExperimentalEmptyAdapter();
-
 const runtime = new CopilotRuntime({
-  remoteEndpoints: [
-    {
+  agents: {
+    default: new LangGraphHttpAgent({
       url: process.env.BACKEND_URL || "http://localhost:8000/copilotkit",
-    },
-  ],
+    }),
+  },
   // MCP servers — tools discovered at runtime
   // Configure via MCP_SERVERS env var: [{"endpoint":"https://your-mcp-server.com/sse"}]
   mcpServers: (() => {
@@ -27,7 +25,6 @@ const runtime = new CopilotRuntime({
 export const POST = async (req: NextRequest) => {
   const { handleRequest } = copilotRuntimeNextJSAppRouterEndpoint({
     runtime,
-    serviceAdapter,
     endpoint: "/api/copilotkit",
   });
 
