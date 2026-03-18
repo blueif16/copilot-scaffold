@@ -7,9 +7,12 @@ Production-ready scaffold for building full-stack AI agents with CopilotKit fron
 | Package | Pinned Version | Reason |
 |---|---|---|
 | `copilotkit` | `==0.1.75` | v0.1.76+ broke import: `langchain.agents.middleware` removed |
-| `langgraph` | `>=0.3.25,<1.1.0` | Required by copilotkit 0.1.75; older `<0.3` range is incompatible |
+| `ag-ui-langgraph` | `>=0.0.26` | AG-UI/SSE protocol; pulled in transitively by copilotkit but declared explicitly |
+| `langgraph` | `>=0.3.25,<1.1.0` | Required by copilotkit 0.1.75 |
 
-**API used**: `CopilotKitRemoteEndpoint` + `LangGraphAGUIAgent` (correct for 0.1.75)
+**Backend API**: `add_langgraph_fastapi_endpoint` from `ag_ui_langgraph` + `LangGraphAGUIAgent` from `copilotkit`
+
+**Frontend API**: `LangGraphHttpAgent` from `@copilotkit/runtime/langgraph` + `@copilotkit/react-core` `1.54.0`
 
 Do **not** upgrade `copilotkit` past `0.1.75` until the upstream import bug is resolved.
 
