@@ -6,7 +6,7 @@ load_dotenv()
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from copilotkit import CopilotKitSDK, LangGraphAgent
+from copilotkit import CopilotKitRemoteEndpoint, LangGraphAGUIAgent
 from copilotkit.integrations.fastapi import add_fastapi_endpoint
 
 from agent.graph import graph
@@ -21,10 +21,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# CopilotKit SDK handles AG-UI protocol, streaming, and state sync
-sdk = CopilotKitSDK(
+sdk = CopilotKitRemoteEndpoint(
     agents=[
-        LangGraphAgent(
+        LangGraphAGUIAgent(
             name="agent",
             description="General-purpose assistant agent",
             graph=graph,

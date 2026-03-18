@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 export function Chat() {
   const { state, running } = useAgent();
   const {
-    visibleMessages,
+    visibleMessages = [],
     appendMessage,
     stopGeneration,
     isLoading,
