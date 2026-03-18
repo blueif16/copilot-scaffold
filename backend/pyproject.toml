@@ -5,6 +5,7 @@ description = "CopilotKit + LangGraph + FastAPI backend scaffold"
 requires-python = ">=3.12"
 dependencies = [
     "copilotkit[langgraph]==0.1.75",
+    "ag-ui-langgraph>=0.0.26",
     "langgraph>=0.3.25,<1.1.0",
     "langchain-core>=0.3.0,<0.4.0",
     "langchain-google-genai>=2.1.0,<3.0.0",
