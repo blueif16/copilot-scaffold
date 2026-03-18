@@ -10,7 +10,7 @@ const serviceAdapter = new ExperimentalEmptyAdapter();
 
 const runtime = new CopilotRuntime({
   agents: {
-    scaffold_agent: new LangGraphHttpAgent({
+    lab_guide: new LangGraphHttpAgent({
       url: process.env.LANGGRAPH_URL || "http://localhost:8123",
     }),
   },
@@ -39,3 +39,5 @@ export const GET = async () => {
     }
   );
 };
+
+export const maxDuration = 60;

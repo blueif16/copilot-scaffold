@@ -1,17 +1,28 @@
-"""Agent state schema for LangGraph."""
-from typing import List
+"""Agent state schema for LangGraph - Science Labs Edition."""
+from typing import List, Optional, Literal, Dict, Any
 from typing_extensions import TypedDict
 
 
-class AgentState(TypedDict):
+class LabState(TypedDict):
     """
-    Represents the state of the agent graph.
+    State for the Delegative UI Science Labs agent.
 
     Attributes:
         messages: List of conversation messages
-        current_task: Current task being processed
-        result: Final result or response
+        active_lab: Currently active lab (states_of_matter, wheel_axle, light_shadows)
+        active_module: Currently active module within a lab
+        lab_progress: Progress tracking per lab
+        student_name: Name of the student
+        pending_approval: HITL payload for approval requests
     """
-    messages: List[str]
-    current_task: str
+    messages: List[Any]
+    active_lab: Optional[Literal["states_of_matter", "wheel_axle", "light_shadows"]]
+    active_module: Optional[str]
+    lab_progress: Dict[str, int]
+    student_name: Optional[str]
+    pending_approval: Optional[Dict[str, Any]]
     result: str
+
+
+# Alias for backwards compatibility
+AgentState = LabState

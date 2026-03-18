@@ -1,0 +1,6 @@
+{
+  "dependencies": ["."],
+  "graphs": {
+    "lab_guide": "./agent/graph.py:graph"
+  }
+}

@@ -53,8 +53,8 @@ logger = StructuredLogger("copilot-backend")
 
 # Create FastAPI app
 app = FastAPI(
-    title="CopilotKit + LangGraph Backend",
-    description="Backend server for CopilotKit with LangGraph agent",
+    title="CopilotKit + LangGraph Backend - Science Labs",
+    description="Backend server for CopilotKit with LangGraph agent for Science Labs",
     version="0.1.0"
 )
 
@@ -101,11 +101,15 @@ async def copilotkit_endpoint(request: Dict[str, Any]) -> JSONResponse:
             messages_sample=messages[:2] if messages else []
         )
 
-        # Execute the graph
+        # Execute the graph with LabState
         initial_state = {
             "messages": messages,
-            "current_task": task,
-            "result": ""
+            "active_lab": None,
+            "active_module": None,
+            "lab_progress": {},
+            "student_name": None,
+            "pending_approval": None,
+            "result": "",
         }
 
         logger.info("[DATA-FLOW] Invoking graph with state", state_shape=list(initial_state.keys()))
@@ -115,7 +119,7 @@ async def copilotkit_endpoint(request: Dict[str, Any]) -> JSONResponse:
         logger.info(
             "[DATA-FLOW] Graph execution completed",
             result_keys=list(result.keys()),
-            result_preview=result.get("result", "")[:100]
+            active_lab=result.get("active_lab"),
         )
 
         return JSONResponse(content={
