@@ -1,6 +1,6 @@
 {
   "dependencies": ["."],
   "graphs": {
-    "lab_guide": "./agent/graph.py:graph"
+    "agent": "./agent/graph.py:graph"
   }
 }
