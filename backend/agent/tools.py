@@ -13,7 +13,10 @@ logger = logging.getLogger(__name__)
 def load_all_example_tools() -> List[BaseTool]:
     """Load all tools from all examples."""
     all_tools: List[BaseTool] = []
-    examples_dir = os.path.join(os.path.dirname(__file__), "..", "..", "examples")
+    # Get project root (parent of backend directory)
+    # Path: backend/agent/tools.py -> backend/agent -> backend -> project_root
+    project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    examples_dir = os.path.join(project_root, "examples")
 
     for entry in os.listdir(examples_dir):
         example_path = os.path.join(examples_dir, entry)

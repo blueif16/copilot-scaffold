@@ -1,7 +1,11 @@
 """FastAPI server with AG-UI + LangGraph integration."""
 import os
+import sys
 import logging
 import warnings
+
+# Add project root to path so examples can be imported
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Data-first: enable logging for message flow
 logging.basicConfig(
