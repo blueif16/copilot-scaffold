@@ -56,14 +56,13 @@ if [ ! -d "$PROJECT_ROOT/node_modules" ]; then
     npm install
 fi
 
-# Setup Python virtual environment if it doesn't exist
-if [ ! -d "$BACKEND_DIR/venv" ]; then
+# Setup Python virtual environment if it doesn't exist (use .venv)
+if [ ! -d "$BACKEND_DIR/.venv" ]; then
     echo -e "${YELLOW}🐍 Creating Python virtual environment...${NC}"
     cd "$BACKEND_DIR"
-    python3 -m venv venv
-    source venv/bin/activate
-    pip install --upgrade pip
-    pip install -e .
+    uv venv --python 3.12
+    source .venv/bin/activate
+    uv sync
     cd "$PROJECT_ROOT"
 else
     echo -e "${GREEN}✓ Python virtual environment exists${NC}"
@@ -71,7 +70,7 @@ fi
 
 # Activate virtual environment
 echo -e "${GREEN}✓ Activating Python virtual environment${NC}"
-source "$BACKEND_DIR/venv/bin/activate"
+source "$BACKEND_DIR/.venv/bin/activate"
 
 # Function to cleanup on exit
 cleanup() {
