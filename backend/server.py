@@ -36,7 +36,18 @@ async def log_requests(request: Request, call_next):
     if "/copilotkit" in request.url.path:
         logger.info(f"Incoming request to {request.url.path}")
         body = await request.body()
-        logger.debug(f"Request body: {body[:500] if len(body) > 500 else body}")
+        import json
+        try:
+            parsed = json.loads(body)
+            tools = parsed.get("tools", [])
+            logger.info(f"[server] RAW tools count: {len(tools)}")
+            for t in tools:
+                logger.info(f"[server] RAW tool: {t.get('name', '?')}")
+            if not tools:
+                logger.info(f"[server] Full body keys: {list(parsed.keys())}")
+                logger.info(f"[server] Full body (first 1000): {json.dumps(parsed)[:1000]}")
+        except Exception:
+            logger.debug(f"Request body (raw): {body[:1000]}")
     response = await call_next(request)
     logger.info(f"Response status: {response.status_code}")
     return response

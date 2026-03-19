@@ -1,10 +1,12 @@
 "use client";
 
-import { useCopilotChatInternal } from "@copilotkit/react-core";
-import { TextMessage, Role } from "@copilotkit/runtime-client-gql";
+import { useAgent as useV2Agent, UseAgentUpdate } from "@copilotkitnext/react";
+import { randomUUID } from "@ag-ui/client";
+import type { Message } from "@ag-ui/client";
 import { useAgent } from "@/hooks/use-agent";
 import { useState, useRef, useEffect } from "react";
 import { cn } from "@/lib/utils";
+import type { LayoutMode } from "@/app/(chat)/page";
 
 function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
@@ -45,23 +47,30 @@ function ThumbUpButton() {
   );
 }
 
-export function Chat() {
+interface ChatProps {
+  onCanvasModeChange?: (mode: LayoutMode) => void;
+}
+
+export function Chat({ onCanvasModeChange }: ChatProps) {
   const { state, running } = useAgent();
-  const {
-    messages = [],
-    appendMessage,
-    stopGeneration,
-    isLoading,
-  } = useCopilotChatInternal();
-
-  // Debug: log message changes
-  useEffect(() => {
-    console.log("[Chat] messages changed:", messages.length, messages.map((m: any) => ({ role: m.role, hasContent: !!m.content })));
-  }, [messages]);
+  const { agent: v2Agent } = useV2Agent({
+    agentId: "orchestrator",
+    updates: [UseAgentUpdate.OnMessagesChanged, UseAgentUpdate.OnRunStatusChanged],
+  });
+  const [messages, setMessages] = useState<Message[]>(v2Agent.messages);
+  const [isLoading, setIsLoading] = useState<boolean>(v2Agent.isRunning);
 
   useEffect(() => {
-    console.log("[Chat] isLoading:", isLoading);
-  }, [isLoading]);
+    const { unsubscribe } = v2Agent.subscribe({
+      onMessagesChanged: ({ messages: msgs }) => setMessages([...msgs]),
+      onRunStatusChanged: ({ isRunning }) => setIsLoading(isRunning),
+    });
+    return unsubscribe;
+  }, [v2Agent]);
+
+  const visibleMessages = messages.filter(
+    (msg: any) => (msg.role === "user" || msg.role === "assistant") && msg.content?.trim()
+  );
 
   const [input, setInput] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -74,9 +83,8 @@ export function Chat() {
     if (!input.trim() || isLoading) return;
     const text = input;
     setInput("");
-    console.log("[Chat] Sending message:", text);
-    appendMessage(new TextMessage({ role: Role.User, content: text }));
-    console.log("[Chat] Message appended, messages count:", messages.length + 1);
+    v2Agent.addMessage({ id: randomUUID(), role: "user", content: text });
+    v2Agent.runAgent();
   };
 
   return (
@@ -84,13 +92,13 @@ export function Chat() {
       {/* Messages */}
       <div className="flex-1 overflow-y-auto">
         <div className="mx-auto max-w-3xl px-4 py-8">
-          {messages.length === 0 && (
+          {visibleMessages?.length === 0 && (
             <div className="flex h-full items-center justify-center text-muted-foreground">
               <p>Send a message to get started.</p>
             </div>
           )}
 
-          {messages.filter((msg: any) => msg.content?.trim()).map((msg: any) => (
+          {(visibleMessages || []).filter((msg: any) => msg.content?.trim()).map((msg: any) => (
             <div
               key={msg.id}
               className={cn(
@@ -150,7 +158,7 @@ export function Chat() {
           {isLoading ? (
             <button
               className="flex items-center justify-center rounded-xl border bg-background p-3 text-foreground hover:bg-muted"
-              onClick={stopGeneration}
+              onClick={() => v2Agent.abortRun()}
               type="button"
               title="Stop"
             >
@@ -176,7 +184,7 @@ export function Chat() {
             Agent State
           </summary>
           <pre className="mt-2 font-mono">
-            {JSON.stringify(state, null, 2)}
+            {state ? JSON.stringify(state, null, 2) : 'No state'}
           </pre>
         </details>
       )}

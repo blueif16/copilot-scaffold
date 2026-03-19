@@ -1,11 +1,11 @@
 """Widget platform orchestrator graph with CopilotKit state sync."""
 import os
+import json
 import logging
 from dotenv import load_dotenv
 
 load_dotenv()
 
-# Data-first logging: log message flow at key points
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 if not logger.handlers:
@@ -19,7 +19,7 @@ from langgraph.checkpoint.memory import MemorySaver
 from langchain_core.messages import SystemMessage
 
 from .state import OrchestratorState
-from .tools import all_tools
+from .tools import backend_tools, backend_tool_names
 
 
 def get_llm():
@@ -63,44 +63,76 @@ RULES:
 - Be helpful and friendly
 """
 
-# Allow overriding the prompt via env var
 SYSTEM_PROMPT = os.getenv("SYSTEM_PROMPT", ORCHESTRATOR_PROMPT)
 
 llm = get_llm()
-llm_with_tools = llm.bind_tools(all_tools)
 
 
 def orchestrator_node(state: OrchestratorState, config):
-    """Main orchestrator node with CopilotKit state sync support."""
+    """Main orchestrator node."""
+    # --- Exhaustive debug dump of copilotkit state ---
+    copilotkit_state = state.get("copilotkit", {})
+    frontend_actions = copilotkit_state.get("actions", [])
+
+    logger.info(f"=== COPILOTKIT STATE DEBUG ===")
+    logger.info(f"copilotkit state keys: {list(copilotkit_state.keys()) if copilotkit_state else 'EMPTY'}")
+    logger.info(f"copilotkit state type: {type(copilotkit_state).__name__}")
+    logger.info(f"frontend actions count: {len(frontend_actions)}")
+    logger.info(f"frontend actions type: {type(frontend_actions).__name__}")
+
+    # Dump raw copilotkit state (truncated) to see what AG-UI actually sent
+    try:
+        raw_dump = repr(copilotkit_state)[:2000]
+        logger.info(f"copilotkit raw (first 2000 chars): {raw_dump}")
+    except Exception as e:
+        logger.error(f"Failed to dump copilotkit state: {e}")
+
+    for i, a in enumerate(frontend_actions):
+        logger.info(f"  action[{i}]: name={getattr(a, 'name', '?')}, type={type(a).__name__}, dir={[x for x in dir(a) if not x.startswith('_')][:10]}")
+
+    # Also check if actions are under a different key
+    for key, val in copilotkit_state.items():
+        logger.info(f"  copilotkit['{key}']: type={type(val).__name__}, len={len(val) if hasattr(val, '__len__') else 'N/A'}")
+
+    logger.info(f"=== END COPILOTKIT STATE DEBUG ===")
+
     try:
         logger.debug(f"orchestrator_node called with {len(state.get('messages', []))} messages")
-        if state.get('messages'):
-            last_msg = state['messages'][-1]
-            logger.debug(f"Last message type: {type(last_msg).__name__}, content: {getattr(last_msg, 'content', None)[:100] if last_msg.content else None}")
     except Exception as e:
         logger.error(f"Error logging input state: {e}")
-    # Enable intermediate state streaming for CopilotKit
+
+    # Enable CopilotKit streaming + emit tool calls back to frontend
     try:
         from copilotkit.langgraph import copilotkit_customize_config
         config = copilotkit_customize_config(
             config,
+            emit_tool_calls=True,
             emit_intermediate_state=[
                 {"state_key": "active_widgets", "tool": "*", "tool_argument": "*"},
             ],
         )
     except ImportError:
-        pass  # CopilotKit not installed — still works standalone
+        pass
+
+    # Bind frontend actions + backend tools to the LLM
+    all_tools = [*frontend_actions, *backend_tools]
+    logger.info(f"Binding {len(all_tools)} tools to LLM ({len(frontend_actions)} frontend + {len(backend_tools)} backend)")
+    llm_with_tools = llm.bind_tools(all_tools)
 
     messages = [SystemMessage(content=SYSTEM_PROMPT)] + state["messages"]
-    logger.debug(f"Invoking LLM with {len(messages)} messages (incl system)")
+
     try:
         response = llm_with_tools.invoke(messages, config=config)
     except Exception as e:
         logger.error(f"LLM invoke error: {e}", exc_info=True)
         raise
 
-    logger.info(f">>> LLM RESPONSE: type={type(response).__name__}, content={repr(response.content)[:300] if response.content else 'EMPTY'}, tool_calls={bool(getattr(response, 'tool_calls', None))}")
-    # Strip reasoning content to prevent REASONING event stalls
+    logger.info(f">>> LLM RESPONSE: content={repr(response.content)[:200] if response.content else 'EMPTY'}, tool_calls={bool(getattr(response, 'tool_calls', None))}")
+    if getattr(response, 'tool_calls', None):
+        for tc in response.tool_calls:
+            is_backend = tc.get('name', '') in backend_tool_names
+            logger.info(f"    tool_call: {tc.get('name')} → {'ToolNode' if is_backend else 'AG-UI (frontend)'}")
+
     if hasattr(response, "additional_kwargs"):
         response.additional_kwargs.pop("reasoning_content", None)
 
@@ -108,18 +140,24 @@ def orchestrator_node(state: OrchestratorState, config):
 
 
 def should_continue(state: OrchestratorState):
-    """Route: if last message has tool calls, go to tools node."""
+    """Route after orchestrator responds."""
     last = state["messages"][-1]
     if hasattr(last, "tool_calls") and last.tool_calls:
-        return "tools"
+        has_backend_call = any(
+            tc.get("name") in backend_tool_names
+            for tc in last.tool_calls
+        )
+        if has_backend_call:
+            return "tools"
+        logger.info("All tool calls are frontend → routing to END for AG-UI")
+        return END
     return END
 
 
 def create_graph():
-    """Create and compile the orchestrator graph."""
     workflow = StateGraph(OrchestratorState)
     workflow.add_node("orchestrator", orchestrator_node)
-    workflow.add_node("tools", ToolNode(all_tools))
+    workflow.add_node("tools", ToolNode(backend_tools))
     workflow.add_edge(START, "orchestrator")
     workflow.add_conditional_edges("orchestrator", should_continue)
     workflow.add_edge("tools", "orchestrator")
