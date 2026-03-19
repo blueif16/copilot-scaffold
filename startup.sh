@@ -15,6 +15,17 @@ PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BACKEND_DIR="$PROJECT_ROOT/backend"
 LOG_DIR="$PROJECT_ROOT/logs"
 
+# Kill existing processes on ports 8000 and 3000
+echo -e "${YELLOW}🔪 Checking for existing processes on ports...${NC}"
+for port in 8000 3000; do
+    PID=$(lsof -ti:$port 2>/dev/null || true)
+    if [ -n "$PID" ]; then
+        echo -e "${YELLOW}⚠️  Killing existing process on port $port (PID: $PID)${NC}"
+        kill -9 $PID 2>/dev/null || true
+        sleep 1
+    fi
+done
+
 # Create logs directory
 mkdir -p "$LOG_DIR"
 
