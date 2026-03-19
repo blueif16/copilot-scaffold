@@ -29,7 +29,7 @@ function CopyButton({ text }: { text: string }) {
 
 export function ChatSidebar() {
   const {
-    visibleMessages,
+    visibleMessages = [],
     appendMessage,
     stopGeneration,
     isLoading,
