@@ -13,6 +13,13 @@ export interface WidgetAgentConfig {
   toolsModule: string;
 }
 
+export interface WidgetLayout {
+  /** Width: "full" (100%), "half" (50%), "third" (33%). Default: "half" */
+  width?: "full" | "half" | "third";
+  /** Height hint: "compact" (~auto), "medium" (~300px), "tall" (~500px), "fill" (stretch to fill panel). Default: "compact" */
+  height?: "compact" | "medium" | "tall" | "fill";
+}
+
 export interface WidgetConfig {
   id: string;
   tool: {
@@ -21,9 +28,7 @@ export interface WidgetConfig {
     parameters: Record<string, ToolParameter>;
   };
   agent: WidgetAgentConfig | null;
-  layout?: {
-    slot?: "full" | "half" | "third";
-  };
+  layout?: WidgetLayout;
 }
 
 export interface OrchestratorState {

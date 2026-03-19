@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useCallback, Suspense } from "react";
+import { useState, Suspense } from "react";
 import { useFrontendTool } from "@copilotkit/react-core/v2";
 import { WidgetShell } from "./widgets/shared/WidgetShell";
 import { ToolStatusCard } from "./ui/ToolStatusCard";
 import { widgetEntries, type WidgetEntry } from "@/lib/widgetEntries";
 import { configToZod } from "@/lib/configToZod";
+import type { WidgetLayout } from "@/types/state";
 
 interface SpawnedWidget {
   id: string;
@@ -14,6 +15,33 @@ interface SpawnedWidget {
 }
 
 type SpawnSetter = React.Dispatch<React.SetStateAction<SpawnedWidget[]>>;
+
+/** Build a layout hint string for the tool description so the LLM knows widget size. */
+function layoutHint(layout?: WidgetLayout): string {
+  const w = layout?.width ?? "half";
+  const h = layout?.height ?? "compact";
+  return `[Layout: ${w} width, ${h} height]`;
+}
+
+/** Map layout config to CSS classes. */
+function layoutClasses(layout?: WidgetLayout): string {
+  const w = layout?.width ?? "half";
+  const h = layout?.height ?? "compact";
+
+  const widthClass =
+    w === "full" ? "col-span-2" : w === "third" ? "col-span-1" : "col-span-1";
+
+  const heightClass =
+    h === "fill"
+      ? "min-h-[calc(100vh-8rem)]"
+      : h === "tall"
+      ? "min-h-[500px]"
+      : h === "medium"
+      ? "min-h-[300px]"
+      : "";
+
+  return `${widthClass} ${heightClass}`.trim();
+}
 
 /**
  * Registers a single widget's frontend tool.
@@ -28,9 +56,12 @@ function WidgetToolRegistrar({
 }) {
   const zodSchema = configToZod(entry.config.tool.parameters);
 
+  // Append layout info to tool description so the LLM knows the widget's size
+  const description = `${entry.config.tool.description} ${layoutHint(entry.config.layout)}`;
+
   useFrontendTool({
     name: entry.config.tool.name,
-    description: entry.config.tool.description,
+    description,
     parameters: zodSchema,
     handler: async (args: Record<string, any>) => {
       setSpawned((prev) => [
@@ -65,7 +96,7 @@ export function WidgetPanel() {
       ))}
 
       {/* Render spawned widgets */}
-      <div className="grid grid-cols-2 gap-4 h-full">
+      <div className="grid grid-cols-2 gap-4 h-full auto-rows-min">
         {spawned.length === 0 && (
           <div className="col-span-2 flex items-center justify-center text-muted-foreground h-full">
             <p>Chat with the agent to get started</p>
@@ -74,19 +105,9 @@ export function WidgetPanel() {
 
         {spawned.map(({ id, Component, props }) => {
           const entry = widgetEntries.find((e) => e.config.id === id);
-          const slot = entry?.config.layout?.slot ?? "half";
 
           return (
-            <div
-              key={id}
-              className={
-                slot === "full"
-                  ? "col-span-2"
-                  : slot === "third"
-                  ? "col-span-1"
-                  : "col-span-1"
-              }
-            >
+            <div key={id} className={layoutClasses(entry?.config.layout)}>
               <WidgetShell label={id}>
                 <Suspense
                   fallback={
