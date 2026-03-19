@@ -1,6 +1,6 @@
 "use client";
 
-import { useCopilotChat } from "@copilotkit/react-core";
+import { useCopilotChatInternal } from "@copilotkit/react-core";
 import { Role, TextMessage } from "@copilotkit/runtime-client-gql";
 import { useState, useRef, useEffect } from "react";
 import { cn } from "@/lib/utils";
@@ -29,23 +29,33 @@ function CopyButton({ text }: { text: string }) {
 
 export function ChatSidebar() {
   const {
-    visibleMessages = [],
+    messages = [],
     appendMessage,
     stopGeneration,
     isLoading,
-  } = useCopilotChat();
+  } = useCopilotChatInternal();
+
+  // Debug: log message changes
+  useEffect(() => {
+    console.log("[ChatSidebar] messages:", messages.length, messages.map((m: any) => ({ role: m.role, hasContent: !!m.content })));
+  }, [messages]);
+
+  useEffect(() => {
+    console.log("[ChatSidebar] isLoading:", isLoading);
+  }, [isLoading]);
 
   const [input, setInput] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [visibleMessages]);
+  }, [messages]);
 
   const handleSend = () => {
     if (!input.trim() || isLoading) return;
     const text = input;
     setInput("");
+    console.log("[ChatSidebar] Sending:", text);
     appendMessage(new TextMessage({ role: Role.User, content: text }));
   };
 
@@ -59,13 +69,13 @@ export function ChatSidebar() {
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
-        {visibleMessages.length === 0 && (
+        {messages.length === 0 && (
           <div className="flex items-center justify-center text-muted-foreground text-sm h-full">
             <p>Send a message to get started.</p>
           </div>
         )}
 
-        {visibleMessages.map((msg: any) => {
+        {messages.map((msg: any) => {
           // Skip empty content messages (tool calls without text)
           if (!msg.content?.trim() && !msg.generativeUI) return null;
 

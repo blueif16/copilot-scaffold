@@ -1,8 +1,17 @@
 """Widget platform orchestrator graph with CopilotKit state sync."""
 import os
+import logging
 from dotenv import load_dotenv
 
 load_dotenv()
+
+# Data-first logging: log message flow at key points
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+if not logger.handlers:
+    handler = logging.StreamHandler()
+    handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
+    logger.addHandler(handler)
 
 from langgraph.graph import StateGraph, START, END
 from langgraph.prebuilt import ToolNode
@@ -27,7 +36,6 @@ def get_llm():
         return ChatGoogleGenerativeAI(
             model=os.getenv("GOOGLE_MODEL", "gemini-3.1-flash-lite-preview"),
             temperature=0.7,
-            thinking_budget=0,
         )
 
 
@@ -64,6 +72,13 @@ llm_with_tools = llm.bind_tools(all_tools)
 
 def orchestrator_node(state: OrchestratorState, config):
     """Main orchestrator node with CopilotKit state sync support."""
+    try:
+        logger.debug(f"orchestrator_node called with {len(state.get('messages', []))} messages")
+        if state.get('messages'):
+            last_msg = state['messages'][-1]
+            logger.debug(f"Last message type: {type(last_msg).__name__}, content: {getattr(last_msg, 'content', None)[:100] if last_msg.content else None}")
+    except Exception as e:
+        logger.error(f"Error logging input state: {e}")
     # Enable intermediate state streaming for CopilotKit
     try:
         from copilotkit.langgraph import copilotkit_customize_config
@@ -77,8 +92,14 @@ def orchestrator_node(state: OrchestratorState, config):
         pass  # CopilotKit not installed — still works standalone
 
     messages = [SystemMessage(content=SYSTEM_PROMPT)] + state["messages"]
-    response = llm_with_tools.invoke(messages, config=config)
+    logger.debug(f"Invoking LLM with {len(messages)} messages (incl system)")
+    try:
+        response = llm_with_tools.invoke(messages, config=config)
+    except Exception as e:
+        logger.error(f"LLM invoke error: {e}", exc_info=True)
+        raise
 
+    logger.info(f">>> LLM RESPONSE: type={type(response).__name__}, content={repr(response.content)[:300] if response.content else 'EMPTY'}, tool_calls={bool(getattr(response, 'tool_calls', None))}")
     # Strip reasoning content to prevent REASONING event stalls
     if hasattr(response, "additional_kwargs"):
         response.additional_kwargs.pop("reasoning_content", None)

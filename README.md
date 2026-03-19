@@ -56,17 +56,26 @@ cd backend && pip install -e .
 2. **Set up environment**:
 ```bash
 cp .env.example .env
-# Add your OPENAI_API_KEY
+# Add your GOOGLE_API_KEY or OPENAI_API_KEY
 ```
 
 3. **Run development servers**:
 ```bash
+# Terminal 1: Backend (port 8000)
+cd backend && source venv/bin/activate && python server.py
+
+# Terminal 2: Frontend (port 3000)
 npm run dev
+```
+
+Or use the startup script (runs both):
+```bash
+./startup.sh
 ```
 
 This starts:
 - Next.js frontend on http://localhost:3000
-- FastAPI backend on http://localhost:8123
+- FastAPI backend on http://localhost:8000
 
 ## Usage
 

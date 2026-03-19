@@ -54,6 +54,15 @@ export function Chat() {
     isLoading,
   } = useCopilotChatInternal();
 
+  // Debug: log message changes
+  useEffect(() => {
+    console.log("[Chat] messages changed:", messages.length, messages.map((m: any) => ({ role: m.role, hasContent: !!m.content })));
+  }, [messages]);
+
+  useEffect(() => {
+    console.log("[Chat] isLoading:", isLoading);
+  }, [isLoading]);
+
   const [input, setInput] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -65,7 +74,9 @@ export function Chat() {
     if (!input.trim() || isLoading) return;
     const text = input;
     setInput("");
+    console.log("[Chat] Sending message:", text);
     appendMessage(new TextMessage({ role: Role.User, content: text }));
+    console.log("[Chat] Message appended, messages count:", messages.length + 1);
   };
 
   return (
