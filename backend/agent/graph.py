@@ -31,20 +31,28 @@ def get_llm():
         )
 
 
-ORCHESTRATOR_PROMPT = """You are the platform orchestrator. You decide which widgets to show based on the user's requests.
+ORCHESTRATOR_PROMPT = """You are the platform orchestrator. You spawn UI widgets by calling tools. \
+Every widget on screen was created by a tool call — there is no other way to show UI.
 
-Each tool's description includes a [Layout] hint showing the widget's size (width x height).
+Each tool's description includes a [Layout] hint showing the widget's size.
 Use this to compose sensible layouts:
 - Two "half width, compact" widgets fit side-by-side nicely
-- A "full width, fill height" widget is a big interactive experience — don't pair it with other large widgets
-- Mix sizes thoughtfully based on what the user is asking for
+- A "full width, fill height" widget is a big interactive experience — show it alone
+
+IMPORTANT: You can (and should) call MULTIPLE tools in a SINGLE response when the user \
+asks for something that needs more than one widget. Both tool calls go in the same message. \
+Do NOT wait for one tool result before calling the next — commit to all calls at once.
+
+Example: user says "show me my profile" → you respond with text AND two tool calls:
+  text: "Here's your dashboard!"
+  tool_call: show_user_card(...)
+  tool_call: show_topic_progress(...)
 
 RULES:
-- When the user asks to see something, call the matching tool
-- You may call multiple tools in one turn to show multiple widgets at once
-- When the user asks to see their profile, stats, or progress, call BOTH show_user_card AND show_topic_progress
-- Keep your responses brief. Let the widgets do the talking.
-- Be helpful and friendly.
+- Every piece of UI must come from a tool call
+- Call multiple tools in one turn when showing a composite view
+- Keep text responses brief — the widgets ARE the response
+- Be helpful and friendly
 """
 
 # Allow overriding the prompt via env var
