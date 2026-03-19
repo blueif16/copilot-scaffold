@@ -1,16 +1,18 @@
 """Orchestrator state schema for LangGraph."""
 from typing import Any, Dict, List, Optional
-from langgraph.graph import MessagesState
+from copilotkit import CopilotKitState
 
 
-class OrchestratorState(MessagesState):
+class OrchestratorState(CopilotKitState):
     """
     Widget platform orchestrator state.
 
-    Extends MessagesState (which provides `messages` with add-reducer).
+    Extends CopilotKitState (which provides `messages` + `copilotkit` for
+    frontend tool discovery via AG-UI protocol).
 
     Attributes:
-        messages: Conversation messages (from MessagesState, auto-reduced)
+        messages: Conversation messages (from MessagesState via CopilotKitState)
+        copilotkit: Frontend tool registrations (from CopilotKitState)
         active_widgets: Currently rendered widget IDs (dumb + smart)
         focused_agent: Sub-agent that owns chat right now. None = orchestrator.
         widget_state: State of the focused smart widget. Empty when no focus.
