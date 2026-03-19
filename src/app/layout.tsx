@@ -2,11 +2,8 @@ import type { Metadata } from "next";
 import { Toaster } from "sonner";
 import { ThemeProvider } from "@/components/theme-provider";
 import { CopilotKit } from "@copilotkit/react-core";
-import { suppressHmrWarnings } from "@/components/suppress-hmr-warnings";
 
 import "./globals.css";
-
-suppressHmrWarnings();
 
 export const metadata: Metadata = {
   title: "CopilotKit Scaffold",
