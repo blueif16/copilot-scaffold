@@ -19,7 +19,7 @@ export interface BaseAgentState {
 export function useAgent<T extends BaseAgentState = BaseAgentState>(
   options?: { name?: string; initialState?: Partial<T> }
 ) {
-  const agentName = options?.name ?? "agent";
+  const agentName = options?.name ?? "orchestrator";
   const errorCountRef = useRef(0);
 
   const coAgent = useCoAgent<T>({

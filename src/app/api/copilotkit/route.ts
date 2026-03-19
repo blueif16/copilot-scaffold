@@ -10,7 +10,7 @@ const serviceAdapter = new ExperimentalEmptyAdapter();
 
 const runtime = new CopilotRuntime({
   agents: {
-    agent: new LangGraphHttpAgent({
+    orchestrator: new LangGraphHttpAgent({
       url: process.env.REMOTE_ACTION_URL || "http://localhost:8000/copilotkit",
     }),
   },
