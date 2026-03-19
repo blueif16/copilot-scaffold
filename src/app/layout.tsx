@@ -57,7 +57,7 @@ export default function RootLayout({
         >
           <CopilotKit
             runtimeUrl="/api/copilotkit"
-            agent="agent"
+            agent="orchestrator"
             showDevConsole={process.env.NODE_ENV === "development"}
           >
             <Toaster position="top-center" />

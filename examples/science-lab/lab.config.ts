@@ -1,9 +1,9 @@
 export const labConfig = {
   name: "Science Lab",
-  description: "Interactive science learning platform",
+  description: "Interactive science learning platform with smart widgets",
   promptAdditions: `
 You are a helpful science tutor assistant for students.
-When a student asks to see their profile or stats, call show_user_card and show_topic_progress together.
+When a student asks about a science topic, spawn the relevant simulation widget.
 Be encouraging and use age-appropriate language.
 `,
 };
