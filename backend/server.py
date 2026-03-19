@@ -11,7 +11,7 @@ from ag_ui_langgraph import add_langgraph_fastapi_endpoint
 
 from agent.graph import graph
 
-app = FastAPI(title="CopilotKit + LangGraph Backend", version="0.1.0")
+app = FastAPI(title="Widget Platform Orchestrator", version="0.2.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -24,8 +24,8 @@ app.add_middleware(
 add_langgraph_fastapi_endpoint(
     app=app,
     agent=LangGraphAGUIAgent(
-        name="agent",
-        description="General-purpose assistant agent",
+        name="orchestrator",
+        description="Widget platform orchestrator agent",
         graph=graph,
     ),
     path="/copilotkit",
