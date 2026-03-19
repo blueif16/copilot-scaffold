@@ -1,17 +1,22 @@
-"""Generic agent state schema for LangGraph."""
-from typing import Any, Dict
+"""Orchestrator state schema for LangGraph."""
+from typing import Any, Dict, List, Optional
 from langgraph.graph import MessagesState
 
 
-class AgentState(MessagesState):
+class OrchestratorState(MessagesState):
     """
-    Base agent state for the scaffold.
+    Widget platform orchestrator state.
 
     Extends MessagesState (which provides `messages` with add-reducer).
-    Apps extend this by adding their own fields.
 
     Attributes:
         messages: Conversation messages (from MessagesState, auto-reduced)
-        metadata: App-specific metadata dict (extensible without schema changes)
+        active_widgets: Currently rendered widget IDs (dumb + smart)
+        focused_agent: Sub-agent that owns chat right now. None = orchestrator.
+        widget_state: State of the focused smart widget. Empty when no focus.
+        widget_summaries: Past focus sessions — summary strings keyed by widget ID.
     """
-    metadata: Dict[str, Any]
+    active_widgets: List[str] = []
+    focused_agent: Optional[str] = None
+    widget_state: Dict[str, Any] = {}
+    widget_summaries: Dict[str, str] = {}
