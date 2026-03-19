@@ -1,6 +1,7 @@
 import type { WidgetConfig } from "@/types/state";
 import type { ComponentType } from "react";
 import studentDashboard from "../../examples/student_dashboard";
+import scienceLab from "../../examples/science_lab";
 
 export interface WidgetEntry {
   config: WidgetConfig;
@@ -15,13 +16,13 @@ export interface WidgetEntry {
  */
 function buildWidgetEntries(): WidgetEntry[] {
   const entries: WidgetEntry[] = [];
-  const examples = [studentDashboard];
+  const examples = [studentDashboard, scienceLab];
 
   for (const example of examples) {
     const configs: WidgetConfig[] = [];
     const components: Record<string, ComponentType<any>> = {};
 
-    for (const [key, value] of Object.entries(example)) {
+    for (const [key, value] of Object.entries(example || {})) {
       if (value && typeof value === "object" && "tool" in value && "id" in value) {
         configs.push(value as WidgetConfig);
       } else if (typeof value === "function") {
