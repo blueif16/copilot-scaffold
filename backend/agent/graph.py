@@ -52,7 +52,7 @@ def orchestrator_node(state: OrchestratorState, config):
     """Main orchestrator node with CopilotKit state sync support."""
     # Enable intermediate state streaming for CopilotKit
     try:
-        from copilotkit.langchain import copilotkit_customize_config
+        from copilotkit.langgraph import copilotkit_customize_config
         config = copilotkit_customize_config(
             config,
             emit_intermediate_state=[
