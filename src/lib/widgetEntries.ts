@@ -1,6 +1,6 @@
 import type { WidgetConfig } from "@/types/state";
 import type { ComponentType } from "react";
-import * as example from "./activeExample";
+import studentDashboard from "../../examples/student_dashboard";
 
 export interface WidgetEntry {
   config: WidgetConfig;
@@ -8,36 +8,39 @@ export interface WidgetEntry {
 }
 
 /**
- * Pairs widget components with their configs from the active example.
- *
- * Convention: each example barrel exports components as default exports
- * (e.g. UserCard, TopicProgress) and their configs with a "Config" suffix
- * (e.g. userCardConfig, topicProgressConfig).
+ * Auto-discovers all widget configs and components from ALL examples.
+ * Convention: each example barrel exports:
+ *   - Component as default export (e.g. UserCard)
+ *   - Config as named export with "Config" suffix (e.g. userCardConfig)
  */
 function buildWidgetEntries(): WidgetEntry[] {
   const entries: WidgetEntry[] = [];
-  const configs: WidgetConfig[] = [];
-  const components: Record<string, ComponentType<any>> = {};
+  const examples = [studentDashboard];
 
-  for (const [key, value] of Object.entries(example)) {
-    if (value && typeof value === "object" && "tool" in value && "id" in value) {
-      configs.push(value as WidgetConfig);
-    } else if (typeof value === "function") {
-      components[key] = value as ComponentType<any>;
+  for (const example of examples) {
+    const configs: WidgetConfig[] = [];
+    const components: Record<string, ComponentType<any>> = {};
+
+    for (const [key, value] of Object.entries(example)) {
+      if (value && typeof value === "object" && "tool" in value && "id" in value) {
+        configs.push(value as WidgetConfig);
+      } else if (typeof value === "function") {
+        components[key] = value as ComponentType<any>;
+      }
     }
-  }
 
-  for (const config of configs) {
-    // Find matching component: match by convention
-    // Config id "user_card" matches component "UserCard"
-    const componentName = config.id
-      .split("_")
-      .map((s) => s.charAt(0).toUpperCase() + s.slice(1))
-      .join("");
+    for (const config of configs) {
+      // Find matching component: match by convention
+      // Config id "user_card" matches component "UserCard"
+      const componentName = config.id
+        .split("_")
+        .map((s) => s.charAt(0).toUpperCase() + s.slice(1))
+        .join("");
 
-    const Component = components[componentName];
-    if (Component) {
-      entries.push({ config, Component });
+      const Component = components[componentName];
+      if (Component) {
+        entries.push({ config, Component });
+      }
     }
   }
 
