@@ -1,6 +1,4 @@
 # Student Dashboard example — backend tool definitions.
-# Each widget from the frontend has a corresponding Python tool here.
-# Tools return widget spawn instructions for the frontend to render.
 from langchain_core.tools import tool
 
 
@@ -16,11 +14,7 @@ def show_user_card(username: str, age: int) -> dict:
 
 @tool
 def show_topic_progress(topics: list[dict]) -> dict:
-    """Display progress bars for all science topics.
-
-    Args:
-        topics: Array of { name: str, progress: float (0-1), status: str }
-    """
+    """Display progress bars for all science topics."""
     return {
         "widget": "topic_progress",
         "action": "spawn",
@@ -28,5 +22,4 @@ def show_topic_progress(topics: list[dict]) -> dict:
     }
 
 
-# All tools from this example
 all_tools = [show_user_card, show_topic_progress]

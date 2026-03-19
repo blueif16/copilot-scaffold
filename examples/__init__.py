@@ -1,5 +1,4 @@
 # Examples package — aggregates tools from ALL example apps automatically.
-# The skeleton imports from here to get all widget tools.
 #
 # Usage in backend/agent/tools.py:
 #   from examples import load_all_example_tools
@@ -17,7 +16,6 @@ logger = logging.getLogger(__name__)
 def load_all_example_tools() -> List[BaseTool]:
     """
     Auto-discover and load ALL tools from ALL example apps.
-    Scans the examples directory for modules with tools.py.
     """
     all_tools: List[BaseTool] = []
 
@@ -32,19 +30,20 @@ def load_all_example_tools() -> List[BaseTool]:
         if entry.startswith("_") or entry.startswith("."):
             continue
 
+        # Skip __pycache__
+        if entry == "__pycache__":
+            continue
+
         # Try to load tools from this example
         module_name = f"examples.{entry}"
 
         try:
-            # Convert hyphenated names to underscores for Python import
-            module_name_underscore = module_name.replace("-", "_")
-            module = importlib.import_module(f"{module_name_underscore}.tools")
+            module = importlib.import_module(f"{module_name}.tools")
             tools = getattr(module, "all_tools", [])
 
             logger.info(f"Loaded {len(tools)} tools from {entry}")
             all_tools.extend(tools)
         except ImportError as e:
-            # No tools.py in this example — that's fine
             logger.debug(f"No tools in {entry}: {e}")
         except AttributeError:
             logger.warning(f"{entry} has no all_tools attribute, skipping")
