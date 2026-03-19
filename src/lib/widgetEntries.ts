@@ -1,7 +1,7 @@
 import type { WidgetConfig } from "@/types/state";
 import type { ComponentType } from "react";
-import studentDashboard from "../../examples/student_dashboard";
-import scienceLab from "../../examples/science_lab";
+import * as studentDashboard from "../../examples/student_dashboard";
+import * as scienceLab from "../../examples/science_lab";
 
 export interface WidgetEntry {
   config: WidgetConfig;
@@ -9,10 +9,8 @@ export interface WidgetEntry {
 }
 
 /**
- * Auto-discovers all widget configs and components from ALL examples.
- * Convention: each example barrel exports:
- *   - Component as default export (e.g. UserCard)
- *   - Config as named export with "Config" suffix (e.g. userCardConfig)
+ * Load all widgets from ALL examples.
+ * Each example is a separate app - they all load together.
  */
 function buildWidgetEntries(): WidgetEntry[] {
   const entries: WidgetEntry[] = [];
@@ -31,8 +29,6 @@ function buildWidgetEntries(): WidgetEntry[] {
     }
 
     for (const config of configs) {
-      // Find matching component: match by convention
-      // Config id "user_card" matches component "UserCard"
       const componentName = config.id
         .split("_")
         .map((s) => s.charAt(0).toUpperCase() + s.slice(1))
