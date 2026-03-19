@@ -1,9 +1,11 @@
 "use client";
 
-import { useCopilotChatInternal } from "@copilotkit/react-core";
-import { Role, TextMessage } from "@copilotkit/runtime-client-gql";
-import { useState, useRef, useEffect } from "react";
+import { useAgent, UseAgentUpdate } from "@copilotkitnext/react";
+import { randomUUID } from "@ag-ui/client";
+import type { Message } from "@ag-ui/client";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { cn } from "@/lib/utils";
+import type { LayoutMode } from "@/app/(chat)/page";
 
 function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
@@ -27,22 +29,34 @@ function CopyButton({ text }: { text: string }) {
   );
 }
 
-export function ChatSidebar() {
-  const {
-    messages = [],
-    appendMessage,
-    stopGeneration,
-    isLoading,
-  } = useCopilotChatInternal();
+interface ChatSidebarProps {
+  layoutMode: LayoutMode;
+  onLayoutModeChange: (mode: LayoutMode) => void;
+}
 
-  // Debug: log message changes
-  useEffect(() => {
-    console.log("[ChatSidebar] messages:", messages.length, messages.map((m: any) => ({ role: m.role, hasContent: !!m.content })));
-  }, [messages]);
+export function ChatSidebar({ layoutMode, onLayoutModeChange }: ChatSidebarProps) {
+  const { agent } = useAgent({
+    agentId: "orchestrator",
+    updates: [UseAgentUpdate.OnMessagesChanged, UseAgentUpdate.OnRunStatusChanged],
+  });
+
+  const [messages, setMessages] = useState<Message[]>(agent.messages);
+  const [isRunning, setIsRunning] = useState<boolean>(agent.isRunning);
 
   useEffect(() => {
-    console.log("[ChatSidebar] isLoading:", isLoading);
-  }, [isLoading]);
+    const { unsubscribe } = agent.subscribe({
+      onMessagesChanged: ({ messages: msgs }) => setMessages([...msgs]),
+      onRunStatusChanged: ({ isRunning: running }) => setIsRunning(running),
+    });
+    return unsubscribe;
+  }, [agent]);
+
+  // Track layout mode transitions
+  useEffect(() => {
+    if (messages.length > 0 && layoutMode === "initial") {
+      onLayoutModeChange("chatting");
+    }
+  }, [messages.length, layoutMode, onLayoutModeChange]);
 
   const [input, setInput] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -51,13 +65,17 @@ export function ChatSidebar() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const handleSend = () => {
-    if (!input.trim() || isLoading) return;
+  const handleSend = useCallback(() => {
+    if (!input.trim() || isRunning) return;
     const text = input;
     setInput("");
-    console.log("[ChatSidebar] Sending:", text);
-    appendMessage(new TextMessage({ role: Role.User, content: text }));
-  };
+    agent.addMessage({ id: randomUUID(), role: "user", content: text });
+    agent.runAgent();
+  }, [input, isRunning, agent]);
+
+  const visibleMessages = messages.filter(
+    (msg: any) => (msg.role === "user" || msg.role === "assistant") && msg.content
+  );
 
   return (
     <div className="flex flex-col h-full">
@@ -69,16 +87,14 @@ export function ChatSidebar() {
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
-        {messages.length === 0 && (
+        {visibleMessages.length === 0 && (
           <div className="flex items-center justify-center text-muted-foreground text-sm h-full">
             <p>Send a message to get started.</p>
           </div>
         )}
 
-        {messages.map((msg: any) => {
-          // Skip empty content messages (tool calls without text)
-          if (!msg.content?.trim() && !msg.generativeUI) return null;
-
+        {visibleMessages.map((msg: any) => {
+          if (!msg.content?.trim()) return null;
           return (
             <div
               key={msg.id}
@@ -98,8 +114,6 @@ export function ChatSidebar() {
                       {msg.content}
                     </p>
                   )}
-                  {/* Render generative UI from tool calls */}
-                  {msg.generativeUI?.()}
                   {msg.content?.trim() && (
                     <div className="mt-1">
                       <CopyButton text={msg.content} />
@@ -111,14 +125,12 @@ export function ChatSidebar() {
           );
         })}
 
-        {isLoading && (
+        {isRunning && (
           <div className="flex justify-start">
-            <div className="rounded-2xl bg-muted px-3 py-2">
-              <div className="flex gap-1">
-                <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-muted-foreground/40" />
-                <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-muted-foreground/40 [animation-delay:150ms]" />
-                <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-muted-foreground/40 [animation-delay:300ms]" />
-              </div>
+            <div className="flex items-center gap-1 rounded-2xl bg-muted px-3 py-2">
+              <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-muted-foreground/40" />
+              <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-muted-foreground/40 [animation-delay:150ms]" />
+              <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-muted-foreground/40 [animation-delay:300ms]" />
             </div>
           </div>
         )}
@@ -132,7 +144,7 @@ export function ChatSidebar() {
           <input
             autoFocus
             className="flex-1 rounded-xl border bg-background px-3 py-2 text-sm outline-none ring-ring focus:ring-2"
-            disabled={isLoading}
+            disabled={isRunning}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) {
@@ -143,10 +155,10 @@ export function ChatSidebar() {
             placeholder="Ask something..."
             value={input}
           />
-          {isLoading ? (
+          {isRunning ? (
             <button
               className="flex items-center justify-center rounded-xl border bg-background p-2 text-foreground hover:bg-muted"
-              onClick={stopGeneration}
+              onClick={() => agent.abortRun()}
               type="button"
               title="Stop"
             >
