@@ -1,6 +1,6 @@
 // Science Lab example — barrel export.
-// Smart widgets for science experiments.
+// Demonstrates both smart (agent-driven) and dumb (static) widgets coexisting.
 
 export { default as ParticleSim, config as particleSimConfig } from "./widgets/particle-sim";
-export { default as UserCard, config as userCardConfig } from "./widgets/user-card";
-export { default as TopicProgress, config as topicProgressConfig } from "./widgets/topic-progress";
+export { default as ParticleBottle } from "./widgets/particle-bottle/ParticleBottle";
+export { default as particleBottleConfig } from "./widgets/particle-bottle/widget.config";
