@@ -22,3 +22,4 @@ class OrchestratorState(CopilotKitState):
     focused_agent: Optional[str] = None
     widget_state: Dict[str, Any] = {}
     widget_summaries: Dict[str, str] = {}
+    canvas_clear: Optional[Dict[str, Any]] = None
