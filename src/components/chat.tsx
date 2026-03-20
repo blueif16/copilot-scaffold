@@ -5,6 +5,7 @@ import { randomUUID } from "@ag-ui/client";
 import type { Message } from "@ag-ui/client";
 import { useAgent } from "@/hooks/use-agent";
 import { useState, useRef, useEffect } from "react";
+import Markdown from "react-markdown";
 import { cn } from "@/lib/utils";
 import type { LayoutMode } from "@/app/(chat)/page";
 import { useVoiceInput } from "@/hooks/use-voice-input";
@@ -122,7 +123,9 @@ export function Chat({ onCanvasModeChange }: ChatProps) {
                 </div>
               ) : (
                 <div className="flex flex-col items-start">
-                  <p className="whitespace-pre-wrap text-sm text-foreground">{msg.content}</p>
+                  <div className="prose prose-sm dark:prose-invert max-w-none text-foreground">
+                    <Markdown>{msg.content}</Markdown>
+                  </div>
                   <div className="mt-1 flex items-center gap-0.5">
                     <CopyButton text={msg.content} />
                     <ThumbUpButton />

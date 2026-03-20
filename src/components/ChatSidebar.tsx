@@ -3,7 +3,8 @@
 import { useAgent, UseAgentUpdate, useCopilotKit } from "@copilotkitnext/react";
 import { randomUUID } from "@ag-ui/client";
 import type { Message } from "@ag-ui/client";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
+import Markdown from "react-markdown";
 import { cn } from "@/lib/utils";
 import type { LayoutMode } from "@/app/(chat)/page";
 import { useVoiceInput } from "@/hooks/use-voice-input";
@@ -124,9 +125,9 @@ export function ChatSidebar({ layoutMode, onLayoutModeChange }: ChatSidebarProps
               ) : (
                 <div className="flex flex-col items-start max-w-[90%]">
                   {msg.content?.trim() && (
-                    <p className="whitespace-pre-wrap text-sm text-foreground">
-                      {msg.content}
-                    </p>
+                    <div className="prose prose-sm dark:prose-invert max-w-none text-foreground">
+                      <Markdown>{msg.content}</Markdown>
+                    </div>
                   )}
                   {msg.content?.trim() && (
                     <div className="mt-1">
