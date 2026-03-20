@@ -1,5 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  transpilePackages: ["@copilotkit"],
   webpack: (config) => {
     // Suppress critical dependency warning from @whatwg-node/fetch
     // This is a known issue with graphql-yoga and copilotkit runtime

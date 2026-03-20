@@ -1,21 +1,20 @@
-# Science Lab example — backend tool definitions.
-# This example has different tools than student_dashboard.
+"""Science Lab — orchestrator-level spawn tools.
+
+Each tool here is bound to the ORCHESTRATOR LLM.
+Returning a dict from a spawn tool sets the initial widget_state for the subagent.
+"""
 from langchain_core.tools import tool
 
 
 @tool
 def show_particle_sim(initial_state: str = "gas") -> dict:
-    """Spawn the particle simulation widget.
+    """Spawn the particle simulation widget. [Layout: full width, fill height]
 
     Args:
-        initial_state: Initial state - "solid", "liquid", or "gas"
+        initial_state: Starting matter state - "solid", "liquid", or "gas"
     """
-    return {
-        "widget": "particle_sim",
-        "action": "spawn",
-        "props": {"initial_state": initial_state},
-    }
+    return {"current_state": initial_state}
 
 
-# Science lab has different tools than student dashboard
+# Spawn tools for this example (loaded by examples/__init__.py:load_all_example_tools)
 all_tools = [show_particle_sim]

@@ -40,22 +40,25 @@ export function ChatSidebar({ layoutMode, onLayoutModeChange }: ChatSidebarProps
   const { copilotkit } = useCopilotKit();
   const { agent } = useAgent({
     agentId: "orchestrator",
-    updates: [UseAgentUpdate.OnMessagesChanged, UseAgentUpdate.OnRunStatusChanged],
+    updates: [UseAgentUpdate.OnMessagesChanged, UseAgentUpdate.OnRunStatusChanged, UseAgentUpdate.OnStateChanged],
   });
 
   const [messages, setMessages] = useState<Message[]>(agent.messages);
   const [isRunning, setIsRunning] = useState<boolean>(agent.isRunning);
+  const [focusedAgent, setFocusedAgent] = useState<string | null>((agent.state as any)?.focused_agent ?? null);
 
   useEffect(() => {
     // Sync state on mount — events may fire before this effect runs
     setMessages([...agent.messages]);
     setIsRunning(agent.isRunning);
+    setFocusedAgent((agent.state as any)?.focused_agent ?? null);
 
     const { unsubscribe } = agent.subscribe({
       onMessagesChanged: ({ messages: msgs }) => setMessages([...msgs]),
       onRunInitialized: () => setIsRunning(true),
       onRunFinalized: () => setIsRunning(false),
       onRunFailed: () => setIsRunning(false),
+      onStateChanged: ({ state: s }) => setFocusedAgent((s as any)?.focused_agent ?? null),
     });
     return unsubscribe;
   }, [agent]);
@@ -96,8 +99,8 @@ export function ChatSidebar({ layoutMode, onLayoutModeChange }: ChatSidebarProps
     <div className="flex flex-col h-full">
       {/* Agent badge */}
       <div className="px-4 py-2 border-b text-sm flex items-center gap-2">
-        <span className="w-2 h-2 rounded-full bg-blue-500" />
-        Talking to: <strong>Orchestrator</strong>
+        <span className={cn("w-2 h-2 rounded-full", focusedAgent ? "bg-green-500" : "bg-blue-500")} />
+        Talking to: <strong>{focusedAgent ? focusedAgent.replace(/_/g, " ") : "Orchestrator"}</strong>
       </div>
 
       {/* Messages */}

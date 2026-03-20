@@ -1,9 +1,12 @@
-"""Widget platform orchestrator graph with CopilotKit state sync."""
+"""Widget platform orchestrator graph — skeleton only.
+
+No example names, no widget names, no domain-specific logic.
+All content is injected at startup via the subagent registry.
+"""
 import os
 import json
 import logging
 import time
-from pathlib import Path
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -20,12 +23,40 @@ from langgraph.checkpoint.memory import MemorySaver
 from langchain_core.messages import SystemMessage, ToolMessage
 
 from .state import OrchestratorState
-from .tools import (
-    orchestrator_tools, orchestrator_tool_names,
-    particle_sim_tools, particle_sim_tool_names,
-    backend_tool_names,
+from .tools import skeleton_tools, clear_canvas, handoff_to_orchestrator
+from .subagents import load_subagent_registry
+
+# ---------------------------------------------------------------------------
+# Load registry at startup — all content comes from examples
+# ---------------------------------------------------------------------------
+
+_registry = load_subagent_registry()
+
+# spawn tool name → SubagentConfig
+_spawn_tool_map = {cfg.spawn_tool.name: cfg for cfg in _registry.values()}
+
+# domain tool name → (tool callable, SubagentConfig)
+_domain_tool_map = {
+    t.name: t
+    for cfg in _registry.values()
+    for t in cfg.domain_tools
+}
+
+# All tool names that go to tools_node instead of AG-UI
+_backend_tool_names = (
+    {t.name for t in skeleton_tools}
+    | set(_spawn_tool_map.keys())
+    | set(_domain_tool_map.keys())
+    | {handoff_to_orchestrator.name}
 )
 
+# Spawn tools to bind on orchestrator LLM (from registry)
+_spawn_tools = [cfg.spawn_tool for cfg in _registry.values()]
+
+
+# ---------------------------------------------------------------------------
+# LLM
+# ---------------------------------------------------------------------------
 
 def get_llm():
     provider = os.getenv("LLM_PROVIDER", "google")
@@ -40,56 +71,46 @@ def get_llm():
         )
 
 
-ORCHESTRATOR_PROMPT = """You are the platform orchestrator. You spawn UI widgets by calling tools. \
+llm = get_llm()
+
+
+# ---------------------------------------------------------------------------
+# Prompts
+# ---------------------------------------------------------------------------
+
+ORCHESTRATOR_PROMPT = """You are the platform orchestrator. You spawn UI widgets by calling tools.
 Every widget on screen was created by a tool call — there is no other way to show UI.
 
-Each tool's description includes a [Layout] hint showing the widget's size.
-Use this to compose sensible layouts:
-- Two "half width, compact" widgets fit side-by-side nicely
+Each tool description may include a [Layout] hint. Use it to compose sensible layouts:
+- Two "half width" widgets fit side-by-side
 - A "full width, fill height" widget is a big interactive experience — show it alone
-
-IMPORTANT: You can (and should) call MULTIPLE tools in a SINGLE response when the user \
-asked for something that needs more than one widget.
 
 RULES:
 - Every piece of UI must come from a tool call
 - Call multiple tools in one turn when showing a composite view
 - Keep text responses brief — the widgets ARE the response
-- Be helpful and friendly
-- clear_canvas(widget_ids?) removes widgets from the canvas (backend tool — updates state immediately).
-  - Omit widget_ids to clear ALL widgets.
-  - Pass specific IDs like ["user_card"] or ["topic_progress", "particle_sim"] to remove only those.
-- When switching to a DIFFERENT view, call clear_canvas() FIRST (same response), then call the new widget tools.
-- When replacing just one widget while keeping others, call clear_canvas(widget_ids=["<id>"]) then spawn the replacement.
-- show_particle_sim launches an interactive simulation — after spawning it, the particle simulation
-  assistant takes over the conversation to guide the user through phase transitions.
+- clear_canvas(widget_ids?) removes widgets. Omit to clear ALL. Pass ids to remove specific ones.
+- When switching views: call clear_canvas() FIRST, then call the new widget tool(s).
+- When a spawn tool description says it launches an interactive experience, after calling it
+  a specialist assistant takes over the conversation for that widget.
 """
 
-_PARTICLE_SIM_PROMPT_FILE = (
-    Path(__file__).parent.parent.parent
-    / "examples" / "science_lab" / "widgets" / "particle-sim" / "agent" / "prompt.md"
-)
-PARTICLE_SIM_PROMPT = (
-    _PARTICLE_SIM_PROMPT_FILE.read_text()
-    if _PARTICLE_SIM_PROMPT_FILE.exists()
-    else "You are the Particle Simulation assistant. Help the user explore solid, liquid, and gas states."
-)
-
 SYSTEM_PROMPT = os.getenv("SYSTEM_PROMPT", ORCHESTRATOR_PROMPT)
-
-llm = get_llm()
 
 
 # ---------------------------------------------------------------------------
 # Orchestrator node
 # ---------------------------------------------------------------------------
 
-def orchestrator_node(state: OrchestratorState, config):
-    """Main orchestrator node."""
+async def orchestrator_node(state: OrchestratorState, config):
     copilotkit_state = state.get("copilotkit", {})
     frontend_actions = copilotkit_state.get("actions", [])
 
-    logger.info(f"[ORCHESTRATOR] messages={len(state.get('messages', []))} frontend_actions={len(frontend_actions)} focused_agent={state.get('focused_agent')}")
+    logger.info(
+        f"[ORCHESTRATOR] messages={len(state.get('messages', []))} "
+        f"frontend={len(frontend_actions)} spawn_tools={len(_spawn_tools)} "
+        f"focused={state.get('focused_agent')}"
+    )
 
     try:
         from copilotkit.langgraph import copilotkit_customize_config
@@ -103,71 +124,77 @@ def orchestrator_node(state: OrchestratorState, config):
     except ImportError:
         pass
 
-    all_tools = [*frontend_actions, *orchestrator_tools]
-    logger.info(f"[ORCHESTRATOR] binding {len(all_tools)} tools ({len(frontend_actions)} frontend + {len(orchestrator_tools)} backend)")
+    # Bind: frontend dumb-widget tools + skeleton tools + spawn tools from registry
+    all_tools = [*frontend_actions, *skeleton_tools, *_spawn_tools]
     llm_with_tools = llm.bind_tools(all_tools)
-
     messages = [SystemMessage(content=SYSTEM_PROMPT)] + state["messages"]
-    response = llm_with_tools.invoke(messages, config=config)
+    response = await llm_with_tools.ainvoke(messages, config=config)
 
     if hasattr(response, "additional_kwargs"):
         response.additional_kwargs.pop("reasoning_content", None)
 
     if getattr(response, "tool_calls", None):
         for tc in response.tool_calls:
-            is_backend = tc.get("name", "") in orchestrator_tool_names
-            logger.info(f"  tool_call: {tc.get('name')} → {'backend' if is_backend else 'AG-UI (frontend)'}")
+            is_backend = tc.get("name", "") in _backend_tool_names
+            logger.info(f"  tool_call: {tc.get('name')} → {'backend' if is_backend else 'AG-UI'}")
 
     return {"messages": [response]}
 
 
 def route_orchestrator(state: OrchestratorState):
-    """Route after orchestrator: backend tool call → tools_node, else → END."""
     last = state["messages"][-1]
     if hasattr(last, "tool_calls") and last.tool_calls:
-        has_backend = any(tc.get("name") in orchestrator_tool_names for tc in last.tool_calls)
-        if has_backend:
+        if any(tc.get("name") in _backend_tool_names for tc in last.tool_calls):
             return "tools"
-        logger.info("[ORCHESTRATOR] all tool calls are frontend → END for AG-UI")
+        logger.info("[ORCHESTRATOR] all frontend → END for AG-UI")
     return END
 
 
 # ---------------------------------------------------------------------------
-# Particle-sim subagent node
+# Subagent node factory — generic, works for any SubagentConfig
 # ---------------------------------------------------------------------------
 
-def particle_sim_node(state: OrchestratorState, config):
-    """Particle simulation subagent — has domain-specific tools only."""
-    logger.info(f"[PARTICLE_SIM] messages={len(state.get('messages', []))} widget_state={state.get('widget_state')}")
+def make_subagent_node(cfg):
+    """Return a node function for the given subagent config."""
+    # Inject handoff_to_orchestrator so examples don't have to define it
+    subagent_tools = cfg.domain_tools + [handoff_to_orchestrator]
+    llm_with_tools = llm.bind_tools(subagent_tools)
 
-    try:
-        from copilotkit.langgraph import copilotkit_customize_config
-        config = copilotkit_customize_config(
-            config,
-            emit_tool_calls=True,
-            emit_intermediate_state=[
-                {"state_key": "widget_state", "tool": "set_particle_state", "tool_argument": "new_state"},
-            ],
+    async def subagent_node(state: OrchestratorState, config):
+        logger.info(
+            f"[SUBAGENT:{cfg.id}] messages={len(state.get('messages', []))} "
+            f"widget_state={state.get('widget_state')}"
         )
-    except ImportError:
-        pass
+        try:
+            from copilotkit.langgraph import copilotkit_customize_config
+            _config = copilotkit_customize_config(
+                config,
+                emit_tool_calls=True,
+                emit_intermediate_state=[
+                    {"state_key": "widget_state", "tool": "*", "tool_argument": "*"},
+                ],
+            )
+        except ImportError:
+            _config = config
 
-    llm_with_tools = llm.bind_tools(particle_sim_tools)
-    messages = [SystemMessage(content=PARTICLE_SIM_PROMPT)] + state["messages"]
-    response = llm_with_tools.invoke(messages, config=config)
+        messages = [SystemMessage(content=cfg.prompt)] + state["messages"]
+        response = await llm_with_tools.ainvoke(messages, config=_config)
 
-    if hasattr(response, "additional_kwargs"):
-        response.additional_kwargs.pop("reasoning_content", None)
+        if hasattr(response, "additional_kwargs"):
+            response.additional_kwargs.pop("reasoning_content", None)
 
-    if getattr(response, "tool_calls", None):
-        for tc in response.tool_calls:
-            logger.info(f"  [PARTICLE_SIM] tool_call: {tc.get('name')}")
+        if getattr(response, "tool_calls", None):
+            for tc in response.tool_calls:
+                logger.info(f"  [SUBAGENT:{cfg.id}] tool_call: {tc.get('name')}")
 
-    return {"messages": [response]}
+        return {"messages": [response]}
+
+    subagent_node.__name__ = f"subagent_{cfg.id}"
+    return subagent_node
 
 
-def route_particle_sim(state: OrchestratorState):
-    """Route after particle_sim node: any tool call → tools_node, else → END."""
+def route_subagent(state: OrchestratorState):
+    """Generic route for any subagent: tool call → tools_node, else → END."""
     last = state["messages"][-1]
     if hasattr(last, "tool_calls") and last.tool_calls:
         return "tools"
@@ -175,23 +202,18 @@ def route_particle_sim(state: OrchestratorState):
 
 
 # ---------------------------------------------------------------------------
-# Shared tools node
+# Shared tools node — generic, driven by registry
 # ---------------------------------------------------------------------------
 
-# Non-state-mutating backend tools (callable directly)
-_callable_tool_map = {
-    t.name: t for t in orchestrator_tools + particle_sim_tools
-    if t.name not in {"clear_canvas", "show_particle_sim", "set_particle_state", "handoff_to_orchestrator"}
-}
+async def tools_node(state: OrchestratorState) -> dict:
+    """Unified tool executor. Handles all backend tool calls from any node.
 
-
-def tools_node(state: OrchestratorState) -> dict:
-    """Unified tool executor for both orchestrator and particle_sim tool calls.
-
-    State-mutating tools (clear_canvas, show_particle_sim, set_particle_state,
-    handoff_to_orchestrator) are handled inline. All others are delegated.
+    State-mutating tools are handled inline; domain tools whose return values
+    update widget_state are called and merged generically.
     """
     last = state["messages"][-1]
+    tool_names = [tc["name"] for tc in getattr(last, "tool_calls", [])]
+    logger.info(f"[TOOLS] entering tools_node — calls: {tool_names} focused={state.get('focused_agent')}")
     messages = []
     state_updates: dict = {}
 
@@ -203,119 +225,127 @@ def tools_node(state: OrchestratorState) -> dict:
             if ids is not None and len(ids) == 0:
                 ids = None
             state_updates["canvas_clear"] = {"ids": ids, "seq": int(time.time() * 1000)}
-            # Also remove from active_widgets
             current_active = list(state.get("active_widgets") or [])
-            if ids is None:
-                state_updates["active_widgets"] = []
-            else:
-                state_updates["active_widgets"] = [w for w in current_active if w not in ids]
-            logger.info(f"[TOOLS] clear_canvas: ids={ids}")
+            state_updates["active_widgets"] = [] if ids is None else [
+                w for w in current_active if w not in ids
+            ]
+            logger.info(f"[TOOLS] clear_canvas ids={ids}")
             messages.append(ToolMessage(
                 content=json.dumps({"cleared": ids if ids else "all"}),
                 tool_call_id=tc["id"], name=name,
             ))
 
-        elif name == "show_particle_sim":
-            initial_state = tc["args"].get("initial_state", "gas")
-            state_updates["focused_agent"] = "particle_sim"
-            state_updates["widget_state"] = {"current_state": initial_state}
+        elif name in _spawn_tool_map:
+            cfg = _spawn_tool_map[name]
+            # Call the spawn tool — its return value is the initial widget_state
+            initial_ws = cfg.spawn_tool.func(**tc["args"])
+            if not isinstance(initial_ws, dict):
+                initial_ws = {}
+            state_updates["focused_agent"] = cfg.id
+            state_updates["widget_state"] = initial_ws
             current_active = list(state.get("active_widgets") or [])
-            if "particle_sim" not in current_active:
-                current_active.append("particle_sim")
+            if cfg.id not in current_active:
+                current_active.append(cfg.id)
             state_updates["active_widgets"] = current_active
-            logger.info(f"[TOOLS] show_particle_sim: initial_state={initial_state} → focused_agent=particle_sim")
+            logger.info(f"[TOOLS] spawn '{name}' → focused_agent={cfg.id} widget_state={initial_ws}")
             messages.append(ToolMessage(
-                content=json.dumps({"spawned": "particle_sim", "initial_state": initial_state}),
-                tool_call_id=tc["id"], name=name,
-            ))
-
-        elif name == "set_particle_state":
-            new_state = tc["args"].get("new_state", "gas")
-            current_ws = dict(state.get("widget_state") or {})
-            current_ws["current_state"] = new_state
-            state_updates["widget_state"] = current_ws
-            logger.info(f"[TOOLS] set_particle_state: new_state={new_state}")
-            messages.append(ToolMessage(
-                content=json.dumps({"new_state": new_state, "status": "ok"}),
+                content=json.dumps({"spawned": cfg.id, **initial_ws}),
                 tool_call_id=tc["id"], name=name,
             ))
 
         elif name == "handoff_to_orchestrator":
+            prev_agent = state.get("focused_agent")
             state_updates["focused_agent"] = None
-            logger.info("[TOOLS] handoff_to_orchestrator: clearing focused_agent")
+            logger.info(f"[TOOLS] handoff_to_orchestrator: {prev_agent} → orchestrator")
             messages.append(ToolMessage(
                 content=json.dumps({"status": "handing_off"}),
                 tool_call_id=tc["id"], name=name,
             ))
 
-        else:
-            fn = _callable_tool_map.get(name)
-            result = fn.invoke(tc["args"]) if fn else f"Unknown tool: {name}"
+        elif name in _domain_tool_map:
+            fn = _domain_tool_map[name]
+            result = fn.func(**tc["args"])
+            # Merge result dict into widget_state
+            if isinstance(result, dict) and "error" not in result:
+                current_ws = dict(state.get("widget_state") or {})
+                current_ws.update(result)
+                state_updates["widget_state"] = current_ws
+                logger.info(f"[TOOLS] domain '{name}' → widget_state={current_ws}")
             messages.append(ToolMessage(
-                content=str(result),
+                content=json.dumps(result) if isinstance(result, dict) else str(result),
                 tool_call_id=tc["id"], name=name,
             ))
+
+        else:
+            # Frontend tool — skip execution, AG-UI protocol routes to client
+            logger.info(f"[TOOLS] skipping frontend tool: {name}")
 
     return {**state_updates, "messages": messages}
 
 
-def route_after_tools(state: OrchestratorState):
-    """After tools_node: route to active subagent or back to orchestrator."""
+# ---------------------------------------------------------------------------
+# Entry and post-tools routing — generic
+# ---------------------------------------------------------------------------
+
+def route_entry(state: OrchestratorState):
     focused = state.get("focused_agent")
-    if focused == "particle_sim":
-        logger.info("[TOOLS] → particle_sim_node")
-        return "particle_sim"
+    if focused and focused in _registry:
+        logger.info(f"[ENTRY] resuming subagent '{focused}'")
+        return focused
+    return "orchestrator"
+
+
+def route_after_tools(state: OrchestratorState):
+    # Detect if we just ran a spawn tool — subagent activates next turn, not this one
+    messages = state["messages"]
+    for msg in reversed(messages):
+        if hasattr(msg, "tool_calls") and msg.tool_calls:
+            if any(tc.get("name") in _spawn_tool_map for tc in msg.tool_calls):
+                logger.info("[TOOLS] spawn complete → END (subagent activates next turn)")
+                return END
+            break
+
+    focused = state.get("focused_agent")
+    if focused and focused in _registry:
+        logger.info(f"[TOOLS] → subagent '{focused}'")
+        return focused
     logger.info("[TOOLS] → orchestrator")
     return "orchestrator"
 
 
 # ---------------------------------------------------------------------------
-# Entry router
-# ---------------------------------------------------------------------------
-
-def route_entry(state: OrchestratorState):
-    """Route at graph entry: resume active subagent or go to orchestrator."""
-    focused = state.get("focused_agent")
-    if focused == "particle_sim":
-        logger.info("[ENTRY] resuming particle_sim subagent")
-        return "particle_sim"
-    return "orchestrator"
-
-
-# ---------------------------------------------------------------------------
-# Graph assembly
+# Graph assembly — dynamic, driven by registry
 # ---------------------------------------------------------------------------
 
 def create_graph():
     workflow = StateGraph(OrchestratorState)
 
     workflow.add_node("orchestrator", orchestrator_node)
-    workflow.add_node("particle_sim", particle_sim_node)
     workflow.add_node("tools", tools_node)
 
-    # Entry: resume subagent if one is focused, else go to orchestrator
-    workflow.add_conditional_edges(START, route_entry, {
-        "orchestrator": "orchestrator",
-        "particle_sim": "particle_sim",
-    })
+    subagent_ids = list(_registry.keys())
 
-    # Orchestrator: backend tool call → tools, else → END
+    # Add one node per registered subagent
+    for subagent_id, cfg in _registry.items():
+        workflow.add_node(subagent_id, make_subagent_node(cfg))
+        workflow.add_conditional_edges(subagent_id, route_subagent, {
+            "tools": "tools",
+            END: END,
+        })
+
+    # Entry: resume active subagent or go to orchestrator
+    entry_targets = {"orchestrator": "orchestrator", **{sid: sid for sid in subagent_ids}}
+    workflow.add_conditional_edges(START, route_entry, entry_targets)
+
+    # Orchestrator: backend call → tools, else → END
     workflow.add_conditional_edges("orchestrator", route_orchestrator, {
         "tools": "tools",
         END: END,
     })
 
-    # Particle_sim: any tool call → tools, else → END
-    workflow.add_conditional_edges("particle_sim", route_particle_sim, {
-        "tools": "tools",
-        END: END,
-    })
-
-    # After tools: route back to active subagent or orchestrator
-    workflow.add_conditional_edges("tools", route_after_tools, {
-        "particle_sim": "particle_sim",
-        "orchestrator": "orchestrator",
-    })
+    # After tools: route to active subagent, back to orchestrator, or END (after spawn)
+    after_targets = {"orchestrator": "orchestrator", END: END, **{sid: sid for sid in subagent_ids}}
+    workflow.add_conditional_edges("tools", route_after_tools, after_targets)
 
     return workflow.compile(
         checkpointer=MemorySaver(),
