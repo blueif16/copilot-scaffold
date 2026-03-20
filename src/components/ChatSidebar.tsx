@@ -3,9 +3,10 @@
 import { useAgent, UseAgentUpdate, useCopilotKit } from "@copilotkitnext/react";
 import { randomUUID } from "@ag-ui/client";
 import type { Message } from "@ag-ui/client";
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import type { LayoutMode } from "@/app/(chat)/page";
+import { useVoiceInput } from "@/hooks/use-voice-input";
 
 function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
@@ -66,57 +67,11 @@ export function ChatSidebar({ layoutMode, onLayoutModeChange }: ChatSidebarProps
   }, [messages.length, layoutMode, onLayoutModeChange]);
 
   const [input, setInput] = useState("");
-  const [isListening, setIsListening] = useState(false);
-  const recognitionRef = useRef<any>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const toggleListening = useCallback(() => {
-    const SpeechRecognition =
-      (window as any).SpeechRecognition ||
-      (window as any).webkitSpeechRecognition;
-    if (!SpeechRecognition) return;
-
-    if (isListening) {
-      recognitionRef.current?.stop();
-      return;
-    }
-
-    const recognition = new SpeechRecognition();
-    recognition.lang = "en-US";
-    recognition.interimResults = true;
-    recognition.continuous = false;
-    recognitionRef.current = recognition;
-
-    let baseInput = input;
-
-    recognition.onstart = () => setIsListening(true);
-
-    recognition.onresult = (e: any) => {
-      const transcript = Array.from(e.results as SpeechRecognitionResultList)
-        .map((r: any) => r[0].transcript)
-        .join("");
-      const isFinal = (e.results[e.results.length - 1] as SpeechRecognitionResult).isFinal;
-      if (isFinal) {
-        const appended = baseInput ? `${baseInput} ${transcript}` : transcript;
-        setInput(appended);
-        baseInput = appended;
-      } else {
-        setInput(baseInput ? `${baseInput} ${transcript}` : transcript);
-      }
-    };
-
-    recognition.onend = () => {
-      setIsListening(false);
-      recognitionRef.current = null;
-    };
-
-    recognition.onerror = () => {
-      setIsListening(false);
-      recognitionRef.current = null;
-    };
-
-    recognition.start();
-  }, [isListening, input]);
+  const { isListening, toggleListening } = useVoiceInput({
+    onTranscript: (text) => setInput((prev) => prev ? `${prev} ${text}` : text),
+  });
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
