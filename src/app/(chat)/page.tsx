@@ -20,26 +20,57 @@ export default function Page() {
   const { agent } = useAgent({ agentId: "orchestrator" });
   const { copilotkit } = useCopilotKit();
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      const tools = (copilotkit as any).runHandler?._tools ?? [];
-      console.log(`[BOOT] firing auto-message, tools registered: ${tools.length} names: ${tools.map((t: any) => t.name).join(',')}`);
-      agent.addMessage({ id: randomUUID(), role: "user", content: "hello" });
-      copilotkit.runAgent({ agent });
-    }, 1500);
-    return () => clearTimeout(timer);
-  }, []);
+  // useEffect(() => {
+  //   const timer = setTimeout(() => {
+  //     const tools = (copilotkit as any).runHandler?._tools ?? [];
+  //     console.log(`[BOOT] firing auto-message, tools registered: ${tools.length} names: ${tools.map((t: any) => t.name).join(',')}`);
+  //     agent.addMessage({ id: randomUUID(), role: "user", content: "hello" });
+  //     copilotkit.runAgent({ agent });
+  //   }, 1500);
+  //   return () => clearTimeout(timer);
+  // }, []);
 
   useEffect(() => {
     const { unsubscribe } = agent.subscribe({
       onStateChanged: ({ state: s }) => {
         const signal = (s as any).canvas_clear;
-        if (!signal) return;
-        if (!signal.ids || signal.ids.length === 0) {
+        const activeWidgetIds: string[] = (s as any).active_widgets ?? [];
+        const widgetState: Record<string, any> = (s as any).widget_state ?? {};
+        const smartEntries = widgetEntries.filter((e) => e.config.agent !== null);
+
+        // canvas_clear: clear all
+        if (signal && (!signal.ids || signal.ids.length === 0)) {
           setSpawned([]);
-        } else {
-          setSpawned((prev) => prev.filter((w) => !signal.ids.includes(w.id)));
+          return;
         }
+
+        setSpawned((prev) => {
+          let next = prev;
+
+          // canvas_clear: specific widget ids
+          if (signal?.ids?.length > 0) {
+            next = next.filter((w) => !signal.ids.includes(w.id));
+          }
+
+          // Sync smart widgets with active_widgets from graph state
+          if (smartEntries.length > 0) {
+            // Drop stale smart widget slots
+            next = next.filter((w) => {
+              const isSmart = smartEntries.some((e) => e.config.id === w.id);
+              return !isSmart || activeWidgetIds.includes(w.id);
+            });
+            // Add/refresh active smart widgets
+            const dumbSpawns = next.filter((w) => !smartEntries.some((e) => e.config.id === w.id));
+            const smartSpawns: SpawnedWidget[] = activeWidgetIds.flatMap((id) => {
+              const entry = smartEntries.find((e) => e.config.id === id);
+              if (!entry) return [];
+              return [{ id, Component: entry.Component, props: widgetState }];
+            });
+            next = [...dumbSpawns, ...smartSpawns];
+          }
+
+          return next;
+        });
       },
     });
     return unsubscribe;
