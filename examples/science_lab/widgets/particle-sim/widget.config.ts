@@ -12,8 +12,8 @@ const config: WidgetConfig = {
       },
     },
   },
-  agent: null,
-  layout: { slot: "full" },
+  agent: "particle_sim",
+  layout: { width: "full", height: "fill" },
 };
 
 export default config;
