@@ -16,7 +16,7 @@ function threatColor(level: string): string {
 }
 
 export default function SecurityAdvisories({ filter_codes }: Props) {
-  const [data, setData] = useState<any>(null);
+  const [data, setData] = useState<{ data: Record<string, any> } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -30,13 +30,15 @@ export default function SecurityAdvisories({ filter_codes }: Props) {
   if (loading) return <div className="animate-pulse h-48 bg-muted rounded m-2" />;
   if (error) return <div className="p-4 text-red-400 text-sm">Error: {error}</div>;
 
-  let items = Array.isArray(data?.securityAdvisories) ? data.securityAdvisories
-    : Array.isArray(data?.data?.securityAdvisories) ? data.data.securityAdvisories
-    : Array.isArray(data) ? data : [];
+  let items: any[] = [];
+  const advisories = data?.data?.securityAdvisories;
+  if (Array.isArray(advisories)) {
+    items = advisories;
+  }
 
   if (filter_codes) {
     const codes = filter_codes.split(",").map((c) => c.trim().toUpperCase());
-    items = items.filter((a: any) => codes.includes((a.code ?? a.country_code ?? "").toUpperCase()));
+    items = items.filter((a: any) => codes.includes((a.code ?? a.countryCode ?? "").toUpperCase()));
   }
 
   return (
@@ -52,9 +54,9 @@ export default function SecurityAdvisories({ filter_codes }: Props) {
           <div key={i} className="px-3 py-3 hover:bg-muted/50">
             <div className="flex items-center gap-2 mb-1">
               <span className="text-sm font-medium">{a.country ?? a.name ?? a.code ?? "—"}</span>
-              {(a.threat_level ?? a.level ?? a.severity) && (
-                <span className={`text-xs px-1.5 py-0.5 rounded ${threatColor(a.threat_level ?? a.level ?? a.severity)}`}>
-                  {a.threat_level ?? a.level ?? a.severity}
+              {(a.threatLevel ?? a.level ?? a.severity) && (
+                <span className={`text-xs px-1.5 py-0.5 rounded ${threatColor(a.threatLevel ?? a.level ?? a.severity)}`}>
+                  {a.threatLevel ?? a.level ?? a.severity}
                 </span>
               )}
             </div>

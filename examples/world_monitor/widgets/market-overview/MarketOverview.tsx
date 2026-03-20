@@ -8,13 +8,15 @@ interface Props {
 }
 
 function QuoteRow({ item }: { item: any }) {
-  const change = item.change_percent ?? item.changePercent ?? item.change ?? 0;
+  const name = item.name ?? item.symbol ?? item.ticker ?? "—";
+  const price = item.price ?? item.value ?? item.last ?? null;
+  const change = item.changePercent ?? item.change_percent ?? item.weekChangePercent ?? item.change ?? 0;
   const isPositive = Number(change) >= 0;
   return (
     <tr className="hover:bg-muted/50">
-      <td className="px-3 py-1.5 text-sm">{item.name ?? item.symbol ?? item.ticker ?? "—"}</td>
+      <td className="px-3 py-1.5 text-sm">{name}</td>
       <td className="px-3 py-1.5 text-sm text-right font-mono">
-        {item.price != null ? Number(item.price).toLocaleString(undefined, { maximumFractionDigits: 2 }) : item.value ?? "—"}
+        {price != null ? Number(price).toLocaleString(undefined, { maximumFractionDigits: 2 }) : "—"}
       </td>
       <td className={`px-3 py-1.5 text-sm text-right font-mono ${isPositive ? "text-emerald-400" : "text-red-400"}`}>
         {isPositive ? "+" : ""}{typeof change === "number" ? change.toFixed(2) : change}%
@@ -46,7 +48,7 @@ function Section({ title, items }: { title: string; items: any[] }) {
 }
 
 export default function MarketOverview({ keys }: Props) {
-  const [data, setData] = useState<any>(null);
+  const [data, setData] = useState<{ data: Record<string, any>; missing: string[] } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -61,6 +63,7 @@ export default function MarketOverview({ keys }: Props) {
   if (error) return <div className="p-4 text-red-400 text-sm">Error: {error}</div>;
 
   const sections = keys.split(",").map((k) => k.trim());
+  const bootstrapData = data?.data ?? {};
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
@@ -69,16 +72,16 @@ export default function MarketOverview({ keys }: Props) {
       </div>
       <div className="overflow-y-auto flex-1">
         {sections.map((key) => {
-          const sectionData = data?.[key] ?? data?.data?.[key] ?? [];
+          const sectionData = bootstrapData[key];
+          if (!sectionData) return null;
           const items = Array.isArray(sectionData) ? sectionData : sectionData?.items ?? sectionData?.quotes ?? [];
-          if (items.length === 0) return null;
+          if (!Array.isArray(items) || items.length === 0) return null;
           return <Section key={key} title={key} items={items} />;
         })}
-        {sections.every((key) => {
-          const sd = data?.[key] ?? data?.data?.[key] ?? [];
-          return (Array.isArray(sd) ? sd : sd?.items ?? sd?.quotes ?? []).length === 0;
-        }) && (
-          <div className="px-3 py-6 text-center text-muted-foreground">No market data available</div>
+        {data?.missing && data.missing.length > 0 && (
+          <div className="px-3 py-2 text-xs text-muted-foreground">
+            Missing: {data.missing.join(", ")}
+          </div>
         )}
       </div>
     </div>

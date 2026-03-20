@@ -22,7 +22,7 @@ function riskBg(score: number): string {
 }
 
 export default function CountryRisk({ filter_codes }: Props) {
-  const [data, setData] = useState<any>(null);
+  const [data, setData] = useState<{ data: Record<string, any>; missing: string[] } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -36,16 +36,22 @@ export default function CountryRisk({ filter_codes }: Props) {
   if (loading) return <div className="animate-pulse h-48 bg-muted rounded m-2" />;
   if (error) return <div className="p-4 text-red-400 text-sm">Error: {error}</div>;
 
-  let items = Array.isArray(data?.riskScores) ? data.riskScores
-    : Array.isArray(data?.data?.riskScores) ? data.data.riskScores
-    : Array.isArray(data) ? data : [];
+  let items: any[] = [];
+  const riskScores = data?.data?.riskScores;
+  if (Array.isArray(riskScores)) {
+    items = riskScores;
+  } else if (riskScores && typeof riskScores === "object") {
+    items = Object.entries(riskScores).map(([code, val]: [string, any]) =>
+      typeof val === "number" ? { code, score: val } : { code, ...val }
+    );
+  }
 
   if (filter_codes) {
     const codes = filter_codes.split(",").map((c) => c.trim().toUpperCase());
-    items = items.filter((r: any) => codes.includes((r.code ?? r.country_code ?? "").toUpperCase()));
+    items = items.filter((r: any) => codes.includes((r.code ?? r.countryCode ?? "").toUpperCase()));
   }
 
-  items.sort((a: any, b: any) => (b.score ?? b.risk_score ?? 0) - (a.score ?? a.risk_score ?? 0));
+  items.sort((a: any, b: any) => (b.score ?? b.riskScore ?? 0) - (a.score ?? a.riskScore ?? 0));
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
@@ -66,7 +72,7 @@ export default function CountryRisk({ filter_codes }: Props) {
               <tr><td colSpan={3} className="px-3 py-6 text-center text-muted-foreground">No risk data</td></tr>
             )}
             {items.map((r: any, i: number) => {
-              const score = r.score ?? r.risk_score ?? 0;
+              const score = r.score ?? r.riskScore ?? 0;
               return (
                 <tr key={i} className="hover:bg-muted/50">
                   <td className="px-3 py-2">{r.country ?? r.name ?? r.code ?? "—"}</td>

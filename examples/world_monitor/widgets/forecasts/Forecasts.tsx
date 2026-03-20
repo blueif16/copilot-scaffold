@@ -8,7 +8,7 @@ interface Props {
 }
 
 export default function Forecasts({ keyword }: Props) {
-  const [data, setData] = useState<any>(null);
+  const [data, setData] = useState<{ data: Record<string, any> } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -22,15 +22,17 @@ export default function Forecasts({ keyword }: Props) {
   if (loading) return <div className="animate-pulse h-48 bg-muted rounded m-2" />;
   if (error) return <div className="p-4 text-red-400 text-sm">Error: {error}</div>;
 
-  let items = Array.isArray(data?.forecasts) ? data.forecasts
-    : Array.isArray(data?.data?.forecasts) ? data.data.forecasts
-    : Array.isArray(data) ? data : [];
+  let items: any[] = [];
+  const forecasts = data?.data?.forecasts;
+  if (Array.isArray(forecasts)) {
+    items = forecasts;
+  }
 
   if (keyword) {
     const kw = keyword.toLowerCase();
     items = items.filter((f: any) =>
       (f.title ?? f.question ?? "").toLowerCase().includes(kw) ||
-      (f.analysis ?? f.description ?? "").toLowerCase().includes(kw)
+      (f.analysis ?? f.description ?? f.text ?? "").toLowerCase().includes(kw)
     );
   }
 
@@ -56,9 +58,9 @@ export default function Forecasts({ keyword }: Props) {
                   </span>
                 )}
               </div>
-              {(f.analysis ?? f.description) && (
+              {(f.analysis ?? f.description ?? f.text) && (
                 <p className="text-xs text-muted-foreground line-clamp-2">
-                  {f.analysis ?? f.description}
+                  {f.analysis ?? f.description ?? f.text}
                 </p>
               )}
             </div>

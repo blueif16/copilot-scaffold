@@ -5,14 +5,25 @@ const config: WidgetConfig = {
   tool: {
     name: "get_conflict_events",
     description:
-      "Fetch ACLED armed-conflict events. Returns date, location, event type, fatalities. " +
+      "Fetch ACLED armed-conflict events. Returns date, location, event type, fatalities, and actors. " +
       "Use when the user asks about wars, battles, protests, riots, or violence in a specific country or globally. " +
-      "country accepts full English name (e.g. 'Ukraine', 'Syria'). page_size controls how many events to show.",
+      "country accepts full English name (e.g. 'Ukraine', 'Syria'). " +
+      "start/end are optional Unix timestamps to narrow the date range.",
     parameters: {
       country: {
         type: "string",
         description: "Country name to filter events (e.g. 'Ukraine', 'Syria'). Leave empty for global.",
         default: "",
+      },
+      start: {
+        type: "number",
+        description: "Start date as Unix timestamp. Leave empty for no lower bound.",
+        default: 0,
+      },
+      end: {
+        type: "number",
+        description: "End date as Unix timestamp. Leave empty for no upper bound.",
+        default: 0,
       },
       page_size: {
         type: "number",

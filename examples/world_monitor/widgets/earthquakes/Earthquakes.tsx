@@ -16,7 +16,7 @@ function magColor(mag: number): string {
 }
 
 export default function Earthquakes({ filter_codes, min_magnitude }: Props) {
-  const [data, setData] = useState<any>(null);
+  const [data, setData] = useState<{ data: Record<string, any> } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -30,13 +30,15 @@ export default function Earthquakes({ filter_codes, min_magnitude }: Props) {
   if (loading) return <div className="animate-pulse h-48 bg-muted rounded m-2" />;
   if (error) return <div className="p-4 text-red-400 text-sm">Error: {error}</div>;
 
-  let items = Array.isArray(data?.earthquakes) ? data.earthquakes
-    : Array.isArray(data?.data?.earthquakes) ? data.data.earthquakes
-    : Array.isArray(data) ? data : [];
+  let items: any[] = [];
+  const earthquakes = data?.data?.earthquakes;
+  if (Array.isArray(earthquakes)) {
+    items = earthquakes;
+  }
 
   if (filter_codes) {
     const codes = filter_codes.split(",").map((c) => c.trim().toUpperCase());
-    items = items.filter((e: any) => codes.includes((e.code ?? e.country_code ?? "").toUpperCase()));
+    items = items.filter((e: any) => codes.includes((e.code ?? e.countryCode ?? "").toUpperCase()));
   }
 
   if (min_magnitude && min_magnitude > 0) {
@@ -78,7 +80,7 @@ export default function Earthquakes({ filter_codes, min_magnitude }: Props) {
                     {e.depth != null ? `${e.depth}km` : "—"}
                   </td>
                   <td className="px-3 py-2 text-right text-xs text-muted-foreground whitespace-nowrap">
-                    {e.time ? new Date(e.time).toLocaleString() : e.date ?? "—"}
+                    {e.time ? new Date(typeof e.time === "number" ? e.time * 1000 : e.time).toLocaleString() : e.date ?? "—"}
                   </td>
                 </tr>
               );

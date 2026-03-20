@@ -5,22 +5,22 @@ const config: WidgetConfig = {
   tool: {
     name: "get_prediction_markets",
     description:
-      "Search prediction markets (Polymarket, Metaculus, etc.) for a query. Returns market question, yes/no probability, and volume. " +
-      "Use when the user asks about predictions, forecasts, odds, or probabilities of geopolitical events. " +
-      "category can be: politics, science, sports, crypto, economics, pop-culture, or leave empty for all.",
+      "Search prediction markets (Polymarket, Kalshi) for a query. Returns market title, yes probability (0-1), volume, and close date. " +
+      "Use when the user asks about predictions, forecasts, odds, or probabilities of events. " +
+      "category can be: ai, tech, crypto, science, economy, fed, inflation, interest-rates, recession, trade, tariffs, debt-ceiling.",
     parameters: {
       query: {
         type: "string",
-        description: "Search query (required). E.g. 'Iran nuclear deal', 'US election', 'oil price'.",
+        description: "Search query (required, max 100 chars). E.g. 'Iran nuclear deal', 'US election', 'oil price'.",
       },
       category: {
         type: "string",
-        description: "Filter by category: politics, science, sports, crypto, economics, pop-culture. Leave empty for all.",
+        description: "Filter by category: ai, tech, crypto, science, economy, fed, inflation, interest-rates, recession, trade, tariffs, debt-ceiling. Leave empty for all.",
         default: "",
       },
       page_size: {
         type: "number",
-        description: "Number of markets to return (default 10, max 50).",
+        description: "Number of markets to return (default 10, max 100).",
         default: 10,
       },
     },

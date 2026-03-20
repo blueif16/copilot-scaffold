@@ -2,6 +2,17 @@
 import { useEffect, useState } from "react";
 import { fetchApi } from "../../lib/fetchApi";
 
+interface AcledEvent {
+  id: string;
+  eventType: string;
+  country: string;
+  admin1: string;
+  occurredAt: number;
+  fatalities: number;
+  actors: string[];
+  source: string;
+}
+
 interface Props {
   country?: string;
   page_size?: number;
@@ -9,7 +20,7 @@ interface Props {
 }
 
 export default function ConflictEvents({ country, page_size }: Props) {
-  const [data, setData] = useState<any>(null);
+  const [data, setData] = useState<{ events: AcledEvent[] } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -23,7 +34,7 @@ export default function ConflictEvents({ country, page_size }: Props) {
   if (loading) return <div className="animate-pulse h-48 bg-muted rounded m-2" />;
   if (error) return <div className="p-4 text-red-400 text-sm">Error: {error}</div>;
 
-  const events = Array.isArray(data) ? data : data?.results ?? data?.data ?? data?.events ?? [];
+  const events = data?.events ?? [];
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
@@ -44,14 +55,16 @@ export default function ConflictEvents({ country, page_size }: Props) {
             {events.length === 0 && (
               <tr><td colSpan={4} className="px-3 py-6 text-center text-muted-foreground">No events found</td></tr>
             )}
-            {events.map((e: any, i: number) => (
-              <tr key={i} className="hover:bg-muted/50">
-                <td className="px-3 py-2 whitespace-nowrap">{e.event_date ?? e.date ?? "—"}</td>
-                <td className="px-3 py-2 truncate max-w-[200px]">{e.location ?? e.admin1 ?? e.country ?? "—"}</td>
-                <td className="px-3 py-2 truncate max-w-[160px]">{e.event_type ?? e.type ?? e.disorder_type ?? "—"}</td>
+            {events.map((e) => (
+              <tr key={e.id} className="hover:bg-muted/50">
+                <td className="px-3 py-2 whitespace-nowrap">
+                  {new Date(e.occurredAt * 1000).toLocaleDateString()}
+                </td>
+                <td className="px-3 py-2 truncate max-w-[200px]">{e.admin1 || e.country}</td>
+                <td className="px-3 py-2 truncate max-w-[160px]">{e.eventType}</td>
                 <td className="px-3 py-2 text-right font-mono">
-                  <span className={(e.fatalities ?? 0) > 0 ? "text-red-400" : "text-muted-foreground"}>
-                    {e.fatalities ?? 0}
+                  <span className={e.fatalities > 0 ? "text-red-400" : "text-muted-foreground"}>
+                    {e.fatalities}
                   </span>
                 </td>
               </tr>

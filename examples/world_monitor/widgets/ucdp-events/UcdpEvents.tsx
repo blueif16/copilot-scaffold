@@ -2,6 +2,20 @@
 import { useEffect, useState } from "react";
 import { fetchApi } from "../../lib/fetchApi";
 
+interface UcdpEvent {
+  id: string;
+  dateStart: number;
+  dateEnd: number;
+  country: string;
+  sideA: string;
+  sideB: string;
+  deathsBest: number;
+  deathsLow: number;
+  deathsHigh: number;
+  violenceType: string;
+  sourceOriginal: string;
+}
+
 interface Props {
   country?: string;
   page_size?: number;
@@ -9,7 +23,7 @@ interface Props {
 }
 
 export default function UcdpEvents({ country, page_size }: Props) {
-  const [data, setData] = useState<any>(null);
+  const [data, setData] = useState<{ events: UcdpEvent[] } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -23,7 +37,14 @@ export default function UcdpEvents({ country, page_size }: Props) {
   if (loading) return <div className="animate-pulse h-48 bg-muted rounded m-2" />;
   if (error) return <div className="p-4 text-red-400 text-sm">Error: {error}</div>;
 
-  const events = Array.isArray(data) ? data : data?.results ?? data?.data ?? data?.events ?? [];
+  const events = data?.events ?? [];
+
+  const violenceLabel = (t: string) => {
+    if (t.includes("STATE_BASED")) return "State-based";
+    if (t.includes("NON_STATE")) return "Non-state";
+    if (t.includes("ONE_SIDED")) return "One-sided";
+    return t.replace("UCDP_VIOLENCE_TYPE_", "");
+  };
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
@@ -38,22 +59,28 @@ export default function UcdpEvents({ country, page_size }: Props) {
               <th className="px-3 py-2">Country</th>
               <th className="px-3 py-2">Side A</th>
               <th className="px-3 py-2">Side B</th>
+              <th className="px-3 py-2">Type</th>
               <th className="px-3 py-2 text-right">Deaths</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
             {events.length === 0 && (
-              <tr><td colSpan={5} className="px-3 py-6 text-center text-muted-foreground">No events found</td></tr>
+              <tr><td colSpan={6} className="px-3 py-6 text-center text-muted-foreground">No events found</td></tr>
             )}
-            {events.map((e: any, i: number) => (
-              <tr key={i} className="hover:bg-muted/50">
-                <td className="px-3 py-2 whitespace-nowrap">{e.date_start ?? e.date ?? e.year ?? "—"}</td>
-                <td className="px-3 py-2">{e.country ?? e.country_name ?? "—"}</td>
-                <td className="px-3 py-2 truncate max-w-[140px]">{e.side_a ?? "—"}</td>
-                <td className="px-3 py-2 truncate max-w-[140px]">{e.side_b ?? "—"}</td>
+            {events.map((e) => (
+              <tr key={e.id} className="hover:bg-muted/50">
+                <td className="px-3 py-2 whitespace-nowrap">
+                  {new Date(e.dateStart * 1000).toLocaleDateString()}
+                </td>
+                <td className="px-3 py-2">{e.country}</td>
+                <td className="px-3 py-2 truncate max-w-[120px]">{e.sideA}</td>
+                <td className="px-3 py-2 truncate max-w-[120px]">{e.sideB}</td>
+                <td className="px-3 py-2 text-xs">
+                  <span className="bg-muted px-1.5 py-0.5 rounded">{violenceLabel(e.violenceType)}</span>
+                </td>
                 <td className="px-3 py-2 text-right font-mono">
-                  <span className={(e.best ?? e.deaths_total ?? 0) > 0 ? "text-red-400" : "text-muted-foreground"}>
-                    {e.best ?? e.deaths_total ?? e.deaths ?? 0}
+                  <span className={e.deathsBest > 0 ? "text-red-400" : "text-muted-foreground"}>
+                    {e.deathsBest}
                   </span>
                 </td>
               </tr>

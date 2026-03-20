@@ -2,13 +2,24 @@
 import { useEffect, useState } from "react";
 import { fetchApi } from "../../lib/fetchApi";
 
+interface StockData {
+  available: boolean;
+  code: string;
+  symbol: string;
+  indexName: string;
+  price: number;
+  weekChangePercent: number;
+  currency: string;
+  fetchedAt: string;
+}
+
 interface Props {
   country_code: string;
   widgetId?: string;
 }
 
 export default function CountryStockIndex({ country_code }: Props) {
-  const [data, setData] = useState<any>(null);
+  const [data, setData] = useState<StockData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -21,10 +32,9 @@ export default function CountryStockIndex({ country_code }: Props) {
 
   if (loading) return <div className="animate-pulse h-48 bg-muted rounded m-2" />;
   if (error) return <div className="p-4 text-red-400 text-sm">Error: {error}</div>;
+  if (!data?.available) return <div className="p-4 text-muted-foreground text-sm">No stock index data for {country_code}</div>;
 
-  const d = data?.data ?? data?.result ?? data ?? {};
-  const change = d.change_percent ?? d.changePercent ?? d.change ?? 0;
-  const isPositive = Number(change) >= 0;
+  const isPositive = data.weekChangePercent >= 0;
 
   return (
     <div className="flex flex-col h-full">
@@ -33,17 +43,18 @@ export default function CountryStockIndex({ country_code }: Props) {
       </div>
       <div className="flex-1 flex flex-col items-center justify-center p-6">
         <div className="text-sm text-muted-foreground mb-1">
-          {d.name ?? d.index_name ?? d.symbol ?? country_code}
+          {data.indexName} ({data.symbol})
         </div>
         <div className="text-4xl font-bold mb-2">
-          {d.price != null ? Number(d.price).toLocaleString(undefined, { maximumFractionDigits: 2 }) : d.value ?? "—"}
+          {data.price.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+          <span className="text-sm font-normal text-muted-foreground ml-1">{data.currency}</span>
         </div>
         <div className={`text-lg font-semibold ${isPositive ? "text-emerald-400" : "text-red-400"}`}>
-          {isPositive ? "+" : ""}{typeof change === "number" ? change.toFixed(2) : change}%
+          {isPositive ? "+" : ""}{data.weekChangePercent.toFixed(2)}% this week
         </div>
-        {d.last_updated && (
+        {data.fetchedAt && (
           <div className="text-xs text-muted-foreground mt-3">
-            Updated: {new Date(d.last_updated).toLocaleString()}
+            Updated: {new Date(data.fetchedAt).toLocaleString()}
           </div>
         )}
       </div>
