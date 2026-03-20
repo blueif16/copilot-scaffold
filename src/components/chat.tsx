@@ -1,6 +1,6 @@
 "use client";
 
-import { useAgent as useV2Agent, UseAgentUpdate } from "@copilotkitnext/react";
+import { useAgent as useV2Agent, UseAgentUpdate, useCopilotKit } from "@copilotkitnext/react";
 import { randomUUID } from "@ag-ui/client";
 import type { Message } from "@ag-ui/client";
 import { useAgent } from "@/hooks/use-agent";
@@ -53,6 +53,7 @@ interface ChatProps {
 
 export function Chat({ onCanvasModeChange }: ChatProps) {
   const { state, running } = useAgent();
+  const { copilotkit } = useCopilotKit();
   const { agent: v2Agent } = useV2Agent({
     agentId: "orchestrator",
     updates: [UseAgentUpdate.OnMessagesChanged, UseAgentUpdate.OnRunStatusChanged],
@@ -63,7 +64,9 @@ export function Chat({ onCanvasModeChange }: ChatProps) {
   useEffect(() => {
     const { unsubscribe } = v2Agent.subscribe({
       onMessagesChanged: ({ messages: msgs }) => setMessages([...msgs]),
-      onRunStatusChanged: ({ isRunning }) => setIsLoading(isRunning),
+      onRunInitialized: () => setIsLoading(true),
+      onRunFinalized: () => setIsLoading(false),
+      onRunFailed: () => setIsLoading(false),
     });
     return unsubscribe;
   }, [v2Agent]);
@@ -83,8 +86,10 @@ export function Chat({ onCanvasModeChange }: ChatProps) {
     if (!input.trim() || isLoading) return;
     const text = input;
     setInput("");
+    const toolsSnapshot = (copilotkit as any).runHandler?._tools ?? [];
+    console.log(`[CHAT] runAgent called — tools count: ${toolsSnapshot.length} names: ${toolsSnapshot.map((t: any) => t.name).join(',')}`);
     v2Agent.addMessage({ id: randomUUID(), role: "user", content: text });
-    v2Agent.runAgent();
+    copilotkit.runAgent({ agent: v2Agent });
   };
 
   return (

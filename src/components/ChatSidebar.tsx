@@ -1,6 +1,6 @@
 "use client";
 
-import { useAgent, UseAgentUpdate } from "@copilotkitnext/react";
+import { useAgent, UseAgentUpdate, useCopilotKit } from "@copilotkitnext/react";
 import { randomUUID } from "@ag-ui/client";
 import type { Message } from "@ag-ui/client";
 import { useState, useRef, useEffect, useCallback } from "react";
@@ -35,6 +35,7 @@ interface ChatSidebarProps {
 }
 
 export function ChatSidebar({ layoutMode, onLayoutModeChange }: ChatSidebarProps) {
+  const { copilotkit } = useCopilotKit();
   const { agent } = useAgent({
     agentId: "orchestrator",
     updates: [UseAgentUpdate.OnMessagesChanged, UseAgentUpdate.OnRunStatusChanged],
@@ -46,7 +47,9 @@ export function ChatSidebar({ layoutMode, onLayoutModeChange }: ChatSidebarProps
   useEffect(() => {
     const { unsubscribe } = agent.subscribe({
       onMessagesChanged: ({ messages: msgs }) => setMessages([...msgs]),
-      onRunStatusChanged: ({ isRunning: running }) => setIsRunning(running),
+      onRunInitialized: () => setIsRunning(true),
+      onRunFinalized: () => setIsRunning(false),
+      onRunFailed: () => setIsRunning(false),
     });
     return unsubscribe;
   }, [agent]);
@@ -69,9 +72,11 @@ export function ChatSidebar({ layoutMode, onLayoutModeChange }: ChatSidebarProps
     if (!input.trim() || isRunning) return;
     const text = input;
     setInput("");
+    const tools = (copilotkit as any).runHandler?._tools ?? [];
+    console.log(`[SIDEBAR] runAgent called — tools count: ${tools.length} names: ${tools.map((t: any) => t.name).join(',')}`);
     agent.addMessage({ id: randomUUID(), role: "user", content: text });
-    agent.runAgent();
-  }, [input, isRunning, agent]);
+    copilotkit.runAgent({ agent });
+  }, [input, isRunning, agent, copilotkit]);
 
   const visibleMessages = messages.filter(
     (msg: any) => (msg.role === "user" || msg.role === "assistant") && msg.content

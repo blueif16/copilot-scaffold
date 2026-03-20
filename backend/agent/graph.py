@@ -70,6 +70,11 @@ llm = get_llm()
 
 def orchestrator_node(state: OrchestratorState, config):
     """Main orchestrator node."""
+    # --- Raw input logging ---
+    logger.info(f"[GRAPH] input keys: {list(state.keys())}")
+    logger.info(f"[GRAPH] input.tools = {state.get('tools', 'KEY_MISSING')}")
+    logger.info(f"[GRAPH] input.messages count: {len(state.get('messages', []))}")
+
     # --- Exhaustive debug dump of copilotkit state ---
     copilotkit_state = state.get("copilotkit", {})
     frontend_actions = copilotkit_state.get("actions", [])
