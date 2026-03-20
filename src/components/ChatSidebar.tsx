@@ -45,6 +45,10 @@ export function ChatSidebar({ layoutMode, onLayoutModeChange }: ChatSidebarProps
   const [isRunning, setIsRunning] = useState<boolean>(agent.isRunning);
 
   useEffect(() => {
+    // Sync state on mount — events may fire before this effect runs
+    setMessages([...agent.messages]);
+    setIsRunning(agent.isRunning);
+
     const { unsubscribe } = agent.subscribe({
       onMessagesChanged: ({ messages: msgs }) => setMessages([...msgs]),
       onRunInitialized: () => setIsRunning(true),
@@ -62,7 +66,57 @@ export function ChatSidebar({ layoutMode, onLayoutModeChange }: ChatSidebarProps
   }, [messages.length, layoutMode, onLayoutModeChange]);
 
   const [input, setInput] = useState("");
+  const [isListening, setIsListening] = useState(false);
+  const recognitionRef = useRef<any>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const toggleListening = useCallback(() => {
+    const SpeechRecognition =
+      (window as any).SpeechRecognition ||
+      (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) return;
+
+    if (isListening) {
+      recognitionRef.current?.stop();
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.lang = "en-US";
+    recognition.interimResults = true;
+    recognition.continuous = false;
+    recognitionRef.current = recognition;
+
+    let baseInput = input;
+
+    recognition.onstart = () => setIsListening(true);
+
+    recognition.onresult = (e: any) => {
+      const transcript = Array.from(e.results as SpeechRecognitionResultList)
+        .map((r: any) => r[0].transcript)
+        .join("");
+      const isFinal = (e.results[e.results.length - 1] as SpeechRecognitionResult).isFinal;
+      if (isFinal) {
+        const appended = baseInput ? `${baseInput} ${transcript}` : transcript;
+        setInput(appended);
+        baseInput = appended;
+      } else {
+        setInput(baseInput ? `${baseInput} ${transcript}` : transcript);
+      }
+    };
+
+    recognition.onend = () => {
+      setIsListening(false);
+      recognitionRef.current = null;
+    };
+
+    recognition.onerror = () => {
+      setIsListening(false);
+      recognitionRef.current = null;
+    };
+
+    recognition.start();
+  }, [isListening, input]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -160,6 +214,24 @@ export function ChatSidebar({ layoutMode, onLayoutModeChange }: ChatSidebarProps
             placeholder="Ask something..."
             value={input}
           />
+          <button
+            className={cn(
+              "flex items-center justify-center rounded-xl border p-2 transition-colors",
+              isListening
+                ? "border-red-500 bg-red-50 text-red-500 dark:bg-red-950"
+                : "bg-background text-muted-foreground hover:text-foreground hover:bg-muted"
+            )}
+            onClick={toggleListening}
+            type="button"
+            title={isListening ? "Stop recording" : "Voice input"}
+            disabled={isRunning}
+          >
+            {isListening ? (
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>
+            ) : (
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a3 3 0 0 1 3 3v7a3 3 0 0 1-6 0V5a3 3 0 0 1 3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
+            )}
+          </button>
           {isRunning ? (
             <button
               className="flex items-center justify-center rounded-xl border bg-background p-2 text-foreground hover:bg-muted"
