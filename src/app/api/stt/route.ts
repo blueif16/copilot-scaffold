@@ -8,18 +8,21 @@ export async function POST(req: NextRequest) {
 
   const arrayBuffer = await req.arrayBuffer();
   const base64Audio = Buffer.from(arrayBuffer).toString("base64");
+  const mimeType = req.headers.get("x-audio-mime") || "audio/webm";
 
   const body = {
-    config: {
-      encoding: "WEBM_OPUS",
-      sampleRateHertz: 48000,
-      languageCode: "en-US",
-    },
-    audio: { content: base64Audio },
+    contents: [
+      {
+        parts: [
+          { text: "Transcribe the speech in this audio exactly. Return only the transcript text, nothing else." },
+          { inline_data: { mime_type: mimeType, data: base64Audio } },
+        ],
+      },
+    ],
   };
 
   const res = await fetch(
-    `https://speech.googleapis.com/v1/speech:recognize?key=${apiKey}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${apiKey}`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -29,15 +32,13 @@ export async function POST(req: NextRequest) {
 
   if (!res.ok) {
     const err = await res.text();
+    console.error("[STT] Gemini error:", res.status, err);
     return NextResponse.json({ error: err }, { status: res.status });
   }
 
   const data = await res.json();
-  const transcript =
-    data.results
-      ?.map((r: any) => r.alternatives?.[0]?.transcript ?? "")
-      .join(" ")
-      .trim() ?? "";
+  const transcript = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? "";
+  console.log("[STT] transcript:", transcript);
 
   return NextResponse.json({ transcript });
 }

@@ -19,7 +19,8 @@ export function useVoiceInput({
     let stream: MediaStream;
     try {
       stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    } catch {
+    } catch (err) {
+      console.error("[STT] mic access denied:", err);
       return;
     }
 
@@ -31,6 +32,7 @@ export function useVoiceInput({
       : MediaRecorder.isTypeSupported("audio/webm")
       ? "audio/webm"
       : "";
+    console.log("[STT] mimeType:", mimeType || "(browser default)");
 
     const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
     mediaRecorderRef.current = recorder;
@@ -44,22 +46,30 @@ export function useVoiceInput({
       setIsListening(false);
 
       const blob = new Blob(chunksRef.current, { type: mimeType || "audio/webm" });
-      if (blob.size === 0) return;
+      console.log("[STT] blob size:", blob.size);
+      if (blob.size === 0) { console.warn("[STT] empty blob, skipping"); return; }
 
       try {
         const res = await fetch("/api/stt", {
           method: "POST",
-          headers: { "Content-Type": "application/octet-stream" },
+          headers: {
+            "Content-Type": "application/octet-stream",
+            "x-audio-mime": mimeType || "audio/webm",
+          },
           body: blob,
         });
         const data = await res.json();
+        console.log("[STT] response:", res.status, data);
         if (data.transcript) onTranscript(data.transcript);
-      } catch {
-        // silently ignore network errors
+        else console.warn("[STT] no transcript in response");
+      } catch (err) {
+        console.error("[STT] fetch error:", err);
       }
     };
 
+    recorder.onerror = (e) => console.error("[STT] recorder error:", e);
     recorder.start();
+    console.log("[STT] recording started");
     setIsListening(true);
   }, [onTranscript]);
 
