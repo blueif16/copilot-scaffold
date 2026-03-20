@@ -1,7 +1,6 @@
 import type { WidgetConfig } from "@/types/state";
 import type { ComponentType } from "react";
-import * as studentDashboard from "../../examples/student_dashboard";
-import * as scienceLab from "../../examples/science_lab";
+import * as allExamples from "../../examples";
 
 export interface WidgetEntry {
   config: WidgetConfig;
@@ -14,17 +13,21 @@ export interface WidgetEntry {
  */
 function buildWidgetEntries(): WidgetEntry[] {
   const entries: WidgetEntry[] = [];
-  const examples = [studentDashboard, scienceLab];
+  const examples = Object.values(allExamples);
 
   for (const example of examples) {
     const configs: WidgetConfig[] = [];
     const components: Record<string, ComponentType<any>> = {};
 
+    console.log("[widgetEntries] Example module keys:", Object.keys(example || {}));
+
     for (const [key, value] of Object.entries(example || {})) {
       if (value && typeof value === "object" && "tool" in value && "id" in value) {
         configs.push(value as WidgetConfig);
+        console.log(`[widgetEntries] Found config: id=${(value as any).id}, tool=${(value as any).tool?.name}`);
       } else if (typeof value === "function") {
         components[key] = value as ComponentType<any>;
+        console.log(`[widgetEntries] Found component: ${key}`);
       }
     }
 
@@ -37,10 +40,14 @@ function buildWidgetEntries(): WidgetEntry[] {
       const Component = components[componentName];
       if (Component) {
         entries.push({ config, Component });
+        console.log(`[widgetEntries] ✅ Matched: ${config.id} → ${componentName}`);
+      } else {
+        console.warn(`[widgetEntries] ❌ No component match for config "${config.id}" (looked for "${componentName}", available: ${Object.keys(components).join(", ")})`);
       }
     }
   }
 
+  console.log(`[widgetEntries] Total entries built: ${entries.length}`, entries.map(e => e.config.tool.name));
   return entries;
 }
 
