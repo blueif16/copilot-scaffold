@@ -11,7 +11,7 @@ const config: WidgetConfig = {
     },
   },
   agent: null,
-  layout: { slot: "half" },
+  layout: { width: "half" },
 };
 
 export default config;

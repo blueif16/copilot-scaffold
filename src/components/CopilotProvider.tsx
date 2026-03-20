@@ -8,7 +8,7 @@ export function CopilotProvider({ children }: { children: ReactNode }) {
   return (
     <CopilotKitProvider
       runtimeUrl="/api/copilotkit"
-      agent="orchestrator"
+      {...({ agent: "orchestrator" } as any)}
       showDevConsole={false}
     >
       {children}

@@ -14,10 +14,14 @@ export interface WidgetAgentConfig {
 }
 
 export interface WidgetLayout {
-  /** Width: "full" (100%), "half" (50%), "third" (33%). Default: "half" */
-  width?: "full" | "half" | "third";
+  /** Width: "full" (100%), "half" (50%), "third" (33%), "quarter" (25%). Default: "half" */
+  width?: "full" | "half" | "third" | "quarter";
   /** Height hint: "compact" (~auto), "medium" (~300px), "tall" (~500px), "fill" (stretch to fill panel). Default: "compact" */
   height?: "compact" | "medium" | "tall" | "fill";
+  /** Explicit column span (1–4). Overrides width when set. */
+  colSpan?: number;
+  /** Explicit row span. Default: 1. */
+  rowSpan?: number;
 }
 
 export interface WidgetConfig {

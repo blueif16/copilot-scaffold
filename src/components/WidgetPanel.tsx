@@ -10,8 +10,20 @@ import type { WidgetLayout } from "@/types/state";
 function layoutClasses(layout?: WidgetLayout): string {
   const w = layout?.width ?? "half";
   const h = layout?.height ?? "compact";
-  const widthClass =
-    w === "full" ? "col-span-2" : w === "third" ? "col-span-1" : "col-span-1";
+
+  // Column span: explicit colSpan overrides width
+  let widthClass: string;
+  if (layout?.colSpan) {
+    const span = Math.min(Math.max(layout.colSpan, 1), 4);
+    widthClass = `col-span-${span}`;
+  } else {
+    widthClass =
+      w === "full" ? "col-span-4" : w === "third" ? "col-span-1" : w === "quarter" ? "col-span-1" : "col-span-2";
+  }
+
+  // Row span
+  const rowClass = layout?.rowSpan && layout.rowSpan > 1 ? `row-span-${layout.rowSpan}` : "";
+
   const heightClass =
     h === "fill"
       ? "min-h-[calc(100vh-8rem)]"
@@ -20,11 +32,16 @@ function layoutClasses(layout?: WidgetLayout): string {
       : h === "medium"
       ? "min-h-[300px]"
       : "";
-  return `${widthClass} ${heightClass}`.trim();
+  return `${widthClass} ${rowClass} ${heightClass}`.trim();
 }
 
-export function WidgetPanel() {
-  const [spawned, setSpawned] = useState<SpawnedWidget[]>([]);
+interface WidgetPanelProps {
+  spawned?: SpawnedWidget[];
+}
+
+export function WidgetPanel({ spawned: externalSpawned }: WidgetPanelProps) {
+  const [internalSpawned, setSpawned] = useState<SpawnedWidget[]>([]);
+  const spawned = externalSpawned ?? internalSpawned;
 
   // CRITICAL: Deduplicate by tool name
   const uniqueEntries = useMemo(() => {
@@ -56,9 +73,9 @@ export function WidgetPanel() {
         ))}
 
       {/* Render spawned widgets */}
-      <div className="grid grid-cols-2 gap-4 h-full auto-rows-min">
+      <div className="grid grid-cols-4 gap-4 h-full auto-rows-min">
         {spawned.length === 0 && (
-          <div className="col-span-2 flex items-center justify-center text-muted-foreground h-full">
+          <div className="col-span-4 flex items-center justify-center text-muted-foreground h-full">
             <p>Chat with the agent to get started</p>
           </div>
         )}
