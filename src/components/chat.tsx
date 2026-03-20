@@ -10,6 +10,72 @@ import { cn } from "@/lib/utils";
 import type { LayoutMode } from "@/app/(chat)/page";
 import { useVoiceInput } from "@/hooks/use-voice-input";
 
+interface ParsedMessage {
+  thinking: string | null;
+  text: string;
+  isThinkingComplete: boolean;
+}
+
+function parseMessage(content: string): ParsedMessage {
+  const openIdx = content.indexOf("<think>");
+  const closeIdx = content.indexOf("</think>");
+  if (openIdx === -1) return { thinking: null, text: content.trim(), isThinkingComplete: false };
+  if (closeIdx === -1) {
+    return { thinking: content.slice(openIdx + 7).trim(), text: "", isThinkingComplete: false };
+  }
+  return {
+    thinking: content.slice(openIdx + 7, closeIdx).trim(),
+    text: content.slice(closeIdx + 8).trim(),
+    isThinkingComplete: true,
+  };
+}
+
+function ThinkingBlock({ thinking, isComplete, isStreaming }: { thinking: string; isComplete: boolean; isStreaming: boolean }) {
+  const [open, setOpen] = useState(true);
+  const [userToggled, setUserToggled] = useState(false);
+  const contentRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (isComplete && !userToggled) {
+      const t = setTimeout(() => setOpen(false), 600);
+      return () => clearTimeout(t);
+    }
+  }, [isComplete, userToggled]);
+
+  useEffect(() => {
+    if (open && contentRef.current && !isComplete) {
+      contentRef.current.scrollTop = contentRef.current.scrollHeight;
+    }
+  }, [thinking, open, isComplete]);
+
+  return (
+    <div className="mb-3 rounded-lg border border-border/50 bg-muted/30 text-xs w-full">
+      <button
+        className="flex w-full items-center gap-2 px-3 py-2 text-muted-foreground hover:text-foreground transition-colors"
+        onClick={() => { setUserToggled(true); setOpen((o) => !o); }}
+        type="button"
+      >
+        {!isComplete && isStreaming ? (
+          <span className="flex gap-0.5">
+            <span className="h-1.5 w-1.5 rounded-full bg-current animate-bounce [animation-delay:0ms]" />
+            <span className="h-1.5 w-1.5 rounded-full bg-current animate-bounce [animation-delay:150ms]" />
+            <span className="h-1.5 w-1.5 rounded-full bg-current animate-bounce [animation-delay:300ms]" />
+          </span>
+        ) : (
+          <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+        )}
+        <span className="font-medium">{!isComplete && isStreaming ? "Thinking…" : "Thought process"}</span>
+        <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="ml-auto transition-transform" style={{ transform: open ? "rotate(180deg)" : "rotate(0deg)" }}><path d="M6 9l6 6 6-6"/></svg>
+      </button>
+      {open && (
+        <div ref={contentRef} className="max-h-48 overflow-y-auto px-3 pb-2 font-mono whitespace-pre-wrap text-muted-foreground/80 leading-relaxed [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+          {thinking}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
   return (
@@ -109,31 +175,46 @@ export function Chat({ onCanvasModeChange }: ChatProps) {
             </div>
           )}
 
-          {(visibleMessages || []).filter((msg: any) => msg.content?.trim()).map((msg: any) => (
-            <div
-              key={msg.id}
-              className={cn(
-                "mb-4 flex",
-                msg.role === "user" ? "justify-end" : "justify-start"
-              )}
-            >
-              {msg.role === "user" ? (
-                <div className="max-w-[80%] rounded-2xl bg-primary px-4 py-3 text-primary-foreground">
-                  <p className="whitespace-pre-wrap text-sm">{msg.content}</p>
-                </div>
-              ) : (
-                <div className="flex flex-col items-start">
-                  <div className="prose prose-sm dark:prose-invert max-w-none text-foreground">
-                    <Markdown>{msg.content}</Markdown>
-                  </div>
-                  <div className="mt-1 flex items-center gap-0.5">
-                    <CopyButton text={msg.content} />
-                    <ThumbUpButton />
+          {visibleMessages.map((msg: any, i: number) => {
+            if (msg.role === "user") {
+              return (
+                <div key={msg.id} className="mb-4 flex justify-end">
+                  <div className="max-w-[80%] rounded-2xl bg-primary px-4 py-3 text-primary-foreground">
+                    <p className="whitespace-pre-wrap text-sm">{msg.content}</p>
                   </div>
                 </div>
-              )}
-            </div>
-          ))}
+              );
+            }
+            const isLastMsg = i === visibleMessages.length - 1;
+            const { thinking, text, isThinkingComplete } = parseMessage(msg.content);
+            return (
+              <div key={msg.id} className="mb-4 flex justify-start">
+                <div className="flex flex-col items-start max-w-[80%]">
+                  {thinking !== null && (
+                    <ThinkingBlock
+                      thinking={thinking}
+                      isComplete={isThinkingComplete}
+                      isStreaming={isLastMsg && isLoading}
+                    />
+                  )}
+                  {text && (
+                    <div className="prose prose-sm dark:prose-invert max-w-none text-foreground">
+                      <Markdown>{text}</Markdown>
+                    </div>
+                  )}
+                  {!text && isThinkingComplete && isLastMsg && isLoading && (
+                    <span className="inline-block h-5 w-0.5 animate-pulse bg-foreground" />
+                  )}
+                  {text && (
+                    <div className="mt-1 flex items-center gap-0.5">
+                      <CopyButton text={text} />
+                      <ThumbUpButton />
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
 
           {isLoading && (
             <div className="mb-4 flex justify-start">
