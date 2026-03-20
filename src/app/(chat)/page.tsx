@@ -30,6 +30,21 @@ export default function Page() {
     return () => clearTimeout(timer);
   }, []);
 
+  useEffect(() => {
+    const { unsubscribe } = agent.subscribe({
+      onStateChanged: ({ state: s }) => {
+        const signal = (s as any).canvas_clear;
+        if (!signal) return;
+        if (!signal.ids || signal.ids.length === 0) {
+          setSpawned([]);
+        } else {
+          setSpawned((prev) => prev.filter((w) => !signal.ids.includes(w.id)));
+        }
+      },
+    });
+    return unsubscribe;
+  }, [agent]);
+
   const uniqueEntries = useMemo(() => {
     const seen = new Set<string>();
     return widgetEntries.filter((entry) => {

@@ -13,10 +13,10 @@ if not logger.handlers:
     handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
     logger.addHandler(handler)
 
+import time
 from langgraph.graph import StateGraph, START, END
-from langgraph.prebuilt import ToolNode
 from langgraph.checkpoint.memory import MemorySaver
-from langchain_core.messages import SystemMessage
+from langchain_core.messages import SystemMessage, ToolMessage
 
 from .state import OrchestratorState
 from .tools import backend_tools, backend_tool_names
@@ -61,6 +61,11 @@ RULES:
 - Call multiple tools in one turn when showing a composite view
 - Keep text responses brief — the widgets ARE the response
 - Be helpful and friendly
+- clear_canvas(widget_ids?) removes widgets from the canvas (backend tool — updates state immediately).
+  - Omit widget_ids to clear ALL widgets.
+  - Pass specific IDs like ["user_card"] or ["topic_progress", "particle_sim"] to remove only those.
+- When switching to a DIFFERENT view, call clear_canvas() FIRST (same response), then call the new widget tools.
+- When replacing just one widget while keeping others, call clear_canvas(widget_ids=["<id>"]) then spawn the replacement.
 """
 
 SYSTEM_PROMPT = os.getenv("SYSTEM_PROMPT", ORCHESTRATOR_PROMPT)
@@ -159,10 +164,49 @@ def should_continue(state: OrchestratorState):
     return END
 
 
+# Map tool name → callable for non-clear_canvas backend tools
+_backend_tool_map = {t.name: t for t in backend_tools if t.name != "clear_canvas"}
+
+
+def tools_node(state: OrchestratorState) -> dict:
+    """Custom tool node: handles clear_canvas by writing to state directly;
+    delegates all other backend tool calls to their callables."""
+    last = state["messages"][-1]
+    messages = []
+    state_updates: dict = {}
+
+    for tc in last.tool_calls:
+        if tc["name"] == "clear_canvas":
+            ids = tc["args"].get("widget_ids") or None
+            # Normalise: empty list → None (means clear all)
+            if ids is not None and len(ids) == 0:
+                ids = None
+            state_updates["canvas_clear"] = {
+                "ids": ids,
+                "seq": int(time.time() * 1000),
+            }
+            logger.info(f"[GRAPH] clear_canvas: ids={ids}")
+            messages.append(ToolMessage(
+                content=json.dumps({"cleared": ids if ids else "all"}),
+                tool_call_id=tc["id"],
+                name="clear_canvas",
+            ))
+        else:
+            fn = _backend_tool_map.get(tc["name"])
+            result = fn.invoke(tc["args"]) if fn else f"Unknown tool: {tc['name']}"
+            messages.append(ToolMessage(
+                content=str(result),
+                tool_call_id=tc["id"],
+                name=tc["name"],
+            ))
+
+    return {**state_updates, "messages": messages}
+
+
 def create_graph():
     workflow = StateGraph(OrchestratorState)
     workflow.add_node("orchestrator", orchestrator_node)
-    workflow.add_node("tools", ToolNode(backend_tools))
+    workflow.add_node("tools", tools_node)
     workflow.add_edge(START, "orchestrator")
     workflow.add_conditional_edges("orchestrator", should_continue)
     workflow.add_edge("tools", "orchestrator")
