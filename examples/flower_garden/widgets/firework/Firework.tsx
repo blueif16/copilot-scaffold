@@ -61,8 +61,8 @@ export default function Firework() {
 
     const tick = () => {
       frame++;
-      // Launch a new burst every ~60 frames
-      if (frame % 60 === 0) bursts.push(randomBurst(canvas));
+      // Always keep at least 2 bursts alive, add one every 30 frames
+      if (frame % 30 === 0 || bursts.length < 2) bursts.push(randomBurst(canvas));
 
       ctx.fillStyle = "rgba(0,0,0,0.18)";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -75,7 +75,7 @@ export default function Firework() {
           p.y += p.vy;
           p.vy += 0.08; // gravity
           p.vx *= 0.98;
-          p.alpha -= 0.012;
+          p.alpha -= 0.007;
           if (p.alpha > 0) {
             alive = true;
             ctx.save();
@@ -95,8 +95,10 @@ export default function Firework() {
       raf = requestAnimationFrame(tick);
     };
 
-    // Kick off first burst immediately
+    // Kick off 3 staggered bursts immediately
     bursts.push(randomBurst(canvas));
+    setTimeout(() => bursts.push(randomBurst(canvas)), 400);
+    setTimeout(() => bursts.push(randomBurst(canvas)), 800);
     raf = requestAnimationFrame(tick);
 
     return () => {

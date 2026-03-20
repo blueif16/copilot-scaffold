@@ -22,7 +22,9 @@ export function useAgent<T extends BaseAgentState = BaseAgentState>(
   useEffect(() => {
     const { unsubscribe } = agent.subscribe({
       onStateChanged: ({ state: s }) => setState(s as T),
-      onRunStatusChanged: ({ isRunning }) => setRunning(isRunning),
+      onRunInitialized: () => setRunning(true),
+      onRunFinalized: () => setRunning(false),
+      onRunFailed: () => setRunning(false),
     });
     return unsubscribe;
   }, [agent]);

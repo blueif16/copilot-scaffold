@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Toaster } from "sonner";
 import { ThemeProvider } from "@/components/theme-provider";
-import { CopilotKit } from "@copilotkit/react-core";
+import { CopilotProvider } from "@/components/CopilotProvider";
 
 import "./globals.css";
 
@@ -55,14 +55,10 @@ export default function RootLayout({
           disableTransitionOnChange
           enableSystem
         >
-          <CopilotKit
-            runtimeUrl="/api/copilotkit"
-            agent="orchestrator"
-            showDevConsole={false}
-          >
+          <CopilotProvider>
             <Toaster position="top-center" />
             {children}
-          </CopilotKit>
+          </CopilotProvider>
         </ThemeProvider>
       </body>
     </html>

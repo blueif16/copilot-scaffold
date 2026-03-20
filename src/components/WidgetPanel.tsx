@@ -1,9 +1,8 @@
 "use client";
 
-import { useState, Suspense, useMemo } from "react";
+import { Suspense } from "react";
 import { WidgetShell } from "./widgets/shared/WidgetShell";
-import { widgetEntries, type WidgetEntry } from "@/lib/widgetEntries";
-import { WidgetToolRegistrar } from "./WidgetToolRegistrar";
+import { widgetEntries } from "@/lib/widgetEntries";
 import type { SpawnedWidget } from "@/lib/types";
 import type { WidgetLayout } from "@/types/state";
 
@@ -23,59 +22,25 @@ function layoutClasses(layout?: WidgetLayout): string {
   return `${widthClass} ${heightClass}`.trim();
 }
 
-export function WidgetPanel() {
-  const [spawned, setSpawned] = useState<SpawnedWidget[]>([]);
+interface Props {
+  spawned: SpawnedWidget[];
+}
 
-  // CRITICAL: Deduplicate by tool name
-  const uniqueEntries = useMemo(() => {
-    const seen = new Set<string>();
-    return widgetEntries.filter((entry) => {
-      if (seen.has(entry.config.tool.name)) {
-        console.warn(`[WidgetPanel] Skipping duplicate tool: ${entry.config.tool.name}`);
-        return false;
-      }
-      seen.add(entry.config.tool.name);
-      return true;
-    });
-  }, []);
-
-  console.log(`[WidgetPanel] Unique entries: ${uniqueEntries.length}`);
-  console.log(`[WidgetPanel] Tool names:`, uniqueEntries.map(e => e.config.tool.name));
-
+export function WidgetPanel({ spawned }: Props) {
   return (
-    <div>
-      {/* Register frontend tools for DUMB widgets only (agent: null) */}
-      {uniqueEntries
-        .filter((e) => e.config.agent === null)
-        .map((entry) => (
-          <WidgetToolRegistrar
-            key={entry.config.id}
-            entry={entry}
-            setSpawned={setSpawned}
-          />
-        ))}
-
-      {/* Render spawned widgets */}
-      <div className="grid grid-cols-2 gap-4 h-full auto-rows-min">
-        {spawned.length === 0 && (
-          <div className="col-span-2 flex items-center justify-center text-muted-foreground h-full">
-            <p>Chat with the agent to get started</p>
+    <div className="grid grid-cols-2 gap-4 h-full auto-rows-min">
+      {spawned.map(({ id, Component, props }) => {
+        const entry = widgetEntries.find((e) => e.config.id === id);
+        return (
+          <div key={id} className={layoutClasses(entry?.config.layout)}>
+            <WidgetShell label={id}>
+              <Suspense fallback={<div className="animate-pulse h-32 bg-muted rounded" />}>
+                <Component {...props} widgetId={id} />
+              </Suspense>
+            </WidgetShell>
           </div>
-        )}
-
-        {spawned.map(({ id, Component, props }) => {
-          const entry = widgetEntries.find((e) => e.config.id === id);
-          return (
-            <div key={id} className={layoutClasses(entry?.config.layout)}>
-              <WidgetShell label={id}>
-                <Suspense fallback={<div className="animate-pulse h-32 bg-muted rounded" />}>
-                  <Component {...props} widgetId={id} />
-                </Suspense>
-              </WidgetShell>
-            </div>
-          );
-        })}
-      </div>
+        );
+      })}
     </div>
   );
 }
