@@ -1,9 +1,9 @@
 "use client";
 
-import { useFrontendTool } from "@copilotkitnext/react";
+import { useFrontendTool, useCopilotKit } from "@copilotkitnext/react";
 import { z } from "zod";
 import type { WidgetEntry, SpawnedWidget } from "@/lib/types";
-import { Dispatch, SetStateAction } from "react";
+import { Dispatch, SetStateAction, useEffect } from "react";
 
 interface Props {
   entry: WidgetEntry;
@@ -11,7 +11,8 @@ interface Props {
 }
 
 export function WidgetToolRegistrar({ entry, setSpawned }: Props) {
-  console.log(`[WidgetToolRegistrar] Registering: ${entry.config.tool.name}`);
+  const { copilotkit } = useCopilotKit();
+  console.log(`[WT] mount: ${entry.config.tool.name} tools=${(copilotkit as any).runHandler?._tools?.length ?? 'N/A'}`);
   // Build a proper Zod schema — this MUST be z.object(), not a plain object
   const parameters = z.object(
     Object.fromEntries(
@@ -55,6 +56,11 @@ export function WidgetToolRegistrar({ entry, setSpawned }: Props) {
     },
     [] // dependency array — important for stable hook identity
   );
+
+  useEffect(() => {
+    const tools = (copilotkit as any).runHandler?._tools ?? [];
+    console.log(`[WT] addTool effect fired: name=${entry.config.tool.name} total_tools=${tools.length} all=${tools.map((t: any) => t.name).join(',')}`);
+  });
 
   return null;
 }
