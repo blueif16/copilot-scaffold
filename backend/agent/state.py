@@ -23,3 +23,4 @@ class OrchestratorState(CopilotKitState):
     widget_state: Dict[str, Any] = {}
     widget_summaries: Dict[str, str] = {}
     canvas_clear: Optional[Dict[str, Any]] = None
+    pending_agent_message: Optional[str] = None
