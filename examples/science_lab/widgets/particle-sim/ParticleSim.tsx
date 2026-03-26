@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { useAgent as useV2Agent } from "@copilotkitnext/react";
 
 interface ParticleSimProps {
@@ -30,20 +30,36 @@ export default function ParticleSim({ widgetId }: ParticleSimProps) {
   const { agent } = useV2Agent({ agentId: "orchestrator" });
   const agentState: MatterState = ((agent.state as any)?.widget_state?.current_state as MatterState) ?? "gas";
 
-  const [localState, setLocalState] = useState<MatterState>(agentState);
-  const currentState = agentState !== localState ? agentState : localState;
-
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const stateRef = useRef<MatterState>(currentState);
+  const stateRef = useRef<MatterState>(agentState);
 
-  // sync agent state changes into local
+  // Update the matter state from both human clicks and agent tool calls.
+  // agent.setState() gives instant frontend feedback + propagates to backend on next runAgent.
+  // The fetch to /api/widget-state persists into the LangGraph checkpoint immediately.
+  const setMatterState = useCallback(
+    (s: MatterState) => {
+      stateRef.current = s;
+      const currentAgentState = (agent.state as any) ?? {};
+      const currentWs = currentAgentState.widget_state ?? {};
+      agent.setState({ ...currentAgentState, widget_state: { ...currentWs, current_state: s } });
+      // Fire-and-forget: persist to LangGraph checkpoint
+      fetch("/api/widget-state", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          thread_id: agent.threadId,
+          patch: { current_state: s },
+        }),
+      }).catch(() => {}); // best-effort, agent.setState already handles the frontend
+    },
+    [agent],
+  );
+
+  // sync agent-driven state changes (from tool calls) into the animation ref
   useEffect(() => {
-    setLocalState(agentState);
+    stateRef.current = agentState;
   }, [agentState]);
 
-  useEffect(() => {
-    stateRef.current = currentState;
-  }, [currentState]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -159,9 +175,9 @@ export default function ParticleSim({ widgetId }: ParticleSimProps) {
         {(["solid", "liquid", "gas"] as const).map((s) => (
           <button
             key={s}
-            onClick={() => setLocalState(s)}
+            onClick={() => setMatterState(s)}
             className={`text-xs px-3 py-1.5 rounded border transition-colors ${
-              s === currentState
+              s === agentState
                 ? "border-white/60 bg-white/20 text-white"
                 : "border-white/20 text-white/50 hover:border-white/40 hover:text-white/80"
             }`}
