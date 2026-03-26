@@ -71,6 +71,35 @@ add_langgraph_fastapi_endpoint(
 )
 
 
+@app.post("/widget-state")
+async def update_widget_state(request: Request):
+    """Patch widget_state in the LangGraph checkpoint.
+
+    Allows the frontend widget to persist human-initiated state changes
+    directly into the graph checkpoint, without waiting for the next runAgent call.
+
+    Body: { "thread_id": str, "patch": dict }
+    """
+    import json
+    body = await request.json()
+    thread_id = body.get("thread_id")
+    patch = body.get("patch")
+    if not thread_id or not isinstance(patch, dict):
+        return {"error": "thread_id (str) and patch (dict) required"}, 400
+
+    config = {"configurable": {"thread_id": thread_id}}
+    try:
+        state_snapshot = await graph.aget_state(config)
+        current_ws = dict(state_snapshot.values.get("widget_state") or {})
+        current_ws.update(patch)
+        await graph.aupdate_state(config, {"widget_state": current_ws}, as_node="tools")
+        logger.info(f"[WIDGET-STATE] thread={thread_id} patch={patch} → widget_state={current_ws}")
+        return {"widget_state": current_ws}
+    except Exception as e:
+        logger.error(f"[WIDGET-STATE] failed: {e}")
+        return {"error": str(e)}
+
+
 @app.get("/health")
 async def health():
     return {"status": "healthy"}

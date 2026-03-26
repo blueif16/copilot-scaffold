@@ -406,7 +406,15 @@ def make_subagent_node(cfg):
             _config = config
 
         pending = state.get("pending_agent_message")
-        base_messages = [SystemMessage(content=cfg.prompt)] + state["messages"]
+        # Inject current widget_state so the subagent always knows the live state,
+        # including changes made by the human via UI buttons.
+        ws = state.get("widget_state") or {}
+        if ws:
+            state_lines = "\n".join(f"  - {k}: {v}" for k, v in ws.items())
+            state_context = f"\n\n--- Current widget state ---\n{state_lines}"
+        else:
+            state_context = ""
+        base_messages = [SystemMessage(content=cfg.prompt + state_context)] + state["messages"]
         if pending:
             from langchain_core.messages import HumanMessage
             base_messages = base_messages + [HumanMessage(content=pending)]
