@@ -15,6 +15,19 @@ logger = logging.getLogger(__name__)
 
 
 @dataclass
+class TrackedStateField:
+    """Declares a widget_state key that the skeleton should track and expose to the subagent.
+
+    Attributes:
+        key:         The widget_state dict key (e.g. "current_state").
+        description: Human-readable description shown in the auto-generated prompt
+                     (e.g. "Matter phase: solid, liquid, or gas").
+    """
+    key: str
+    description: str
+
+
+@dataclass
 class SubagentConfig:
     """Everything the skeleton needs to run a smart widget subagent.
 
@@ -28,11 +41,15 @@ class SubagentConfig:
         domain_tools: Tools bound exclusively to this subagent's LLM.
                       Do NOT include handoff_to_orchestrator — skeleton injects it.
         prompt:       System prompt text for this subagent's LLM.
+        tracked_state: Declarative state schema. The skeleton auto-generates a state
+                      protocol preamble so the subagent knows about bidirectional state.
     """
     id: str
     spawn_tool: BaseTool
     domain_tools: list[BaseTool]
     prompt: str
+    intro_message: str = ""
+    tracked_state: list[TrackedStateField] = field(default_factory=list)
 
 
 def load_subagent_registry() -> Dict[str, SubagentConfig]:
