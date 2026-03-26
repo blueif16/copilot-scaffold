@@ -9,11 +9,14 @@ Usage:
 """
 import urllib.request
 import json
+import logging
 import sys
 import argparse
 import threading
 import queue
 from typing import Any, Optional
+
+logger = logging.getLogger(__name__)
 
 SERVER_URL = "http://47.95.179.148:9999"
 
@@ -42,6 +45,22 @@ class MCPClient:
                 return self
         raise RuntimeError("Failed to get session_id from SSE stream")
 
+    def _is_connected(self) -> bool:
+        """Check if SSE reader thread is still alive."""
+        return self.sse_thread is not None and self.sse_thread.is_alive()
+
+    def _ensure_connected(self):
+        """Reconnect if the SSE reader thread has died."""
+        if not self._is_connected():
+            logger.info("[MCP] SSE connection lost, reconnecting...")
+            # Drain stale responses
+            while not self.response_queue.empty():
+                try:
+                    self.response_queue.get_nowait()
+                except queue.Empty:
+                    break
+            self.connect()
+
     def _sse_reader(self, resp):
         """Background thread: read SSE stream, queue JSON-RPC responses."""
         try:
@@ -55,6 +74,7 @@ class MCPClient:
                         pass
         except Exception:
             pass
+        logger.info("[MCP] SSE reader thread exiting")
 
     def _send_init(self):
         """Send MCP handshake: initialize + notifications/initialized."""
@@ -84,12 +104,15 @@ class MCPClient:
             try:
                 obj = self.response_queue.get(timeout=timeout)
                 if obj.get("id") == req_id:
-                    return obj.get("result") or obj.get("error")
+                    if "result" in obj:
+                        return obj["result"]
+                    return obj.get("error")
             except queue.Empty:
                 return None
 
     def call(self, tool_name: str, arguments: Optional[dict] = None) -> Any:
         """Call a tool, return result content."""
+        self._ensure_connected()
         payload = {"jsonrpc": "2.0", "method": "tools/call", "params": {
             "name": tool_name, "arguments": arguments or {}
         }, "id": self.request_id}
@@ -97,7 +120,7 @@ class MCPClient:
         self.request_id += 1
         self._post(payload)
         result = self._wait_response(req_id)
-        if result and "content" in result:
+        if isinstance(result, dict) and "content" in result:
             return result["content"]
         return result
 
