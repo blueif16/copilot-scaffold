@@ -1,7 +1,8 @@
-"""Science Lab — orchestrator-level spawn tools.
+"""Science Lab — tools.
 
-Each tool here is bound to the ORCHESTRATOR LLM.
-Returning a dict from a spawn tool sets the initial widget_state for the subagent.
+Spawn tools (show_particle_sim) are registered via SUBAGENTS in __init__.py.
+This file exports only standalone backend tools (MCP queries, DB lookups, etc.)
+that the orchestrator can call without spawning a widget.
 """
 import logging
 from langchain_core.tools import tool
@@ -29,5 +30,5 @@ try:
 except Exception as e:
     logger.warning(f"[science_lab] failed to connect to MCP server: {e}")
 
-# Spawn tools + MCP tools for this example (loaded by examples/__init__.py:load_all_example_tools)
-all_tools = [show_particle_sim, *_mcp_tools]
+# Standalone backend tools only — spawn tools come from SUBAGENTS in __init__.py
+all_tools = [*_mcp_tools]

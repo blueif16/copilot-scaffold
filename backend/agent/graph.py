@@ -26,7 +26,7 @@ from langchain_core.messages import SystemMessage, ToolMessage
 from .state import OrchestratorState
 from .tools import skeleton_tools, clear_canvas, handoff_to_orchestrator
 from .subagents import load_subagent_registry
-from examples import load_all_example_tools
+from examples import load_all_backend_tools
 
 
 # ---------------------------------------------------------------------------
@@ -168,18 +168,16 @@ def _with_operation_param(spawn_tool):
 
 _spawn_tools_with_op = [_with_operation_param(t) for t in _spawn_tools]
 
-# Load MCP/example-level tools (e.g. teaching-db tools from science_lab/tools.py)
-_example_tools = load_all_example_tools()
+# Standalone backend tools (MCP queries, DB lookups — no widget spawn or state mutation)
+_backend_tools = load_all_backend_tools()
+_backend_tool_map = {t.name: t for t in _backend_tools}
 
-# Example tool name → tool callable (for direct execution in tools_node)
-_example_tool_map = {t.name: t for t in _example_tools}
-
-# All tool names that go to tools_node instead of AG-UI (computed after all tools are loaded)
-_backend_tool_names = (
+# Union of all tool names routed to tools_node (everything else goes to AG-UI / frontend)
+_server_tool_names = (
     {t.name for t in skeleton_tools}
     | set(_spawn_tool_map.keys())
     | set(_domain_tool_map.keys())
-    | set(_example_tool_map.keys())
+    | set(_backend_tool_map.keys())
     | {handoff_to_orchestrator.name}
 )
 
@@ -251,7 +249,7 @@ async def orchestrator_node(state: OrchestratorState, config):
 
     logger.info(
         f"[ORCHESTRATOR] messages={len(state.get('messages', []))} "
-        f"frontend={len(frontend_actions)} spawn_tools={len(_spawn_tools)} example_tools={len(_example_tools)} "
+        f"frontend={len(frontend_actions)} spawn_tools={len(_spawn_tools)} backend_tools={len(_backend_tools)} "
         f"focused={state.get('focused_agent')} "
         f"active_widgets={[w.get('id') for w in (state.get('active_widgets') or [])]}"
     )
@@ -269,8 +267,8 @@ async def orchestrator_node(state: OrchestratorState, config):
     except ImportError:
         pass
 
-    # Bind: frontend dumb-widget tools + skeleton tools + spawn tools (with operation param)
-    all_tools = [*frontend_actions, *skeleton_tools, *_spawn_tools_with_op, *_example_tools]
+    # Bind: frontend (dumb) tools + skeleton tools + spawn tools + standalone backend tools
+    all_tools = [*frontend_actions, *skeleton_tools, *_spawn_tools_with_op, *_backend_tools]
     llm_with_tools = llm.bind_tools(all_tools)
     pending = state.get("pending_agent_message")
     messages = [SystemMessage(content=SYSTEM_PROMPT)] + state["messages"]
@@ -282,7 +280,7 @@ async def orchestrator_node(state: OrchestratorState, config):
 
     if getattr(response, "tool_calls", None):
         for tc in response.tool_calls:
-            is_backend = tc.get("name", "") in _backend_tool_names
+            is_backend = tc.get("name", "") in _server_tool_names
             logger.info(f"  tool_call: {tc.get('name')} → {'backend' if is_backend else 'AG-UI'}")
 
     # Sync dumb widget state: scan the latest ToolMessages for frontend-tool results
@@ -373,7 +371,7 @@ def _sync_dumb_widgets(state: OrchestratorState, patch: dict) -> None:
 def route_orchestrator(state: OrchestratorState):
     last = state["messages"][-1]
     if hasattr(last, "tool_calls") and last.tool_calls:
-        has_backend = any(tc.get("name") in _backend_tool_names for tc in last.tool_calls)
+        has_backend = any(tc.get("name") in _server_tool_names for tc in last.tool_calls)
         logger.info(f"[ORCHESTRATOR] tool_calls={[tc.get('name') for tc in last.tool_calls]} → {'tools' if has_backend else 'END (AG-UI)'}")
         return "tools" if has_backend else END
     return END
@@ -524,22 +522,21 @@ async def tools_node(state: OrchestratorState) -> dict:
                 tool_call_id=tc["id"], name=name,
             ))
 
-        elif name in _example_tool_map:
-            # Example/MCP tool — call directly (e.g. teaching-db queries)
-            fn = _example_tool_map[name]
+        elif name in _backend_tool_map:
+            # Standalone backend tool (MCP queries, DB lookups, etc.)
+            fn = _backend_tool_map[name]
             result = fn.func(**tc["args"])
-            logger.info(f"[TOOLS] example '{name}' → result={str(result)[:100]}")
+            logger.info(f"[TOOLS] backend '{name}' → result={str(result)[:100]}")
             messages.append(ToolMessage(
                 content=json.dumps(result) if isinstance(result, dict) else str(result),
                 tool_call_id=tc["id"], name=name,
             ))
 
         else:
-            # Frontend tool — AG-UI protocol executes it on the client.
-            # Inject a synthetic ToolMessage so the orchestrator can respond after.
-            logger.info(f"[TOOLS] frontend tool rendered: {name}")
+            # Should never reach here — route_orchestrator only sends _server_tool_names to tools_node
+            logger.warning(f"[TOOLS] unexpected tool '{name}' in tools_node — not in any tool map")
             messages.append(ToolMessage(
-                content=json.dumps({"status": "rendered", "tool": name}),
+                content=json.dumps({"error": f"Unknown tool: {name}"}),
                 tool_call_id=tc["id"], name=name,
             ))
 
