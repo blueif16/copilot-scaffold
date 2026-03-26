@@ -4,7 +4,7 @@ Exports SUBAGENTS so the skeleton registry can discover and wire smart widgets
 without knowing anything about science_lab specifically.
 """
 from pathlib import Path
-from backend.agent.subagents.registry import SubagentConfig
+from backend.agent.subagents.registry import SubagentConfig, TrackedStateField
 from examples.science_lab.tools import show_particle_sim
 from examples.science_lab.particle_sim_agent import all_tools as particle_sim_domain_tools
 
@@ -21,5 +21,9 @@ SUBAGENTS = [
         spawn_tool=show_particle_sim,
         domain_tools=particle_sim_domain_tools,
         prompt=_PARTICLE_SIM_PROMPT,
+        intro_message="The particle simulation widget is now live. Greet the user, explain you can switch between solid, liquid, and gas states, and invite them to try it.",
+        tracked_state=[
+            TrackedStateField("current_state", "Matter phase: solid, liquid, or gas"),
+        ],
     ),
 ]

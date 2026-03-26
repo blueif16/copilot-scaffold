@@ -406,15 +406,22 @@ def make_subagent_node(cfg):
             _config = config
 
         pending = state.get("pending_agent_message")
-        # Inject current widget_state so the subagent always knows the live state,
-        # including changes made by the human via UI buttons.
+        # Auto-generate state protocol preamble from tracked_state declaration
         ws = state.get("widget_state") or {}
+        state_suffix = ""
+        if cfg.tracked_state:
+            field_lines = "\n".join(f"  - {f.key}: {f.description}" for f in cfg.tracked_state)
+            state_suffix = (
+                "\n\n--- Widget State Protocol ---\n"
+                "This widget has bidirectional state. Both you (via tools) and the user (via UI buttons) "
+                "can change state. The authoritative live state is shown below. "
+                "NEVER guess state from conversation history — always trust Current widget state.\n\n"
+                f"Tracked fields:\n{field_lines}"
+            )
         if ws:
             state_lines = "\n".join(f"  - {k}: {v}" for k, v in ws.items())
-            state_context = f"\n\n--- Current widget state ---\n{state_lines}"
-        else:
-            state_context = ""
-        base_messages = [SystemMessage(content=cfg.prompt + state_context)] + state["messages"]
+            state_suffix += f"\n\n--- Current widget state ---\n{state_lines}"
+        base_messages = [SystemMessage(content=cfg.prompt + state_suffix)] + state["messages"]
         if pending:
             from langchain_core.messages import HumanMessage
             base_messages = base_messages + [HumanMessage(content=pending)]
