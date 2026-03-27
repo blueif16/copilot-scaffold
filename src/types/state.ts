@@ -7,12 +7,6 @@ export interface ToolParameter {
   enum?: string[];
 }
 
-export interface WidgetAgentConfig {
-  id: string;
-  promptFile: string;
-  toolsModule: string;
-}
-
 export interface WidgetLayout {
   /** Width: "full" (100%), "half" (50%), "third" (33%). Default: "half" */
   width?: "full" | "half" | "third";
@@ -27,12 +21,20 @@ export interface WidgetConfig {
     description: string;
     parameters: Record<string, ToolParameter>;
   };
-  agent: WidgetAgentConfig | null;
+  /** null for dumb widgets, string subagent ID for smart widgets */
+  agent: string | null;
   layout?: WidgetLayout;
 }
 
+/** A single active widget entry in backend state. Single source of truth for canvas. */
+export interface ActiveWidget {
+  id: string;
+  type: "smart" | "dumb";
+  props: Record<string, unknown>;
+}
+
 export interface OrchestratorState {
-  active_widgets: string[];
+  active_widgets: ActiveWidget[];
   focused_agent: string | null;
   widget_state: Record<string, unknown>;
   widget_summaries: Record<string, string>;

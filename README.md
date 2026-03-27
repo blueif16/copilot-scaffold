@@ -348,6 +348,10 @@ function parseMessage(content: string): ParsedMessage {
 | `src/components/ChatSidebar.tsx` | `parseMessage` + `ThinkingBlock` for sidebar chat |
 | `src/components/chat.tsx` | `parseMessage` + `ThinkingBlock` for full-screen chat |
 
+## Widget Protocol — Smart vs Dumb Widgets
+
+See [`docs/widget-protocol.md`](docs/widget-protocol.md) for the full lifecycle of both widget types: how the LLM spawns them, how state is tracked in `active_widgets`, the 1-turn delay for dumb widgets and the `expectedDumbIds` guard, canvas operations (`replace_all` / `add` / `replace_one`), and `clear_canvas`.
+
 ## License
 
 MIT
