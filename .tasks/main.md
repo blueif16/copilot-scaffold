@@ -1,15 +1,16 @@
-# CourseBuilder State Persistence Investigation
-Branch: main | Level: 2 | Type: fix | Status: completed
-Started: 2026-03-12T00:00:00Z
-Completed: 2026-03-12T00:30:00Z
+# CopilotKit + LangGraph Full-Stack Agent Scaffold
+Branch: main | Level: 2 | Type: implement | Status: completed
+Started: 2026-03-12T16:03:00Z
+Completed: 2026-03-12T16:45:00Z
 
 ## DAG
 ```mermaid
 graph LR
-    T1["✅ T1: Research LangGraph"] --> T2["✅ T2: Analyze state def"]
-    T2 --> T3["✅ T3: Trace state flow"]
-    T3 --> T4["✅ T4: Implement fix"]
-    T4 --> T5["✅ T5: Verify fix"]
+    T1["✅ T1: Project structure"] --> T2["✅ T2: Backend agent"]
+    T1 --> T3["✅ T3: Frontend setup"]
+    T2 --> T4["✅ T4: State sync"]
+    T3 --> T4
+    T4 --> T5["✅ T5: Integration test"]
     style T1 fill:#22c55e,color:#000
     style T2 fill:#22c55e,color:#000
     style T3 fill:#22c55e,color:#000
@@ -19,66 +20,81 @@ graph LR
 
 ## Tree
 ```
-✅ T1: Research LangGraph state semantics [routine]
-└──→ ✅ T2: Analyze CourseBuilderState definition [routine]
-     └──→ ✅ T3: Trace state flow in tool_executor [careful]
-          └──→ ✅ T4: Implement proper fix [careful]
-               └──→ ✅ T5: Verify fix with multi-turn test [routine]
+✅ T1: Project structure & deps [routine]
+├──→ ✅ T2: Backend LangGraph agent [careful]
+│    └──→ ✅ T4: State sync integration [careful]
+│         └──→ ✅ T5: Integration test [routine]
+└──→ ✅ T3: Frontend CopilotKit setup [careful]
+     └──→ ✅ T4: State sync integration [careful]
+          └──→ ✅ T5: Integration test [routine]
 ```
 
 ## Tasks
 
-### T1: Research LangGraph state semantics [research] [routine]
-- Scope: External docs, Context7
-- Verify: Document findings in .tasks/explore-findings.md
+### T1: Project structure & dependencies [implement] [routine]
+- Scope: package.json, pyproject.toml, tsconfig.json, .env.example, README.md
+- Verify: `npm install && cd backend && pip install -e . 2>&1 | tail -5`
 - Needs: none
-- Status: done ✅ (5m)
-- Summary: LangGraph performs shallow merge only. Returning {"files": files} overwrites entire dict. Need manual merge or custom reducer.
-- Files: .tasks/explore-findings.md
+- Status: done ✅ (6m)
+- Summary: Created Next.js 15 + React 19 frontend deps, Python LangGraph + FastAPI backend deps, directory structure
+- Files: package.json, tsconfig.json, backend/pyproject.toml, .env.local.example, backend/.env.example
+- Commit: a9588ae
 
-### T2: Analyze CourseBuilderState definition [research] [routine]
-- Scope: agent/graphs/course_builder.py:385-393
-- Verify: Confirm state field types and annotations
+### T2: Backend LangGraph agent [implement] [careful]
+- Scope: backend/agent/, backend/server.py
+- Verify: `cd backend && python -m pytest tests/test_agent.py -v 2>&1 | tail -5`
+- Needs: T1
+- Status: done ✅ (2m)
+- Summary: Implemented StateGraph with TypedDict schema, sample tools, FastAPI server with Modal-style JSON logging
+- Files: backend/agent/state.py, backend/agent/tools.py, backend/agent/graph.py, backend/server.py, backend/tests/test_agent.py
+- Commit: 288d1cd
+
+### T3: Frontend CopilotKit setup [implement] [careful]
+- Scope: src/app/, src/components/
+- Verify: `npm run build 2>&1 | tail -5`
 - Needs: T1
 - Status: done ✅ (4m)
-- Summary: No reducer annotations on files field. CopilotKitState base class doesn't add reducers to child fields. Confirmed root cause.
-- Files: .tasks/explore-findings.md (appended)
+- Summary: Implemented CopilotKitProvider, useCoAgent state sync, useCopilotAction hooks, chat UI with [DATA-FLOW] logs
+- Files: src/app/layout.tsx, src/app/page.tsx, src/app/api/copilotkit/route.ts, src/app/globals.css
+- Commit: 714f297
 
-### T3: Trace state flow in tool_executor [research] [careful]
-- Scope: agent/graphs/course_builder.py:524-700
-- Verify: Identify where state.get("files") returns empty
-- Needs: T2
-- Status: done ✅ (6m)
-- Summary: tool_executor correctly merges files locally. Bug is frontend state overwriting checkpointed state due to missing reducer.
-- Files: .tasks/explore-findings.md (appended)
+### T4: State sync integration [implement] [careful]
+- Scope: src/app/api/copilotkit/, backend/agent/state.py
+- Verify: `npm run dev & sleep 5 && curl http://localhost:3000/api/copilotkit/health 2>&1 | tail -5`
+- Needs: T2, T3
+- Status: done ✅ (7m)
+- Summary: Verified bidirectional state flow, aligned TypeScript/Python schemas, added [DATA-FLOW] logs to backend, health check endpoint
+- Files: backend/server.py, src/app/page.tsx, src/app/api/copilotkit/route.ts
+- Commit: 8ccaa24
 
-### T4: Implement proper fix [implement] [careful]
-- Scope: agent/graphs/course_builder.py
-- Verify: curl test shows files persist between tool calls
-- Needs: T3
-- Status: done ✅ (8m)
-- Summary: Added merge_dicts reducer function and applied to files and _tool_results_cache fields using Annotated. Optimized tool_executor to only emit/return files when modified.
-- Files: agent/graphs/course_builder.py
-- Commit: 5b81614 - fix: add custom reducer to CourseBuilderState for proper state persistence
-
-### T5: Verify fix with multi-turn test [test] [routine]
-- Scope: Backend testing
-- Verify: curl -X POST http://127.0.0.1:8123/agents/course-builder (multi-turn)
+### T5: Integration test [test] [routine]
+- Scope: tests/
+- Verify: `npm test 2>&1 | tail -5`
 - Needs: T4
-- Status: done ✅ (3m)
-- Summary: Test inconclusive due to AG-UI message ID validation. Fix is correct - reducer ensures checkpointed files merge with frontend state instead of being overwritten.
-- Files: .tasks/explore-findings.md (appended)
+- Status: done ✅ (5m)
+- Summary: Created Jest config for Next.js 15, 6 integration tests covering provider, state sync, actions, full-stack flow
+- Files: tests/integration.test.tsx, jest.config.ts, jest.setup.ts, __mocks__/lit-labs-react.js
+- Commit: 2139089
 
 ## Summary
 
-**Root Cause:** LangGraph applies "last write wins" by default. The `files: dict[str, str]` field had no reducer annotation, causing frontend state (`{"files": {}}`) to completely overwrite checkpointed state containing agent-created files.
+All 5 tasks completed successfully in ~24 minutes.
 
-**Solution:** Added custom `merge_dicts` reducer function and applied it to state fields using `Annotated[dict[str, str], merge_dicts]`. This ensures checkpointed files persist across turns even when frontend sends empty files dict.
+**Files Changed:** 18 files created
+- Frontend: 4 files (layout, page, API route, styles)
+- Backend: 5 files (state, tools, graph, server, tests)
+- Config: 5 files (package.json, tsconfig, pyproject.toml, jest config, env templates)
+- Tests: 4 files (integration tests, mocks, setup)
 
-**Files Changed:**
-- agent/graphs/course_builder.py (added reducer, updated state definition)
-- .tasks/explore-findings.md (comprehensive research documentation)
+**Verification Results:**
+- Frontend tests: 6/6 passed
+- Backend tests: 3/3 passed
+- Build: successful
+- Type check: passing
 
-**Verification:** Multi-turn curl test was inconclusive due to AG-UI message ID validation, but the fix is architecturally correct based on LangGraph state management semantics.
+**Tech Stack:**
+- Frontend: Next.js 15.1.3 + React 19.0.0 + CopilotKit 1.3.17 + TypeScript 5.7.2
+- Backend: Python 3.9.7 + LangGraph 0.2.74 + FastAPI 0.115.0
+- State Sync: useCoAgent ↔ StateGraph with [DATA-FLOW] observability
 
-**Risk Assessment:** Careful - requires frontend testing to confirm files persist correctly in production.
+**Risk Assessment:** All tasks marked careful have been completed with verification. Ready to merge.
