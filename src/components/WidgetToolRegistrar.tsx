@@ -3,17 +3,19 @@
 import { useFrontendTool, useCopilotKit } from "@copilotkitnext/react";
 import { z } from "zod";
 import type { WidgetEntry, SpawnedWidget } from "@/lib/types";
-import { Dispatch, SetStateAction, useEffect } from "react";
+import { Dispatch, SetStateAction } from "react";
 
 interface Props {
   entry: WidgetEntry;
   setSpawned: Dispatch<SetStateAction<SpawnedWidget[]>>;
+  onOptimisticRender?: (w: SpawnedWidget) => void;
 }
 
-export function WidgetToolRegistrar({ entry, setSpawned }: Props) {
+export function WidgetToolRegistrar({ entry, setSpawned, onOptimisticRender }: Props) {
   const { copilotkit } = useCopilotKit();
+
   console.log(`[WT] mount: ${entry.config.tool.name} tools=${(copilotkit as any).runHandler?._tools?.length ?? 'N/A'}`);
-  // Build a proper Zod schema — this MUST be z.object(), not a plain object
+
   const parameters = z.object(
     Object.fromEntries(
       Object.entries(entry.config.tool.parameters).map(([key, param]) => {
@@ -42,11 +44,20 @@ export function WidgetToolRegistrar({ entry, setSpawned }: Props) {
       description: entry.config.tool.description,
       parameters,
       handler: async (args) => {
-        setSpawned((prev) => [
-          ...prev.filter((w) => w.id !== entry.config.id),
-          { id: entry.config.id, Component: entry.Component, props: args },
-        ]);
-        return JSON.stringify({ spawned: true, widgetId: entry.config.id });
+        const operation: string = (args as any).operation ?? "replace_all";
+        const widget: SpawnedWidget = { id: entry.config.id, Component: entry.Component, props: args };
+        // Latch before setSpawned so onStateChanged mid-run never wipes it.
+        onOptimisticRender?.(widget);
+        setSpawned((prev) => {
+          const base = operation === "replace_all" ? [] : prev.filter((w) => w.id !== entry.config.id);
+          return [...base, widget];
+        });
+        return JSON.stringify({
+          spawned: true,
+          widgetId: entry.config.id,
+          operation,
+          props: args,
+        });
       },
       render: ({ status }) => (
         <div className="text-sm text-muted-foreground">
@@ -54,13 +65,8 @@ export function WidgetToolRegistrar({ entry, setSpawned }: Props) {
         </div>
       ),
     },
-    [] // dependency array — important for stable hook identity
+    []
   );
-
-  useEffect(() => {
-    const tools = (copilotkit as any).runHandler?._tools ?? [];
-    console.log(`[WT] addTool effect fired: name=${entry.config.tool.name} total_tools=${tools.length} all=${tools.map((t: any) => t.name).join(',')}`);
-  });
 
   return null;
 }

@@ -20,10 +20,14 @@ def clear_canvas(widget_ids: Optional[List[str]] = None) -> str:
 
 
 @tool
-def handoff_to_orchestrator() -> dict:
+def handoff_to_orchestrator(summary: str = "") -> dict:
     """Return control to the main orchestrator.
-    Call this when the user is done with this widget or asks for something outside your domain."""
-    # State mutation (clear focused_agent) handled by tools_node in graph.py.
+    Call this when the user is done with this widget or asks for something outside your domain.
+
+    Args:
+        summary: Brief summary of what happened in this session, passed to the orchestrator.
+    """
+    # State mutation (clear focused_agent, store summary) handled by tools_node in graph.py.
     return {"status": "handing_off"}
 
 
