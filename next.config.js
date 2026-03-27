@@ -1,27 +1,19 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  output: 'standalone',
-  swcMinify: true,
-  experimental: {
-    optimizePackageImports: [
-      '@codesandbox/sandpack-react',
-      '@copilotkit/react-core',
-      '@copilotkit/react-ui',
-      '@copilotkit/runtime-client-gql',
-      'framer-motion',
-      'react-markdown',
-    ],
-  },
-  webpack: (config, { isServer }) => {
-    // Suppress the critical dependency warning from @whatwg-node/fetch
-    config.ignoreWarnings = [
-      ...(config.ignoreWarnings || []),
-      {
-        module: /node_modules\/@whatwg-node\/fetch/,
-        message: /Critical dependency: the request of a dependency is an expression/,
-      },
-    ];
+  transpilePackages: ["@copilotkit"],
+  webpack: (config) => {
+    // Suppress critical dependency warning from @whatwg-node/fetch
+    // This is a known issue with graphql-yoga and copilotkit runtime
+    config.module.exprContextCritical = false;
+
     return config;
+  },
+
+  // Ignore specific warnings in development
+  onDemandEntries: {
+    // Ensure entries are disposed properly to avoid HMR issues
+    maxInactiveAge: 25 * 1000,
+    pagesBufferLength: 2,
   },
 };
 
