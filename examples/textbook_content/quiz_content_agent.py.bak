@@ -1,0 +1,73 @@
+"""Quiz content subagent domain tools.
+
+Bound exclusively to the quiz_content subagent LLM.
+Do NOT include handoff_to_orchestrator — the skeleton injects it automatically.
+
+Tool return values are merged into widget_state by the skeleton's tools_node.
+"""
+from langchain_core.tools import tool
+
+
+@tool
+def submit_answer(question_index: int, answer_key: str) -> dict:
+    """Record a student's answer for a specific question and grade it.
+
+    The grading uses the questions list in widget_state to check correctness.
+    NOTE: This tool can only grade if the full widget_state (including questions)
+    is available in the checkpoint. The frontend also grades locally for instant
+    feedback — this tool is for agent-driven answer submission.
+
+    Args:
+        question_index: Zero-based index of the question being answered
+        answer_key: The option key selected (e.g. "A", "B", "C", "D")
+    """
+    # The skeleton merges this return dict into widget_state.
+    # The frontend component handles actual grading logic since it has
+    # the questions array. This tool just records the selection so the
+    # agent can discuss it. The frontend's onStateChange does the real grading.
+    return {
+        "_agent_action": "submit_answer",
+        "_question_index": question_index,
+        "_answer_key": answer_key,
+    }
+
+
+@tool
+def next_question() -> dict:
+    """Move to the next question in the quiz.
+
+    Returns a state patch that increments currentIndex.
+    The frontend caps this at totalQuestions - 1.
+    """
+    return {"_agent_action": "next_question"}
+
+
+@tool
+def prev_question() -> dict:
+    """Move to the previous question in the quiz.
+
+    Returns a state patch that decrements currentIndex.
+    The frontend caps this at 0.
+    """
+    return {"_agent_action": "prev_question"}
+
+
+@tool
+def go_to_review() -> dict:
+    """Switch the quiz to review mode showing results summary."""
+    return {"phase": "review"}
+
+
+@tool
+def restart_quiz() -> dict:
+    """Reset the quiz — clear all answers and start from question 0."""
+    return {
+        "currentIndex": 0,
+        "answers": {},
+        "results": {},
+        "score": 0,
+        "phase": "in_progress",
+    }
+
+
+all_tools = [submit_answer, next_question, prev_question, go_to_review, restart_quiz]
