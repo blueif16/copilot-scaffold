@@ -2,3 +2,4 @@
 export * as scienceLab from "./science_lab";
 export * as flowerGarden from "./flower_garden";
 // export * as dreams from "./dreams";
+export * as textbookContent from "./textbook_content";
