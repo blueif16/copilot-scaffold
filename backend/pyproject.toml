@@ -5,15 +5,15 @@ description = "CopilotKit + LangGraph + FastAPI backend scaffold"
 requires-python = ">=3.12"
 dependencies = [
     "copilotkit[langgraph]==0.1.75",
-    "ag-ui-langgraph>=0.0.26",
-    "langgraph>=0.3.25,<1.1.0",
-    "langchain-core>=0.3.0",
-    "langchain-google-genai>=4.0.0",
-    "langchain-openai>=0.3.0,<0.4.0",
-    "fastapi>=0.115.0,<0.116.0",
-    "uvicorn[standard]>=0.32.0,<1.0.0",
-    "pydantic>=2.10.0,<3.0.0",
-    "python-dotenv>=1.0.0",
+    "ag-ui-langgraph>=0.0.28",
+    "langgraph>=1.0.10,<1.1.0",
+    "langchain-core>=1.2.20",
+    "langchain-google-genai>=4.2.1",
+    "langchain-openai>=0.3.34,<0.4.0",
+    "fastapi>=0.115.14,<0.116.0",
+    "uvicorn[standard]>=0.42.0,<1.0.0",
+    "pydantic>=2.12.5,<3.0.0",
+    "python-dotenv>=1.2.2",
 ]
 
 [project.optional-dependencies]
